@@ -38,3 +38,5 @@ desktop.ini
 next-env.d.ts
 
 ./docs  
+# workspace do subagent-driven-development (scratch)
+.superpowers/
