@@ -30,6 +30,10 @@ export const ADMIN_SESSAO_HORAS = 2;
 // fora do próprio painel com cinco requisições.
 export const ADMIN_TRAVA_BASE_MS = 1_000;
 export const ADMIN_TRAVA_TETO_MS = 60_000;
+// Passou disso, o IP fica de castigo por 10 minutos. Antes do limite a espera
+// só cresce (1s, 2s, 4s, 8s), o que já custa caro a quem chuta em série.
+export const ADMIN_TRAVA_TENTATIVAS = 5;
+export const ADMIN_TRAVA_BLOQUEIO_MS = 10 * 60_000;
 
 // Convite e senha (admin §6.1, cliente §9.5)
 export const CONVITE_VALIDADE_HORAS = 48;

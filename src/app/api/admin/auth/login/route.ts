@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { conferirSenha } from '@/lib/admin-senha';
 import { emitirSessao, COOKIE_ADMIN } from '@/lib/admin-sessao';
-import { esperaDe, registrarFalha, limparFalhas } from '@/lib/trava-ip';
-import { ADMIN_SESSAO_HORAS } from '@/lib/config';
+import { esperaDe, registrarFalha, limparFalhas, falhasDe } from '@/lib/trava-ip';
+import { ADMIN_SESSAO_HORAS, ADMIN_TRAVA_TENTATIVAS } from '@/lib/config';
 
 const ipDe = (req: Request) =>
   (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'desconhecido';
@@ -14,8 +14,14 @@ export async function POST(req: Request) {
   // e deixar o atacante gastá-lo à vontade é o que a trava evita.
   const espera = esperaDe(ip);
   if (espera > 0) {
+    const minutos = Math.ceil(espera / 60_000);
+    const bloqueado = falhasDe(ip) >= ADMIN_TRAVA_TENTATIVAS;
     return NextResponse.json(
-      { erro: 'Muitas tentativas. Espera um pouco.' },
+      {
+        erro: bloqueado
+          ? `Muitas tentativas. Bloqueado por ${minutos} min.`
+          : 'Muitas tentativas. Espera um pouco.',
+      },
       { status: 429, headers: { 'retry-after': String(Math.ceil(espera / 1000)) } },
     );
   }
