@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BRUTUS — agenda para barbearias
 
-## Getting Started
+Agendamento multi-tenant: cada barbearia tem o próprio subdomínio.
 
-First, run the development server:
+## Subir
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env
+docker compose up
+npm run seed
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- `http://brutus.localhost:3000`
+- `http://dontony.localhost:3000`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`*.localhost` resolve sozinho no Chrome e no Firefox — não precisa mexer em DNS.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+O seed roda do **host**, não de dentro do contêiner: ele lê `DATABASE_URL_HOST`,
+e o `dotenv -e .env` carrega essa variável nos dois lugares — dentro do
+contêiner ela aponta para um `localhost:5433` que não existe lá.
 
-## Learn More
+## Testar
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+docker compose up -d db
+npm test
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Os testes rodam do host contra o banco `brutus_test`. Em máquina nova, aplicar
+as migrações nele antes da primeira rodada:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+DATABASE_URL="postgresql://brutus_owner:owner@localhost:5433/brutus_test" npx prisma migrate deploy
+```
 
-## Deploy on Vercel
+## O que saber antes de mexer
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Nunca** consultar dado de barbearia fora de `comBarbearia()` — o RLS
+  devolve zero linhas, e o bug parece "sumiu tudo".
+- O runtime usa `DATABASE_URL_APP` (papel `brutus_app`). Apontar para
+  `DATABASE_URL` desliga o isolamento: o dono da tabela ignora RLS.
+- Conversão de fuso só em `src/lib/datas.ts`.
+- Tabela nova com `barbeariaId` precisa de política de RLS. O teste
+  `varredura estrutural` falha se você esquecer.
+- Arquivo de rota criado com `docker compose up` já rodando não é enxergado
+  pelo watcher do Turbopack através do bind mount do Windows: a rota responde
+  404 até `docker compose restart app`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Spec: `docs/superpowers/specs/2026-08-05-brutus-agendamento-cliente-design.md`
