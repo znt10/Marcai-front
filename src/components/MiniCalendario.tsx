@@ -37,20 +37,23 @@ export function MiniCalendario({ barbeiroId, servicoId }: { barbeiroId: string; 
   return (
     <>
       <Row className="items-center">
-        <button onClick={() => irPara(-1)} className="text-[11px] text-lbl">‹</button>
-        <div className="flex-1 text-center text-sm">{mes}</div>
-        <button onClick={() => irPara(1)} className="text-[11px] text-lbl">›</button>
+        <button onClick={() => irPara(-1)} className="text-[11px] md:text-sm text-lbl">‹</button>
+        <div className="flex-1 text-center text-sm md:text-base">{mes}</div>
+        <button onClick={() => irPara(1)} className="text-[11px] md:text-sm text-lbl">›</button>
       </Row>
 
-      <div className="grid grid-cols-7 gap-1.5 text-center">
-        {CABECALHO.map((d, i) => <div key={i} className="text-[10px] text-lbl">{d}</div>)}
+      <div className="grid grid-cols-7 gap-1.5 md:gap-2 text-center">
+        {CABECALHO.map((d, i) => <div key={i} className="text-[10px] md:text-xs text-lbl">{d}</div>)}
         {Array.from({ length: deslocamento }).map((_, i) => <div key={`v${i}`} />)}
         {Array.from({ length: totalDias }, (_, i) => i + 1).map(d => {
           const data = `${mes}-${String(d).padStart(2, '0')}`;
           const tem = comVaga.includes(d);
           return (
+            // aspect-square porque `rounded-full` num botão que só tem a
+            // largura do número desenha uma pílula, não o círculo do wireframe.
             <button key={d} disabled={!tem} onClick={() => setDia(data)}
-              className={`text-xs rounded-full ${
+              className={`aspect-square flex items-center justify-center
+                          text-xs md:text-sm rounded-full ${
                 !tem ? 'text-[#ccc]'
                      : dia === data ? 'border-[2px] border-traco' : 'border-[1.5px] border-traco'}`}>
               {d}

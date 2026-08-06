@@ -24,7 +24,9 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [dias, setDias] = useState<Dia[]>([]);
 
-  const [barbeiroId, setBarbeiroId] = useState<string>(inicial.barbeiroId ?? 'qualquer');
+  // Sem barbeiro escolhido a tela não tem o que mostrar adiante: a duração —
+  // e portanto a grade inteira — é por barbeiro E serviço.
+  const [barbeiroId, setBarbeiroId] = useState<string>(inicial.barbeiroId ?? '');
   const [servicoId, setServicoId] = useState<string>(inicial.servicoId ?? '');
   const [slot, setSlot] = useState<Slot | null>(null);
   // Consumido uma vez só: depois de casar com um slot da lista, some, para
@@ -39,18 +41,19 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
 
   // Trocar barbeiro pode invalidar o serviço (Rael não faz pezinho).
   useEffect(() => {
+    setSlot(null);
+    if (!barbeiroId) { setServicos([]); setServicoId(''); return; }
     fetch(`/api/servicos?barbeiroId=${barbeiroId}`).then(r => r.json()).then(d => {
       setServicos(d.servicos);
       setServicoId(atual => (atual && !d.servicos.some((s: Servico) => s.id === atual) ? '' : atual));
     });
-    setSlot(null);
   }, [barbeiroId]);
 
   // Trocar serviço muda a DURAÇÃO, logo muda a grade inteira.
   // Manter o horário selecionado garantiria 409 na confirmação.
   useEffect(() => {
     setSlot(null);
-    if (!servicoId) { setDias([]); return; }
+    if (!servicoId || !barbeiroId) { setDias([]); return; }
     // Vindo do calendário, o dia escolhido pode estar muito além dos dois
     // dias da home — busca-se o dia dele, não os próximos.
     const janela = inicioPendente
@@ -91,77 +94,91 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
     }
   }
 
+  // As quatro etapas são irmãs na marcação, na ordem do wireframe — é assim
+  // que o celular as empilha, 1, 2, 3, 4. No desktop o grid as recoloca em
+  // duas colunas SEM mexer na ordem do DOM: fossem dois <div> de coluna, o
+  // celular receberia "4. Seus dados" antes de "3. Horários".
   return (
-    <>
-      <Lbl>1. Barbeiro</Lbl>
-      <Row>
-        {barbeiros.map(b => (
-          <Box key={b.id} variante={barbeiroId === b.id ? 'sel' : 'normal'}
-               className="flex gap-1.5 items-center cursor-pointer"
-               onClick={() => setBarbeiroId(b.id)}>
-            <Avatar />{b.nome}
-          </Box>
+    <div className="grid gap-2.5 md:grid-cols-2 md:gap-x-8 md:gap-y-5 md:items-start">
+      <section className="flex flex-col gap-2.5 md:col-start-1 md:row-start-1">
+        <Lbl>1. Barbeiro</Lbl>
+        <Row wrap>
+          {barbeiros.map(b => (
+            <Box key={b.id} variante={barbeiroId === b.id ? 'sel' : 'normal'}
+                 className="flex gap-1.5 items-center cursor-pointer"
+                 onClick={() => setBarbeiroId(b.id)}>
+              <Avatar />{b.nome}
+            </Box>
+          ))}
+        </Row>
+      </section>
+
+      <section className="flex flex-col gap-2.5 md:col-start-1 md:row-start-2">
+        <Lbl>2. Serviço</Lbl>
+        {!barbeiroId ? <Sub>Escolhe o barbeiro pra ver os serviços.</Sub> : (
+          <Row wrap>
+            {servicos.map(s => (
+              <Chip key={s.id} ativo={servicoId === s.id} onClick={() => setServicoId(s.id)}>
+                {s.nome} · {s.duracaoMin}min
+              </Chip>
+            ))}
+          </Row>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-2.5 md:col-start-2 md:row-start-1 md:row-span-3">
+        <Lbl>3. Próximos horários livres</Lbl>
+        {!servicoId && <Sub>Escolhe o serviço pra ver os horários.</Sub>}
+        {dias.map(d => (
+          <div key={d.data} className="flex flex-col gap-2">
+            <Lbl className="text-[#444]">{d.rotulo}</Lbl>
+            {d.slots.length === 0 ? <Sub>sem vaga nesse dia</Sub> : (
+              <Row wrap>
+                {d.slots.map(s => (
+                  <Chip key={s.inicio} ativo={slot?.inicio === s.inicio} onClick={() => setSlot(s)}>
+                    {s.hora}
+                  </Chip>
+                ))}
+              </Row>
+            )}
+          </div>
         ))}
-      </Row>
-      <Chip ativo={barbeiroId === 'qualquer'} className="self-start"
-            onClick={() => setBarbeiroId('qualquer')}>tanto faz</Chip>
+        {servicoId && <Lbl>só aparece o que está livre</Lbl>}
 
-      <Lbl>2. Serviço</Lbl>
-      <Row wrap>
-        {servicos.map(s => (
-          <Chip key={s.id} ativo={servicoId === s.id} onClick={() => setServicoId(s.id)}>
-            {s.nome} · {barbeiroId === 'qualquer' ? `a partir de ${s.duracaoMin}min` : `${s.duracaoMin}min`}
-          </Chip>
-        ))}
-      </Row>
+        {barbeiroId && servicoId && (
+          <a href={`/calendario?barbeiroId=${barbeiroId}&servicoId=${servicoId}`}>
+            <Box className="flex justify-between items-center">
+              <span>escolher outro dia</span><Lbl>calendário ›</Lbl>
+            </Box>
+          </a>
+        )}
+      </section>
 
-      <Lbl>3. Próximos horários livres</Lbl>
-      {!servicoId && <Sub>Escolhe o serviço pra ver os horários.</Sub>}
-      {dias.map(d => (
-        <div key={d.data} className="flex flex-col gap-2">
-          <Lbl className="text-[#444]">{d.rotulo}</Lbl>
-          {d.slots.length === 0 ? <Sub>sem vaga nesse dia</Sub> : (
-            <Row wrap>
-              {d.slots.map(s => (
-                <Chip key={s.inicio} ativo={slot?.inicio === s.inicio} onClick={() => setSlot(s)}>
-                  {s.hora}
-                </Chip>
-              ))}
-            </Row>
-          )}
-        </div>
-      ))}
-      <Lbl>só aparece o que está livre</Lbl>
-
-      <a href={servicoId ? `/calendario?barbeiroId=${barbeiroId}&servicoId=${servicoId}` : '#'}>
-        <Box className="flex justify-between items-center">
-          <span>escolher outro dia</span><Lbl>calendário ›</Lbl>
+      <section className="flex flex-col gap-2.5 md:col-start-1 md:row-start-3">
+        <Lbl>4. Seus dados</Lbl>
+        <Box variante={nome ? 'normal' : 'dash'}>
+          <input className="w-full outline-none bg-transparent" placeholder="Seu nome"
+                 value={nome} onChange={e => setNome(e.target.value)} />
         </Box>
-      </a>
+        <Box variante={whats ? 'normal' : 'dash'}>
+          <input className="w-full outline-none bg-transparent" inputMode="numeric"
+                 placeholder="WhatsApp (11) 9 ____-____" value={whats}
+                 onChange={e => {
+                   const d = e.target.value.replace(/\D/g, '').slice(0, 11);
+                   setWhats(d.length >= 10 ? formatar(d) : d);
+                 }} />
+        </Box>
 
-      <Lbl>4. Seus dados</Lbl>
-      <Box variante={nome ? 'normal' : 'dash'}>
-        <input className="w-full outline-none bg-transparent" placeholder="Seu nome"
-               value={nome} onChange={e => setNome(e.target.value)} />
-      </Box>
-      <Box variante={whats ? 'normal' : 'dash'}>
-        <input className="w-full outline-none bg-transparent" inputMode="numeric"
-               placeholder="WhatsApp (11) 9 ____-____" value={whats}
-               onChange={e => {
-                 const d = e.target.value.replace(/\D/g, '').slice(0, 11);
-                 setWhats(d.length >= 10 ? formatar(d) : d);
-               }} />
-      </Box>
+        {erro && <Sub className="text-acento">{erro}</Sub>}
 
-      {erro && <Sub className="text-acento">{erro}</Sub>}
-
-      <Box variante={pronto && !enviando ? 'fill' : 'mut'}
-           className={pronto ? 'cursor-pointer' : ''} onClick={confirmar}>
-        {slot && servico
-          ? `confirmar ${servico.nome.toLowerCase()} ${slot.hora} com ${slot.barbeiroNome}`
-          : 'confirmar'}
-      </Box>
-      <Sub className="text-center">confirmação chega no seu zap</Sub>
-    </>
+        <Box variante={pronto && !enviando ? 'fill' : 'mut'}
+             className={pronto ? 'cursor-pointer' : ''} onClick={confirmar}>
+          {slot && servico
+            ? `confirmar ${servico.nome.toLowerCase()} ${slot.hora} com ${slot.barbeiroNome}`
+            : 'confirmar'}
+        </Box>
+        <Sub className="text-center">confirmação chega no seu zap</Sub>
+      </section>
+    </div>
   );
 }

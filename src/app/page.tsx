@@ -11,16 +11,16 @@ export default async function Home({
   const { barbeiroId, servicoId, inicio } = await searchParams;
 
   return (
-    <Frame>
+    <Frame largo>
       <StatusBar />
-      <h1 className="text-[17px] font-normal m-0">
-        {b.nome} <span className="text-[11px] text-sub">barbearia</span>
+      <h1 className="text-[17px] md:text-2xl font-normal m-0">
+        {b.nome} <span className="text-[11px] md:text-sm text-sub">barbearia</span>
       </h1>
       <Sub>{b.endereco} · {b.horarioResumo}</Sub>
       <Sep />
       <FormAgendamento inicial={{ barbeiroId, servicoId, inicio }} />
       <Sep />
-      <div className="text-[10px] text-lbl text-center">
+      <div className="text-[10px] md:text-xs text-lbl text-center">
         <a href="/painel">sou barbeiro · entrar no painel</a>
       </div>
     </Frame>
