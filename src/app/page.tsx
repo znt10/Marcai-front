@@ -1,35 +1,28 @@
-import { Frame, Box, Chip, Row, Lbl, Sub, Sep, Avatar, StatusBar } from '@/components/wf';
+import { barbeariaAtual } from '@/lib/tenant';
+import { Frame, StatusBar, Sub, Sep } from '@/components/wf';
+import { FormAgendamento } from '@/components/FormAgendamento';
 
-/// Vitrine provisória dos primitivos (Tarefa 11). A Tarefa 16 troca esta
-/// página pela tela principal do cliente.
-export default function Vitrine() {
+export default async function Home({
+  searchParams,
+}: { searchParams: Promise<{ barbeiroId?: string; servicoId?: string; inicio?: string }> }) {
+  const b = await barbeariaAtual();
+  // A volta do calendário chega por aqui. Ler no servidor e passar como prop
+  // evita useSearchParams() e a fronteira de Suspense que ele exigiria.
+  const { barbeiroId, servicoId, inicio } = await searchParams;
+
   return (
     <Frame>
       <StatusBar />
-      <Lbl>Lbl — rótulo de campo</Lbl>
-      <Sub>Sub — texto de apoio</Sub>
+      <h1 className="text-[17px] font-normal m-0">
+        {b.nome} <span className="text-[11px] text-sub">barbearia</span>
+      </h1>
+      <Sub>{b.endereco} · {b.horarioResumo}</Sub>
       <Sep />
-      <Box>Box normal</Box>
-      <Box variante="dash">Box dash — estado vazio</Box>
-      <Box variante="fill">Box fill — ação principal</Box>
-      <Box variante="sel">Box sel — escolhido</Box>
-      <Box variante="mut">Box mut — indisponível</Box>
+      <FormAgendamento inicial={{ barbeiroId, servicoId, inicio }} />
       <Sep />
-      <Row wrap>
-        <Chip>Chip</Chip>
-        <Chip ativo>Chip ativo</Chip>
-        <Chip acento>Chip acento</Chip>
-        <Chip disabled>Chip off</Chip>
-      </Row>
-      <Row>
-        <Box>metade</Box>
-        <Box>metade</Box>
-      </Row>
-      <Sep />
-      <Row wrap className="items-center">
-        <Avatar />
-        <Avatar tamanho={40} />
-      </Row>
+      <div className="text-[10px] text-lbl text-center">
+        <a href="/painel">sou barbeiro · entrar no painel</a>
+      </div>
     </Frame>
   );
 }
