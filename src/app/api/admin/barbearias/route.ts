@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prismaAdmin } from '@/lib/db';
+import { comBarbeariaAdmin } from '@/lib/tenant';
 import { gerarConvite } from '@/lib/convite';
 import { SLUG_REGEX, SUBDOMINIOS_RESERVADOS } from '@/lib/config';
 import { normalizar } from '@/lib/telefone';
@@ -8,6 +9,26 @@ type Corpo = {
   slug: string; nome: string; endereco: string; horarioResumo: string;
   whatsappContato: string; donoNome: string; donoWhatsapp: string;
 };
+
+export async function GET() {
+  const barbearias = await prismaAdmin.barbearia.findMany({ orderBy: { criadoEm: 'asc' } });
+
+  // Tenant a tenant, e não numa agregação só: o brutus_admin está sujeito ao
+  // RLS, então um count() global devolveria zero. Mesmo laço que a rota de
+  // lembretes já usa. N é o número de barbearias — dezenas, não milhões.
+  const comContagem = [];
+  for (const b of barbearias) {
+    const { barbeiros, agendamentos } = await comBarbeariaAdmin(b.id, async (tx) => ({
+      barbeiros: await tx.barbeiro.count(),
+      agendamentos: await tx.agendamento.count({ where: { status: 'CONFIRMADO' } }),
+    }));
+    comContagem.push({
+      id: b.id, slug: b.slug, nome: b.nome, ativo: b.ativo, barbeiros, agendamentos,
+    });
+  }
+
+  return NextResponse.json({ barbearias: comContagem });
+}
 
 export async function POST(req: Request) {
   const c = (await req.json().catch(() => ({}))) as Partial<Corpo>;
