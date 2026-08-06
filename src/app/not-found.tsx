@@ -2,9 +2,9 @@
 /// nenhuma barbearia ativa cai aqui.
 export default function NaoEncontrada() {
   return (
-    <main style={{ fontFamily: 'system-ui', padding: 40 }}>
-      <h1>Essa barbearia não está no ar.</h1>
-      <p>Confere o endereço que você digitou.</p>
+    <main className="[font-family:system-ui] mx-auto max-w-[560px] px-6 py-10 md:px-10 md:py-16">
+      <h1 className="text-2xl md:text-4xl">Essa barbearia não está no ar.</h1>
+      <p className="mt-4 md:text-lg">Confere o endereço que você digitou.</p>
     </main>
   );
 }
