@@ -1,0 +1,28 @@
+export const FUSO = 'America/Sao_Paulo';
+
+// Duração de serviço — os dois limites globais (§5.1).
+// ATENÇÃO: duplicados no CHECK da migração da Tarefa 3. Mudar aqui exige
+// mudar lá. O teste `config-bate-com-banco` falha se divergirem.
+export const DURACAO_MINIMA_MIN = 10;
+export const DURACAO_MAXIMA_MIN = 60;
+
+// Passo da grade — independente da duração do serviço (§6.2.1).
+export const GRANULARIDADE_MIN = 30;
+
+export const ANTECEDENCIA_MINIMA_MIN = 0;
+export const PRAZO_CANCELAMENTO_MIN = 60;
+export const DIAS_NA_HOME = 2;
+export const JANELA_MAXIMA_DIAS = 60;
+export const LEMBRETE_ANTECEDENCIA_MIN = 60;
+
+// Multi-tenant (§9.4)
+export const SUBDOMINIOS_RESERVADOS = [
+  'www', 'api', 'app', 'admin', 'painel', 'static', 'assets', 'cdn', 'mail',
+] as const;
+export const TTL_CACHE_TENANT_MS = 60_000;
+export const SLUG_REGEX = /^[a-z0-9]([a-z0-9-]{1,30}[a-z0-9])$/;
+
+// Verificação de número no WhatsApp (§10.5)
+export const CHECK_NUMERO_TIMEOUT_MS = 3_000;
+export const CHECK_NUMERO_TTL_MS = 86_400_000;
+export const CHECK_NUMERO_LIMITE_POR_IP_HORA = 10;
