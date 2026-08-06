@@ -10,6 +10,11 @@ const DOMINIO_BASE = process.env.NEXT_PUBLIC_DOMINIO_BASE ?? 'localhost';
 export function proxy(req: NextRequest) {
   const slug = extrairSlug(req.headers.get('host') ?? '', DOMINIO_BASE);
 
+  // Domínio nu na raiz: não é tenant nenhum, é a vitrine do produto.
+  if (!slug && req.nextUrl.pathname === '/') {
+    return NextResponse.rewrite(new URL('/institucional', req.url));
+  }
+
   const headers = new Headers(req.headers);
   // Apaga o que veio de fora ANTES de escrever o nosso. O header é canal
   // interno: `curl -H "x-barbearia-slug: dontony"` não escolhe tenant.
