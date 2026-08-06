@@ -10,6 +10,13 @@ import { afterAll } from 'vitest';
 // URL e papel de banco: isso preserva o isolamento owner/app que os testes
 // de RLS da Tarefa 4 exigem.
 
+// `src/lib/db.ts` lê DATABASE_URL_APP, que no .env aponta para o host `db`
+// da rede do Compose — inalcançável de fora do contêiner. Redirecionar aqui,
+// ANTES de qualquer arquivo de teste importar `@/lib/db`, faz o singleton de
+// runtime nascer apontado para o banco de teste sem que o código de produção
+// precise saber que testes existem.
+process.env.DATABASE_URL_APP = process.env.DATABASE_URL_APP_TEST;
+
 /// Papel DONO: ignora RLS. Só para montar cenário de teste.
 export const prismaOwner = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL_TEST }),
