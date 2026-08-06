@@ -9,7 +9,7 @@ import { POST as login } from '@/app/api/admin/auth/login/route';
 
 beforeAll(async () => {
   process.env.ADMIN_USUARIO = 'dono';
-  process.env.ADMIN_SENHA_HASH = await hash('senha-longa-de-teste');
+  process.env.ADMIN_SENHA_HASH_B64 = Buffer.from(await hash('senha-longa-de-teste'), 'utf8').toString('base64');
   process.env.ADMIN_JWT_SECRET = 'segredo-de-teste-com-mais-de-32-bytes-aqui';
 });
 
