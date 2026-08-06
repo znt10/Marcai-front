@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "test": "dotenv -e .env -- vitest run",
+    "test:ci": "dotenv -e .env -- vitest run --reporter=verbose",
     "test:watch": "dotenv -e .env -- vitest",
     "seed": "dotenv -e .env -- tsx prisma/seed.ts"
   },
