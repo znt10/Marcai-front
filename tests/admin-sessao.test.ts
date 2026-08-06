@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { hash } from '@node-rs/argon2';
-import { conferirSenha, emitirSessao, lerSessao } from '@/lib/admin-sessao';
+import { conferirSenha } from '@/lib/admin-senha';
+import { emitirSessao, lerSessao } from '@/lib/admin-sessao';
 
 beforeAll(async () => {
   process.env.ADMIN_USUARIO = 'dono';

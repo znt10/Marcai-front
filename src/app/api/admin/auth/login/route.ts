@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { conferirSenha, emitirSessao, COOKIE_ADMIN } from '@/lib/admin-sessao';
+import { conferirSenha } from '@/lib/admin-senha';
+import { emitirSessao, COOKIE_ADMIN } from '@/lib/admin-sessao';
 import { esperaDe, registrarFalha, limparFalhas } from '@/lib/trava-ip';
 import { ADMIN_SESSAO_HORAS } from '@/lib/config';
 
