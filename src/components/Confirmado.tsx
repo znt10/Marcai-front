@@ -44,7 +44,7 @@ export function Confirmado(p: Props) {
   if (status !== 'CONFIRMADO') {
     return (
       <>
-        <h1 className="text-[17px] font-normal">Horário cancelado.</h1>
+        <h1 className="text-[17px] md:text-2xl font-normal">Horário cancelado.</h1>
         <Sub>Esse agendamento não está mais valendo.</Sub>
         <a href="/"><Box variante="fill">marcar outro horário</Box></a>
       </>
@@ -54,11 +54,11 @@ export function Confirmado(p: Props) {
   return (
     <>
       <div className="h-5" />
-      <div className="w-[52px] h-[52px] border-2 border-traco rounded-full
-                      flex items-center justify-center text-[22px]">✓</div>
-      <h1 className="text-[17px] font-normal m-0">Tá marcado, {p.clienteNome.split(' ')[0]}.</h1>
+      <div className="w-[52px] h-[52px] md:w-16 md:h-16 border-2 border-traco rounded-full
+                      flex items-center justify-center text-[22px] md:text-[28px]">✓</div>
+      <h1 className="text-[17px] md:text-2xl font-normal m-0">Tá marcado, {p.clienteNome.split(' ')[0]}.</h1>
       <Box className="flex flex-col gap-1.5">
-        <div className="text-[15px]">{quando}</div>
+        <div className="text-[15px] md:text-lg">{quando}</div>
         <Sub>{p.servicoNome.toLowerCase()} · com {p.barbeiroNome} · {p.endereco}</Sub>
       </Box>
       <Sub>Mandamos o lembrete no WhatsApp 1h antes.</Sub>
