@@ -25,8 +25,13 @@ services:
     environment:
       DATABASE_URL:     postgresql://brutus_owner:owner@db:5432/brutus
       DATABASE_URL_APP: postgresql://brutus_app:app@db:5432/brutus
+      DATABASE_URL_ADMIN: postgresql://brutus_admin:admin@db:5432/brutus
       NEXT_PUBLIC_DOMINIO_BASE: localhost
       WATCHPACK_POLLING: "true"
+      # Vêm do .env do host: credencial não fica escrita no compose.
+      ADMIN_USUARIO: ${ADMIN_USUARIO}
+      ADMIN_SENHA_HASH_B64: ${ADMIN_SENHA_HASH_B64}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
     ports: ["3000:3000"]
     volumes:
       - .:/app

@@ -8,5 +8,6 @@
 // ANTES do corpo dele, e o PrismaClient já teria nascido com a URL errada.
 // Importar este arquivo primeiro é o que garante a ordem.
 process.env.DATABASE_URL_APP = process.env.DATABASE_URL_APP_TEST;
+process.env.DATABASE_URL_ADMIN = process.env.DATABASE_URL_ADMIN_TEST;
 
 export {};

@@ -2,7 +2,7 @@ import { cache } from 'react';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import type { Barbearia, Prisma } from '@prisma/client';
-import { prisma } from './db';
+import { prisma, prismaAdmin } from './db';
 import { TTL_CACHE_TENANT_MS } from './config';
 
 /// Executa `fn` com o RLS apontando para `barbeariaId`.
@@ -16,6 +16,23 @@ export function comBarbearia<T>(
   fn: (tx: Prisma.TransactionClient) => Promise<T>,
 ): Promise<T> {
   return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.barbearia_id', ${barbeariaId}, true)`;
+    return fn(tx);
+  });
+}
+
+/// Igual a comBarbearia(), sobre o cliente do admin da plataforma.
+///
+/// O 3º argumento `true` do set_config é is_local pelo mesmo motivo de lá: a
+/// variável morre com a TRANSAÇÃO. Aqui o risco é ainda mais concreto — o
+/// painel percorre TODAS as barbearias num laço, então uma variável que
+/// sobrevivesse à transação faria a barbearia seguinte ser contada com o
+/// tenant da anterior.
+export function comBarbeariaAdmin<T>(
+  barbeariaId: string,
+  fn: (tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  return prismaAdmin.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.barbearia_id', ${barbeariaId}, true)`;
     return fn(tx);
   });
