@@ -15,3 +15,11 @@ export function extrairSlug(host: string, dominioBase: string): string | null {
   if (!SLUG_REGEX.test(slug)) return null;
   return slug;
 }
+
+/// `extrairSlug` devolve null para DOIS casos diferentes — o domínio nu e um
+/// subdomínio reservado — e o proxy precisa distingui-los: um serve a página
+/// institucional, o outro serve o painel de admin. Sem esta função,
+/// `admin.seuapp.com.br` cairia na vitrine do produto.
+export function ehHostAdmin(host: string, dominioBase: string): boolean {
+  return host.split(':')[0].toLowerCase() === `admin.${dominioBase}`;
+}
