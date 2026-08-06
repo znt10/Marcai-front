@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh pr create --base main --head moldura-preenche-a-tela --title 'Moldura preenche a tela em qualquer largura' --body ' *)"
+    ]
+  }
+}

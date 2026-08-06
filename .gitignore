@@ -53,6 +53,9 @@ desktop.ini
 !.vscode/extensions.json
 .idea/
 
-./docs
+# permissões da máquina, com caminho absoluto dentro — o settings.json ao lado
+# é o compartilhado
+.claude/settings.local.json
+
 # workspace do subagent-driven-development (scratch)
 .superpowers/
