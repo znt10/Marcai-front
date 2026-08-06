@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+/* Tokens travados do wireframe. Nenhuma cor literal fora daqui: o wireframe
+   é a fonte da verdade visual, e um #2a2a2a solto num componente é como a
+   próxima tela começa a divergir dele. */
+@theme {
+  /* traço — cor de toda borda e todo preenchimento sólido */
+  --color-traco:      #2a2a2a;
+  --color-acento:     #5b46d9;
+
+  /* texto */
+  --color-sub:        #777777;
+  --color-lbl:        #888888;
+  --color-apagado:    #999999;
+
+  /* superfícies e linhas */
+  --color-mut:        #efefef;
+  --color-mut-borda:  #cccccc;
+  --color-linha:      #e2e2e2;
+  --color-regua:      #dddddd;
+
+  --radius-wf:        6px;
+  --shadow-sel:       2px 2px 0 #2a2a2a;
+}
+
+body { background: #f0eee9; }

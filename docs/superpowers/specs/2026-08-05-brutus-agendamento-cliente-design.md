@@ -198,6 +198,8 @@ Barbearia/
 │   ├── lib/
 │   │   ├── db.ts            # cliente Prisma singleton
 │   │   ├── tenant.ts        # slug → Barbearia, e o comBarbearia() do RLS
+│   │   ├── auth.ts          # JWT (jose), cookie, argon2id — Etapa 2 (§9.5)
+│   │   ├── autorizacao.ts   # filtroDoBarbeiro() — o choke-point de "só o meu"
 │   │   ├── slots.ts         # motor de horários livres (função pura)
 │   │   ├── servicos.ts      # resolve duração por barbeiro+serviço, valida o mínimo
 │   │   ├── datas.ts         # helpers de fuso e conversão
@@ -238,6 +240,17 @@ export const SUBDOMINIOS_RESERVADOS = [
 ] as const;
 export const TTL_CACHE_TENANT_MS = 60_000;
 export const SLUG_REGEX = /^[a-z0-9]([a-z0-9-]{1,30}[a-z0-9])$/;
+
+// Autenticação do barbeiro (§9.5)
+export const SESSAO_DURACAO_H = 12;              // um turno
+export const LOGIN_TENTATIVAS_MAX = 5;
+export const LOGIN_BLOQUEIO_MIN = 15;
+export const CONVITE_VALIDADE_H = 48;
+
+// Verificação de número no WhatsApp (§10.5)
+export const CHECK_NUMERO_TIMEOUT_MS = 3_000;
+export const CHECK_NUMERO_TTL_MS = 86_400_000;   // 24 h
+export const CHECK_NUMERO_LIMITE_POR_IP_HORA = 10;
 ```
 
 Todo número mágico do wireframe vira constante nomeada aqui. Nada de `60` solto no código.
@@ -317,14 +330,37 @@ Esquecer isso é o bug clássico de multi-tenant: o segundo cliente do produto t
 | `barbeariaId` | String | FK |
 | `nome` | String | como aparece pro cliente |
 | `whatsapp` | String | dígitos apenas; vira o login na Etapa 2. Único **por barbearia** |
-| `senhaHash` | String? | nulo = convite enviado, sem senha ainda |
+| `papel` | Enum `PapelBarbeiro` | `DONO` \| `BARBEIRO` — ver abaixo |
+| `senhaHash` | String? | argon2id. Nulo = convite enviado, senha não criada |
+| `tokenVersion` | Int @default(0) | incrementar invalida todo JWT daquele barbeiro (§9.5) |
+| `conviteTokenHash` | String? | hash do token de criação de senha |
+| `conviteExpiraEm` | DateTime? | |
+| `tentativasLogin` | Int @default(0) | |
+| `bloqueadoAte` | DateTime? | trava temporária contra força bruta (§9.5) |
 | `fotoUrl` | String? | |
-| `ativo` | Boolean @default(true) | desativado some da área do cliente |
-| `ehDono` | Boolean @default(false) | Etapa 3 |
-| `podeVerAgendaDosOutros` | Boolean @default(false) | Etapa 2 |
+| `ativo` | Boolean @default(true) | desativado some da área do cliente e não loga |
 | `ordem` | Int @default(0) | ordem de exibição |
 | `desativadoEm` | DateTime? | |
 | `criadoEm` | DateTime @default(now()) | |
+
+#### Os dois papéis
+
+```prisma
+enum PapelBarbeiro { DONO BARBEIRO }
+```
+
+| Papel | Pode |
+|---|---|
+| `DONO` | tudo da barbearia dele: agenda de todos, cadastrar e desativar barbeiros, editar serviços |
+| `BARBEIRO` | **só o que é dele** — a própria agenda, os próprios clientes, reagendar e cancelar os próprios atendimentos |
+
+Um `BARBEIRO` não vê a agenda de colega, não vê cliente de colega, não cadastra ninguém.
+
+**Divergência do wireframe, assumida.** A tela 3d desenha um interruptor `pode ver a agenda dos outros`, que permitiria um meio-termo. A regra agora é absoluta: ou é dono, ou vê só o seu. Menos estado, menos combinação para testar, e uma pergunta a menos no cadastro. Se o meio-termo voltar a ser necessário, é uma coluna booleana e uma condição no §9.5 — mas nasce como enum de dois valores de propósito.
+
+`ehDono` e `podeVerAgendaDosOutros` saem do modelo; `papel` os substitui. Um booleano `ehDono` mais um booleano de permissão dão quatro combinações, das quais duas não fazem sentido ("não é dono mas vê tudo", "é dono mas não vê"). O enum admite só os estados que existem.
+
+**A barbearia tem sempre ao menos um `DONO`.** Desativar o último dono é recusado na Etapa 3 — barbearia sem dono não tem como cadastrar ninguém e fica órfã.
 
 **`Servico`** — o catálogo da barbearia. Corte, barba, pezinho.
 
@@ -617,8 +653,13 @@ Em desenvolvimento, `brutus.localhost:3000` e `dontony.localhost:3000` funcionam
 O conteúdo da **BRUTUS** reproduz o wireframe:
 
 - `Barbearia` — BRUTUS, Rua Aurora 88, seg a sáb 9h–20h
-- `Barbeiro` **Téo** — dono, seg–sáb, 9h–20h
-- `Barbeiro` **Rael** — ter–sáb, 10h–19h
+- `Barbeiro` **Téo** — `papel: DONO`, seg–sáb, 9h–20h
+- `Barbeiro` **Rael** — `papel: BARBEIRO`, ter–sáb, 10h–19h
+- `Barbeiro` **Duda** — `papel: BARBEIRO`, `senhaHash` nulo, convite pendente (o estado que o wireframe 3e desenha)
+
+Téo e Rael nascem com senha conhecida (`123456`, só no seed) para o painel da Etapa 2 ser testável na hora. Os dois papéis **e** o convite pendente existem desde o primeiro `npm run seed`, então a autorização de §9.5 é exercitável sem preparar cenário.
+
+O seed recusa rodar com `NODE_ENV=production` — senha conhecida em base de produção não é conveniência, é porta aberta.
 - `Bloqueio` de almoço 12:00–13:00, `repeteSemanalmente = true`, para ambos
 - Alguns `Agendamento` de exemplo no dia corrente, para a tela não nascer vazia
 
@@ -821,6 +862,7 @@ Erros:
 | 409 | slot foi ocupado no meio do caminho | `"Esse horário acabou de ser pego. Escolhe outro?"` |
 | 422 | slot não existe na grade (fora do expediente, bloqueado, no passado) | `"Esse horário não está mais disponível."` |
 | 422 | barbeiro não oferece o serviço (sem `BarbeiroServico` ativo) | `"Esse barbeiro não faz esse serviço."` |
+| 422 | Evolution respondeu que o número não tem WhatsApp (§10.5) | `"Esse número não tem WhatsApp. Confere pra gente?"` |
 
 **`GET /api/agendamentos/[codigo]`** — alimenta a tela 1b.
 ```json
@@ -906,6 +948,103 @@ O custo aceito: desativar uma barbearia leva até 60 s para derrubar o subdomín
 
 ---
 
+### 9.5 Autenticação e autorização do barbeiro
+
+Implementado na **Etapa 2** (o painel). Especificado aqui porque decide colunas que a Etapa 1 já cria, e porque é a segunda fronteira de segurança do sistema.
+
+#### O token
+
+JWT assinado em **HS256**, emitido no login, guardado em **cookie `httpOnly`**.
+
+```
+Set-Cookie: sessao=<jwt>; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200
+```
+
+Nunca em `localStorage`. Cookie `httpOnly` não é legível por JavaScript, então um XSS no painel não carrega a sessão embora. `SameSite=Lax` cobre CSRF nas requisições que importam.
+
+Biblioteca: **`jose`**. Funciona no runtime Edge, onde o `middleware.ts` roda — `jsonwebtoken` não. Verificar o token no middleware evita que requisição não autenticada chegue perto do banco.
+
+Carga útil:
+
+```ts
+{ sub: barbeiroId, bid: barbeariaId, papel: 'DONO' | 'BARBEIRO', tv: tokenVersion, iat, exp }
+```
+
+Validade de 12 h — um turno. Sem refresh token nesta etapa: o barbeiro relogar uma vez por dia é aceitável, e a complexidade de rotação não se paga com esse volume.
+
+#### `bid` — o campo que impede o pior bug
+
+**O token carrega `barbeariaId` e toda requisição confere que ele bate com o tenant resolvido pelo `Host` (§9.4).** Não batendo, é 401 — e o cookie é apagado.
+
+Sem essa conferência, o Téo da BRUTUS pega o cookie dele, abre `dontony.seuapp.com.br`, e o token **é válido** — assinatura correta, não expirado, barbeiro existente. Passaria por qualquer verificação de JWT feita do jeito comum. O RLS de §5.2 não salva: ele isola pelo tenant que a aplicação **declarar**, e a aplicação teria declarado o tenant errado com um token legítimo na mão.
+
+É a falha clássica de autenticação em multi-tenant, e é silenciosa: ninguém a encontra sem testar exatamente esse cruzamento. Tem teste dedicado no §12.
+
+#### Revogação sem tabela de sessão
+
+`Barbeiro.tokenVersion` entra no token como `tv`. Na verificação, `tv` tem que bater com o valor atual no banco.
+
+Incrementar a coluna invalida **na hora** todos os tokens daquele barbeiro. Serve para logout de todos os aparelhos, troca de senha e — o caso que importa — o dono desativar um barbeiro que saiu da equipe. Sem isso, o `Igor` que "saiu em jun" (wireframe 3e) continuaria entrando no painel por até 12 h.
+
+Custo: uma leitura do barbeiro por requisição autenticada. É a mesma leitura que a autorização já precisa fazer, então na prática é grátis.
+
+#### Senha
+
+**argon2id** via `@node-rs/argon2` (binário pronto, sem compilar no Alpine). Parâmetros padrão da biblioteca, que já seguem a recomendação da OWASP.
+
+O `verify` roda **sempre**, mesmo quando o WhatsApp não existe — contra um hash descartável. Sem isso, o tempo de resposta denuncia quais números são de barbeiro e quais não, e a resposta genérica "celular ou senha inválidos" vira teatro: o atacante lê a diferença no relógio.
+
+#### Força bruta
+
+`tentativasLogin` e `bloqueadoAte` na tabela. Cinco falhas seguidas travam o login daquele barbeiro por 15 minutos; acerto zera o contador.
+
+Fica no banco, não em memória, para sobreviver a restart e funcionar com mais de uma instância — em memória, o atacante espera o processo reciclar.
+
+A trava é **por barbeiro**, não por IP: barbearia inteira costuma sair pelo mesmo IP, e travar por IP derrubaria a equipe junto.
+
+#### Convite — o barbeiro nasce sem senha
+
+Fluxo do wireframe 3d ("ele recebe um link no WhatsApp pra criar a senha"):
+
+1. Dono cadastra o barbeiro. `senhaHash` fica nulo.
+2. Sistema gera token aleatório, guarda **só o hash** em `conviteTokenHash`, com `conviteExpiraEm` em 48 h.
+3. O token em claro vai no link, uma única vez, pelo WhatsApp.
+4. Barbeiro abre, define a senha. `senhaHash` é preenchido, `conviteTokenHash` é zerado.
+
+Guardar só o hash do convite pelo mesmo motivo que se guarda só o hash da senha: quem ler o banco não ganha acesso a conta nenhuma.
+
+Barbeiro com `senhaHash` nulo **não loga** — corresponde ao `convite enviado — sem senha ainda` que o wireframe 3e mostra.
+
+#### Autorização — "só o que é dele"
+
+Um só ponto de passagem, e nenhuma consulta do painel fora dele:
+
+```ts
+// lib/autorizacao.ts
+export function filtroDoBarbeiro(sessao: Sessao): { barbeiroId?: string } {
+  return sessao.papel === 'DONO' ? {} : { barbeiroId: sessao.sub };
+}
+```
+
+Toda consulta de agenda, cliente e agendamento no painel compõe esse filtro. E toda ação sobre um agendamento (reagendar, cancelar) reconfere o dono do registro **depois** de carregá-lo: um `BARBEIRO` que forje o id de um agendamento de colega recebe 404 — não 403, que confirmaria a existência.
+
+**Por que isso não foi para o RLS, sendo que o tenant foi.**
+
+Chegou a ser tentador: bastaria uma variável `app.barbeiro_id` junto da `app.barbearia_id`. Mas a área pública **precisa** ler a ocupação de todos os barbeiros para calcular horário livre (§6.3). Uma política que restringisse ao próprio barbeiro quebraria o fluxo do cliente; para não quebrar, teria que ser permissiva na área pública — e aí volta a depender da aplicação declarar o modo certo, que é exatamente a garantia que se queria tirar dela.
+
+Então: **tenant no banco, barbeiro na aplicação**, com um choke-point e testes. As duas fronteiras têm consequências diferentes — vazar entre barbearias é vazar entre clientes pagantes; ver a agenda do colega é falha de permissão dentro de uma equipe que se conhece. Defesas proporcionais.
+
+#### Rotas
+
+| Rota | O quê |
+|---|---|
+| `POST /api/auth/login` | whatsapp + senha → cookie de sessão |
+| `POST /api/auth/logout` | apaga o cookie |
+| `POST /api/auth/convite/[token]` | define a senha inicial |
+| `GET /api/auth/eu` | dados da sessão para a tela |
+
+O login responde **sempre** `"celular ou senha inválidos"` — nunca "esse número não está cadastrado". Enumerar barbeiros de uma barbearia pelo formulário de login não pode ser possível.
+
 ## 10. WhatsApp — Evolution API
 
 ### 10.1 Módulo (`src/lib/whatsapp.ts`)
@@ -935,6 +1074,50 @@ Textos isolados num módulo só, para ajuste sem caçar string no meio da lógic
 A Evolution API é não-oficial (baseada em Baileys). Exige instância própria em Docker e um número dedicado — o número da barbearia não deve ser usado, sob risco de bloqueio pela Meta. Configuração de infraestrutura está **fora do escopo desta etapa**; o `.env.example` documenta as variáveis e o sistema funciona sem elas (§10.2).
 
 ---
+
+### 10.5 Verificação de que o número existe
+
+A Evolution API responde se um número está registrado no WhatsApp:
+
+```
+POST ${EVOLUTION_API_URL}/chat/whatsappNumbers/${EVOLUTION_INSTANCE}
+{ "numbers": ["5511977771234"] }
+→ [{ "exists": true, "jid": "…" }]
+```
+
+Faz sentido porque **toda** a comunicação com o cliente depende do WhatsApp: confirmação, lembrete, aviso de cancelamento. Número errado não é campo mal preenchido — é agendamento que ninguém consegue confirmar e cadeira vazia.
+
+#### Duas validações, forças diferentes
+
+| Validação | Onde | Se falhar |
+|---|---|---|
+| **Formato** — DDD, 10 ou 11 dígitos (§8) | local, sem rede | bloqueia, sempre |
+| **Existência** — está no WhatsApp? | Evolution API | bloqueia **só** com resposta definitiva |
+
+A distinção é o ponto todo:
+
+- API responde `exists: false` → **422**, `"Esse número não tem WhatsApp. Confere pra gente?"`
+- API fora do ar, sem credencial, ou demorando mais de 3 s → **deixa passar**, e registra no log
+
+Nunca perder um agendamento por causa de uma API não-oficial instável (§10.2). O tipo de erro decide: recusa é uma resposta, indisponibilidade não é.
+
+#### Limite de taxa — o oráculo de enumeração
+
+Um formulário público que responde se um número tem WhatsApp é uma ferramenta de varredura. Sem limite, qualquer um usa o site da barbearia para testar milhares de números.
+
+Limite por IP: **10 verificações por hora**. Estourou, a verificação é pulada e o agendamento segue normalmente — o limite protege contra abuso, não contra cliente.
+
+Cache em memória de número → resultado, TTL de 24 h. Corta chamada repetida (cliente que erra a senha do formulário e reenvia) e reduz o tráfego contra a instância não-oficial, cujo excesso é justamente o que costuma levar a número banido pela Meta.
+
+#### Quando roda
+
+Na confirmação (`POST /api/agendamentos`), **antes** de abrir a transação — chamada de rede não fica dentro de transação de banco segurando conexão.
+
+Não roda a cada tecla digitada: isso multiplicaria as chamadas por dez e ativaria o limite de taxa do próprio cliente legítimo.
+
+#### O caso do cliente sem WhatsApp
+
+Fica sem saída nesta etapa: sem WhatsApp, não agenda pelo site. É consciente — o produto inteiro se apoia no WhatsApp — e o wireframe não prevê alternativa. Se a barbearia reclamar, a saída é o barbeiro marcar pelo painel (Etapa 2), onde ele digita o que quiser.
 
 ## 11. Telas
 
@@ -1141,6 +1324,60 @@ Todos rodam com o `PrismaClient` do papel `brutus_app` (§5.2). Com o papel dono
 - barbearia com `ativo = false` → 404
 - subdomínio reservado (`www`, `api`) → nunca resolve como tenant
 
+### `tests/auth.test.ts` — Etapa 2, escrito junto com o painel
+
+**O token**
+- login com senha certa devolve cookie `httpOnly`, `Secure`, `SameSite=Lax`
+- senha errada → 401 com a **mesma** mensagem de WhatsApp inexistente
+- token expirado → 401
+- token com assinatura adulterada → 401
+- barbeiro com `senhaHash` nulo (convite pendente) não loga
+- barbeiro com `ativo = false` não loga
+
+**Cruzamento de tenant — o teste que justifica o campo `bid`**
+- token emitido em `brutus` usado em `dontony.seuapp.com.br` → **401**, cookie apagado
+
+  Assinatura válida, não expirado, barbeiro existente. Só o confronto entre `bid` e o tenant do `Host` reprova. Remover essa checagem tem que fazer este teste falhar (§9.5).
+
+**Revogação**
+- incrementar `tokenVersion` invalida token já emitido, imediatamente
+- trocar a senha invalida as sessões antigas
+
+**Força bruta**
+- 5 falhas travam; a 6ª tentativa é recusada mesmo com a senha certa
+- passados 15 min, volta a aceitar
+- acerto antes do limite zera o contador
+- login de número inexistente demora o mesmo que de senha errada (o `verify` contra hash descartável — §9.5)
+
+**Convite**
+- token de convite válido define a senha e zera `conviteTokenHash`
+- token expirado → recusado
+- o mesmo token não serve duas vezes
+
+### `tests/autorizacao.test.ts` — "só o que é dele"
+
+Cenário: Téo (`DONO`), Rael (`BARBEIRO`), agendamentos de ambos.
+
+- Rael lista a agenda → só os dele
+- Rael lista clientes → só quem marcou com ele
+- Téo lista a agenda → todos, dele e do Rael
+- Rael pede o agendamento do Téo pelo id → **404**, não 403 (403 confirmaria que existe)
+- Rael tenta cancelar agendamento do Téo → 404, e o registro fica intacto
+- Rael tenta reagendar agendamento do Téo → 404
+- Rael tenta cadastrar barbeiro → 403 (rota de dono)
+- Téo cadastra barbeiro → 201
+- Rael tenta bloquear horário na agenda do Téo → 404
+
+### `tests/checagem-numero.test.ts` (§10.5)
+
+- Evolution responde `exists: false` → 422, e **nenhum** agendamento é gravado
+- Evolution responde `exists: true` → agendamento normal
+- Evolution fora do ar → agendamento **passa**, e o erro vai pro log
+- Evolution estourando o tempo limite → passa
+- `EVOLUTION_API_URL` vazia → passa, sem chamada de rede
+- segunda verificação do mesmo número usa cache, não chama de novo
+- estourado o limite por IP, a verificação é pulada e o agendamento segue
+
 ---
 
 ## 13. Variáveis de ambiente (`.env.example`)
@@ -1161,6 +1398,9 @@ DATABASE_URL_APP_TEST="postgresql://brutus_app:app@localhost:5433/brutus_test"
 # Multi-tenant (§9.4) — em dev, `localhost` faz brutus.localhost:3000 funcionar
 NEXT_PUBLIC_DOMINIO_BASE="localhost"
 
+# Sessão do barbeiro (§9.5) — 32+ bytes aleatórios. Trocar derruba toda sessão ativa.
+JWT_SECRET=""
+
 EVOLUTION_API_URL=""        # vazio = modo log, sem envio real
 EVOLUTION_INSTANCE=""
 EVOLUTION_API_KEY=""
@@ -1177,8 +1417,8 @@ O `.env` **não** vai para o versionamento; o `.env.example` vai. As credenciais
 
 | Item | Etapa |
 |---|---|
-| Login do barbeiro (3c), agenda do dia (1d), detalhe (1e), reagendar (1g), bloquear (1f) | 2 |
-| Equipe (3e), cadastro de barbeiro (3d), dashboard desktop (1h) | 3 |
+| Login do barbeiro (3c), agenda do dia (1d), detalhe (1e), reagendar (1g), bloquear (1f) — **incluindo o JWT e a autorização de §9.5** | 2 |
+| Equipe (3e), cadastro de barbeiro (3d) com o convite por WhatsApp, dashboard desktop (1h) | 3 |
 | Visual definitivo substituindo o wireframe | 4 |
 | Cadastro de barbearia nova pela tela (onboarding, escolha de slug, primeiro dono) | própria — o encanamento multi-tenant fica pronto agora, a porta de entrada não |
 | Cobrança, plano, inadimplência (hoje é `Barbearia.ativo` na mão) | própria |
@@ -1191,6 +1431,12 @@ O `.env` **não** vai para o versionamento; o `.env.example` vai. As credenciais
 ---
 
 ## 15. Riscos conhecidos
+
+**O escopo do barbeiro depende de disciplina, o do tenant não.** "Só o que é dele" mora na aplicação (§9.5), não no RLS — e a razão está lá: a área pública precisa ler a ocupação de todos os barbeiros para calcular horário livre, então uma política por barbeiro teria que ser permissiva justamente onde deveria proteger. A mitigação é o choke-point único (`filtroDoBarbeiro`) e a suíte `autorizacao.test.ts`. É uma fronteira mais fraca que a do tenant, de propósito e com consequência menor: ver a agenda do colega é falha dentro de uma equipe que se conhece; ver a de outra barbearia é vazar entre clientes pagantes.
+
+**`JWT_SECRET` é o ponto único de colapso da autenticação.** Vazou, qualquer um forja token de dono de qualquer barbearia — o `bid` não protege contra quem assina. Nunca versionado, nunca em log. Trocar derruba toda sessão ativa (é o botão de pânico). Rotação com duas chaves aceitas na verificação não entra agora e é aditiva.
+
+**A verificação de número aumenta a superfície da instância Evolution.** Toda tentativa de agendamento vira chamada a uma API não-oficial; volume anormal é justamente o que leva número a ser banido pela Meta. Mitigado pelo cache de 24 h, pelo limite por IP e por não rodar a cada tecla (§10.5). Se mesmo assim pesar, o interruptor é desligar a verificação — ela já falha aberta por construção.
 
 **RLS protege o dado, não o custo.** O isolamento impede a barbearia A de **ver** a B. Não impede a A de consumir a CPU do banco que a B precisa. Com dezenas de barbearias num Postgres só, uma agenda gigante degrada todo mundo. Só vira problema real na casa das dezenas de clientes ativos; a saída na época é réplica de leitura ou banco dedicado para os grandes. Não vale antecipar nada disso agora.
 
