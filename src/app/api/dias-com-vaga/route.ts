@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { barbeariaAtual, comBarbearia } from '@/lib/tenant';
+import { barbeariaDaRequisicao, comBarbearia } from '@/lib/tenant';
 import { slotsDoDia } from '@/lib/agenda';
 
 /// Alimenta o mini-calendário: quais dias do mês têm ao menos um horário.
 export async function GET(req: NextRequest) {
-  const barbearia = await barbeariaAtual();
+  const barbearia = await barbeariaDaRequisicao(req);
   const p = req.nextUrl.searchParams;
   const barbeiroId = p.get('barbeiroId') ?? 'qualquer';
   const servicoId = p.get('servicoId');

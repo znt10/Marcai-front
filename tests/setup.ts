@@ -1,6 +1,8 @@
+import './env'; // PRIMEIRO: aponta DATABASE_URL_APP para o banco de teste.
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { afterAll } from 'vitest';
+import { _limparCacheTenant } from '@/lib/tenant';
 
 // Prisma 7 nao aceita mais `datasources: { db: { url } }` no construtor do
 // PrismaClient (erro: "not assignable to type PrismaClientOptions" / pede
@@ -9,13 +11,6 @@ import { afterAll } from 'vitest';
 // connection string. Dois PrismaClient separados, cada um com sua propria
 // URL e papel de banco: isso preserva o isolamento owner/app que os testes
 // de RLS da Tarefa 4 exigem.
-
-// `src/lib/db.ts` lê DATABASE_URL_APP, que no .env aponta para o host `db`
-// da rede do Compose — inalcançável de fora do contêiner. Redirecionar aqui,
-// ANTES de qualquer arquivo de teste importar `@/lib/db`, faz o singleton de
-// runtime nascer apontado para o banco de teste sem que o código de produção
-// precise saber que testes existem.
-process.env.DATABASE_URL_APP = process.env.DATABASE_URL_APP_TEST;
 
 /// Papel DONO: ignora RLS. Só para montar cenário de teste.
 export const prismaOwner = new PrismaClient({
@@ -28,6 +23,10 @@ export const prismaApp = new PrismaClient({
 });
 
 export async function limparBanco() {
+  // O cache de slug→Barbearia guarda o id por 60s. Sem limpar junto, o
+  // próximo caso resolveria 'brutus' para a barbearia que este TRUNCATE
+  // acabou de apagar.
+  _limparCacheTenant();
   await prismaOwner.$executeRawUnsafe(`
     TRUNCATE TABLE "Agendamento", "Cliente", "Bloqueio", "HorarioTrabalho",
                    "BarbeiroServico", "Servico", "Barbeiro", "Barbearia"

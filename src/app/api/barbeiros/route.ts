@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { barbeariaAtual, comBarbearia } from '@/lib/tenant';
+import { barbeariaDaRequisicao, comBarbearia } from '@/lib/tenant';
 
-export async function GET() {
-  const barbearia = await barbeariaAtual();
+export async function GET(req: Request) {
+  const barbearia = await barbeariaDaRequisicao(req);
   const barbeiros = await comBarbearia(barbearia.id, (tx) =>
     tx.barbeiro.findMany({
       // `servicos: { some: ... }` esconde quem ainda não tem serviço nenhum

@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { barbeariaAtual, comBarbearia } from '@/lib/tenant';
+import { barbeariaDaRequisicao, comBarbearia } from '@/lib/tenant';
 
 export async function GET(req: NextRequest) {
-  const barbearia = await barbeariaAtual();
+  const barbearia = await barbeariaDaRequisicao(req);
   const barbeiroId = req.nextUrl.searchParams.get('barbeiroId') ?? 'qualquer';
 
   const vinculos = await comBarbearia(barbearia.id, (tx) =>

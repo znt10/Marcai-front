@@ -1,11 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { barbeariaAtual, comBarbearia } from '@/lib/tenant';
+import { barbeariaDaRequisicao, comBarbearia } from '@/lib/tenant';
 import { slotsDoDia } from '@/lib/agenda';
 import { formatarHora, formatarDiaLongo, diaDeHoje, somarDias, localParaUtc } from '@/lib/datas';
 import { JANELA_MAXIMA_DIAS, DIAS_NA_HOME } from '@/lib/config';
 
 export async function GET(req: NextRequest) {
-  const barbearia = await barbeariaAtual();
+  const barbearia = await barbeariaDaRequisicao(req);
   const p = req.nextUrl.searchParams;
   const barbeiroId = p.get('barbeiroId') ?? 'qualquer';
   const servicoId = p.get('servicoId');
