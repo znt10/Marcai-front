@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { verify } from '@node-rs/argon2';
 import { prismaOwner, limparBanco } from './setup';
 import { POST as reemitir } from '@/app/api/admin/barbearias/[id]/convite/route';
@@ -100,5 +100,28 @@ describe('POST /api/auth/convite/[token]', () => {
     const { token } = await barbeariaComDono();
     const r = await definirSenha(pedidoSenha('123'), paramsToken(token));
     expect(r.status).toBe(422);
+  });
+});
+
+describe('linkDoConvite', () => {
+  const original = process.env.NEXT_PUBLIC_URL_BASE;
+  afterEach(() => { process.env.NEXT_PUBLIC_URL_BASE = original; });
+
+  it('em desenvolvimento monta http com porta', async () => {
+    process.env.NEXT_PUBLIC_URL_BASE = 'http://localhost:3000';
+    const { linkDoConvite } = await import('@/lib/convite');
+    expect(linkDoConvite('brutus', 'abc')).toBe('http://brutus.localhost:3000/convite/abc');
+  });
+
+  it('em produção monta https sem porta', async () => {
+    process.env.NEXT_PUBLIC_URL_BASE = 'https://agenda.com.br';
+    const { linkDoConvite } = await import('@/lib/convite');
+    expect(linkDoConvite('brutus', 'abc')).toBe('https://brutus.agenda.com.br/convite/abc');
+  });
+
+  it('sem a variável, cai no localhost de desenvolvimento', async () => {
+    delete process.env.NEXT_PUBLIC_URL_BASE;
+    const { linkDoConvite } = await import('@/lib/convite');
+    expect(linkDoConvite('brutus', 'abc')).toBe('http://brutus.localhost:3000/convite/abc');
   });
 });

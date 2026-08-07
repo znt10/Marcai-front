@@ -17,6 +17,19 @@ export function gerarConvite(): { token: string; hash: string; expiraEm: Date } 
   };
 }
 
+/// O link viaja UMA vez — pela tela e pelo WhatsApp —, porque o banco guarda
+/// só o hash. Montado aqui e em lugar nenhum mais: eram duas cópias com
+/// `http://` e porta `3000` fixos, e a tela de equipe seria a terceira. Em
+/// produção aquilo entregaria ao dono um link que não abre.
+///
+/// Variável PRÓPRIA, separada de `NEXT_PUBLIC_DOMINIO_BASE`: aquela guarda o
+/// domínio sem porta e sem esquema, porque é o que `slug.ts` compara com o
+/// host da requisição. Juntar as duas quebraria a resolução de tenant.
+export function linkDoConvite(slug: string, token: string): string {
+  const base = new URL(process.env.NEXT_PUBLIC_URL_BASE ?? 'http://localhost:3000');
+  return `${base.protocol}//${slug}.${base.host}/convite/${token}`;
+}
+
 export const hashDe = (token: string) =>
   createHash('sha256').update(token).digest('hex');
 
