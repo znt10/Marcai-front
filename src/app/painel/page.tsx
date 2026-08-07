@@ -1,11 +1,11 @@
-import { Frame, Lbl, Box } from '@/components/wf';
+import { Frame } from '@/components/wf';
+import { AgendaDoDia } from '@/components/painel/AgendaDoDia';
 
 export default function Painel() {
   return (
     <Frame>
-      <h1 className="text-[17px] md:text-2xl font-normal">Painel do barbeiro</h1>
-      <Lbl>Chega na próxima etapa.</Lbl>
-      <a href="/"><Box variante="fill">← voltar para agendar um corte</Box></a>
+      <h1 className="text-[17px] font-normal">Agenda</h1>
+      <AgendaDoDia />
     </Frame>
   );
 }
