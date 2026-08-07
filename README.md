@@ -50,6 +50,36 @@ deixaria qualquer um trancar você fora do próprio painel.
 **Desativar uma barbearia leva até um minuto** para fazer efeito: o tenant
 fica em cache por `TTL_CACHE_TENANT_MS`.
 
+## Painel do barbeiro
+
+`http://brutus.localhost:3000/painel` — agenda do dia, marcar cliente na mão e
+cancelar. Entra com o celular e a senha; no seed, Téo (`11911112222`), Rael
+(`11933334444`) e Tony (`11977778888`, na Dom Tony) nascem com `123456`. Duda
+nasce **sem** senha de propósito: é o convite pendente, e quem não tem
+`senhaHash` não entra.
+
+O dono vê a agenda de todos e pode filtrar por barbeiro; o barbeiro vê só a
+dele. Quem decide isso é `filtroDoBarbeiro()` — **nenhuma consulta do painel
+monta esse filtro por fora**, e a garantia vale exatamente enquanto isso for
+verdade. Barbeiro que manda `?barbeiroId=` do colega continua vendo a agenda
+dele.
+
+Ação sobre agendamento de outro barbeiro responde **404**, nunca 403 — 403
+confirmaria que o registro existe.
+
+Cinco erros de senha travam **aquela conta** por 15 minutos. É diferente da
+trava do admin, que é por IP: a barbearia inteira sai do mesmo IP, e travar o
+IP derrubaria a equipe junto.
+
+`SESSAO_JWT_SECRET` é **diferente** de `ADMIN_JWT_SECRET` de propósito: é isso
+que faz cookie de admin não abrir o painel, e vice-versa, sem nenhuma checagem
+escrita para esse fim.
+
+Depois de `npm run seed`, o primeiro login pode falhar por até um minuto: o
+seed recria a barbearia com um uuid novo e o processo ainda guarda o antigo por
+`TTL_CACHE_TENANT_MS`. O sintoma é "celular ou senha inválidos" com a senha
+certa.
+
 ## Testar
 
 ```bash
