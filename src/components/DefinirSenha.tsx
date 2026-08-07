@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Box, Lbl, Sub } from '@/components/wf';
+import { publicoApi, mensagemDoErro } from '@/lib/api';
 
 const MINIMO = 8;
 
@@ -14,12 +15,12 @@ export function DefinirSenha({ token }: { token: string }) {
   async function salvar() {
     if (!valida) return;
     setErro('');
-    const r = await fetch(`/api/auth/convite/${token}`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ senha }),
-    });
-    if (r.ok) { setPronto(true); return; }
-    setErro((await r.json()).erro);
+    try {
+      await publicoApi.definirSenha(token, senha);
+      setPronto(true);
+    } catch (e) {
+      setErro(mensagemDoErro(e));
+    }
   }
 
   if (pronto) {

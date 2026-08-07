@@ -2,15 +2,17 @@
 import { useEffect, useState } from 'react';
 import { Frame, Sub } from '@/components/wf';
 import { FormMarcar } from '@/components/painel/FormMarcar';
+import { painelApi, ignorarAborto, type Eu } from '@/lib/api';
 
 export default function Novo() {
-  const [eu, setEu] = useState<{ id: string; papel: 'DONO' | 'BARBEIRO' } | null>(null);
+  const [eu, setEu] = useState<Eu | null>(null);
 
+  // Sessão morta manda para a entrada — quem decide isso é o cliente da API,
+  // pelo `loginEm` de `painelApi`, não cada tela por conta própria.
   useEffect(() => {
-    fetch('/api/auth/eu').then(async (r) => {
-      if (!r.ok) { window.location.href = '/painel/login'; return; }
-      setEu(await r.json());
-    });
+    const ctrl = new AbortController();
+    painelApi.eu(ctrl.signal).then(setEu).catch(ignorarAborto);
+    return () => ctrl.abort();
   }, []);
 
   return (

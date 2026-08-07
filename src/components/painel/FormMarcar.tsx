@@ -2,10 +2,10 @@
 import { useEffect, useState } from 'react';
 import { Box, Lbl, Sub } from '@/components/wf';
 import { GRANULARIDADE_MIN, PAINEL_ANTECEDENCIA_PADRAO_MIN } from '@/lib/config';
-
-type Servico = { id: string; nome: string; duracaoMin: number };
-type Slot = { hora: string; inicio: string; barbeiroId: string };
-type Barbeiro = { id: string; nome: string };
+import {
+  painelApi, publicoApi, ignorarAborto, mensagemDoErro, ErroApi,
+  type Barbeiro, type Servico, type Slot,
+} from '@/lib/api';
 
 /// O caso do balcão: o cliente está ali e quer o próximo horário. O padrão
 /// economiza toque; não é regra — os dois campos continuam trocáveis.
@@ -33,11 +33,15 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
   const [enviando, setEnviando] = useState(false);
   const [recarga, setRecarga] = useState(0);
 
+  /// Todo efeito daqui aborta ao sair. O de horários é o que mais importa:
+  /// trocar de barbeiro ou de dia rápido deixa buscas sobrepostas no ar, e a
+  /// última a responder pintaria a lista — dando para escolher um horário que
+  /// pertence a outro barbeiro.
   useEffect(() => {
     if (eu.papel !== 'DONO') return;
-    fetch('/api/barbeiros')
-      .then((r) => r.json())
-      .then((d) => setBarbeiros(d.barbeiros ?? []));
+    const ctrl = new AbortController();
+    publicoApi.barbeiros(ctrl.signal).then(setBarbeiros).catch(ignorarAborto);
+    return () => ctrl.abort();
   }, [eu.papel]);
 
   // O primeiro da lista já vem escolhido — é o serviço mais comum da casa.
@@ -45,25 +49,28 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
   // serviço que ficasse escolhido sem vínculo daria "esse barbeiro não faz
   // esse serviço" no envio, sem a tela ter dado pista nenhuma.
   useEffect(() => {
-    fetch(`/api/servicos?barbeiroId=${barbeiroId}`)
-      .then((r) => r.json())
-      .then((d: { servicos?: Servico[] }) => {
-        const s = d.servicos ?? [];
+    const ctrl = new AbortController();
+    publicoApi.servicos(barbeiroId, ctrl.signal)
+      .then((s) => {
         setServicos(s);
         setServicoId((atual) => (s.some((x) => x.id === atual) ? atual : s[0]?.id ?? ''));
-      });
+      })
+      .catch(ignorarAborto);
+    return () => ctrl.abort();
   }, [barbeiroId]);
 
   useEffect(() => {
     if (!servicoId) return;
-    fetch(`/api/horarios?barbeiroId=${barbeiroId}&servicoId=${servicoId}&de=${dia}&dias=1`)
-      .then((r) => r.json())
-      .then((d) => {
-        const livres: Slot[] = d.dias?.[0]?.slots ?? [];
+    const ctrl = new AbortController();
+    publicoApi.horarios({ barbeiroId, servicoId, de: dia, dias: 1 }, ctrl.signal)
+      .then((dias) => {
+        const livres = dias[0]?.slots ?? [];
         setSlots(livres);
         const alvo = padraoDeHorario().toISOString();
         setInicio(livres.find((s) => s.inicio >= alvo)?.inicio ?? livres[0]?.inicio ?? '');
-      });
+      })
+      .catch(ignorarAborto);
+    return () => ctrl.abort();
   }, [servicoId, dia, barbeiroId, recarga]);
 
   const pronto = servicoId && inicio && nome.trim().length >= 2 && whatsapp && !enviando;
@@ -71,15 +78,15 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
   async function marcar() {
     if (!pronto) return;
     setEnviando(true); setErro('');
-    const r = await fetch('/api/painel/agendamentos', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ barbeiroId, servicoId, inicio, nome, whatsapp }),
-    });
-    if (r.ok) { window.location.href = '/painel'; return; }
-    setErro((await r.json()).erro);
-    setEnviando(false);
-    // 409 é horário que acabou de ser pego: recarregar a lista é o conserto.
-    if (r.status === 409) setRecarga((n) => n + 1);
+    try {
+      await painelApi.marcar({ barbeiroId, servicoId, inicio, nome, whatsapp });
+      window.location.href = '/painel';
+    } catch (e) {
+      setErro(mensagemDoErro(e));
+      setEnviando(false);
+      // 409 é horário que acabou de ser pego: recarregar a lista é o conserto.
+      if (e instanceof ErroApi && e.status === 409) setRecarga((n) => n + 1);
+    }
   }
 
   return (
