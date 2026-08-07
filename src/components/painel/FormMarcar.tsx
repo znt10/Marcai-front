@@ -33,11 +33,18 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
   const [enviando, setEnviando] = useState(false);
   const [recarga, setRecarga] = useState(0);
 
+  /// Todo efeito daqui aborta ao sair. O de horários é o que mais importa:
+  /// trocar de barbeiro ou de dia rápido deixa buscas sobrepostas no ar, e a
+  /// última a responder pintaria a lista — dando para escolher um horário que
+  /// pertence a outro barbeiro.
   useEffect(() => {
     if (eu.papel !== 'DONO') return;
-    fetch('/api/barbeiros')
+    const ctrl = new AbortController();
+    fetch('/api/barbeiros', { signal: ctrl.signal })
       .then((r) => r.json())
-      .then((d) => setBarbeiros(d.barbeiros ?? []));
+      .then((d) => setBarbeiros(d.barbeiros ?? []))
+      .catch((e) => { if (e?.name !== 'AbortError') throw e; });
+    return () => ctrl.abort();
   }, [eu.papel]);
 
   // O primeiro da lista já vem escolhido — é o serviço mais comum da casa.
@@ -45,25 +52,32 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
   // serviço que ficasse escolhido sem vínculo daria "esse barbeiro não faz
   // esse serviço" no envio, sem a tela ter dado pista nenhuma.
   useEffect(() => {
-    fetch(`/api/servicos?barbeiroId=${barbeiroId}`)
+    const ctrl = new AbortController();
+    fetch(`/api/servicos?barbeiroId=${barbeiroId}`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then((d: { servicos?: Servico[] }) => {
         const s = d.servicos ?? [];
         setServicos(s);
         setServicoId((atual) => (s.some((x) => x.id === atual) ? atual : s[0]?.id ?? ''));
-      });
+      })
+      .catch((e) => { if (e?.name !== 'AbortError') throw e; });
+    return () => ctrl.abort();
   }, [barbeiroId]);
 
   useEffect(() => {
     if (!servicoId) return;
-    fetch(`/api/horarios?barbeiroId=${barbeiroId}&servicoId=${servicoId}&de=${dia}&dias=1`)
+    const ctrl = new AbortController();
+    fetch(`/api/horarios?barbeiroId=${barbeiroId}&servicoId=${servicoId}&de=${dia}&dias=1`,
+          { signal: ctrl.signal })
       .then((r) => r.json())
       .then((d) => {
         const livres: Slot[] = d.dias?.[0]?.slots ?? [];
         setSlots(livres);
         const alvo = padraoDeHorario().toISOString();
         setInicio(livres.find((s) => s.inicio >= alvo)?.inicio ?? livres[0]?.inicio ?? '');
-      });
+      })
+      .catch((e) => { if (e?.name !== 'AbortError') throw e; });
+    return () => ctrl.abort();
   }, [servicoId, dia, barbeiroId, recarga]);
 
   const pronto = servicoId && inicio && nome.trim().length >= 2 && whatsapp && !enviando;
