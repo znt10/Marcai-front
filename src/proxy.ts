@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { extrairSlug, ehHostAdmin } from '@/lib/slug';
 import { lerSessao, COOKIE_ADMIN } from '@/lib/admin-sessao';
+import { lerSessao as lerSessaoBarbeiro, COOKIE_SESSAO } from '@/lib/auth';
 
 /// Next 16 aposentou `middleware.ts`: o arquivo se chama `proxy.ts` e a
 /// função exportada, `proxy`. A API (NextRequest/NextResponse, matcher)
@@ -35,6 +36,20 @@ export async function proxy(req: NextRequest) {
   // Uma rota nova sob /api/admin nasce protegida sem que ninguém decida nada.
   if (caminho.startsWith('/admin') || caminho.startsWith('/api/admin')) {
     return new NextResponse(null, { status: 404 });
+  }
+
+  // ---- O painel: peneira grossa ----
+  // Aqui só dá para conferir assinatura e validade — `jose` roda em Edge, o
+  // Prisma não. O `bid`, o `tokenVersion` e o `ativo` são conferidos na rota
+  // (painel §3), porque resolver slug -> barbeariaId é consulta ao banco.
+  const ehPainel = caminho.startsWith('/painel') || caminho.startsWith('/api/painel');
+  const ehLoginPainel = caminho === '/painel/login' || caminho === '/api/auth/login';
+  if (ehPainel && !ehLoginPainel) {
+    if (!(await lerSessaoBarbeiro(req.cookies.get(COOKIE_SESSAO)?.value))) {
+      return caminho.startsWith('/api/')
+        ? NextResponse.json({ erro: 'não autorizado' }, { status: 401 })
+        : NextResponse.redirect(new URL('/painel/login', req.url));
+    }
   }
 
   const slug = extrairSlug(host, DOMINIO_BASE);
