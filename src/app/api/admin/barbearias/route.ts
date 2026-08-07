@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prismaAdmin } from '@/lib/db';
 import { comBarbeariaAdmin } from '@/lib/tenant';
-import { gerarConvite } from '@/lib/convite';
+import { gerarConvite, linkDoConvite } from '@/lib/convite';
 import { SLUG_REGEX, SUBDOMINIOS_RESERVADOS } from '@/lib/config';
 import { normalizar } from '@/lib/telefone';
 
@@ -79,12 +79,11 @@ export async function POST(req: Request) {
     return barbearia;
   });
 
-  const base = process.env.NEXT_PUBLIC_DOMINIO_BASE ?? 'localhost';
   return NextResponse.json({
     id: nova.id,
     slug: nova.slug,
     // Em claro UMA vez só: o banco tem apenas o hash, então não existe jeito
     // de recuperar este link depois. Perdeu, reemite.
-    linkConvite: `http://${slug}.${base}:3000/convite/${convite.token}`,
+    linkConvite: linkDoConvite(slug, convite.token),
   }, { status: 201 });
 }
