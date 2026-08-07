@@ -37,16 +37,30 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
 
-  useEffect(() => { fetch('/api/barbeiros').then(r => r.json()).then(d => setBarbeiros(d.barbeiros)); }, []);
+  // Todo fetch em efeito leva `signal` e aborta na limpeza. Sem isso, trocar
+  // de barbeiro ou de serviço rápido deixa buscas sobrepostas no ar, e a
+  // última a responder pinta a tela: a grade seria de um serviço e a
+  // confirmação, de outro — 409 na cara do cliente.
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch('/api/barbeiros', { signal: ctrl.signal })
+      .then(r => r.json()).then(d => setBarbeiros(d.barbeiros))
+      .catch(e => { if (e?.name !== 'AbortError') throw e; });
+    return () => ctrl.abort();
+  }, []);
 
   // Trocar barbeiro pode invalidar o serviço (Rael não faz pezinho).
   useEffect(() => {
     setSlot(null);
     if (!barbeiroId) { setServicos([]); setServicoId(''); return; }
-    fetch(`/api/servicos?barbeiroId=${barbeiroId}`).then(r => r.json()).then(d => {
-      setServicos(d.servicos);
-      setServicoId(atual => (atual && !d.servicos.some((s: Servico) => s.id === atual) ? '' : atual));
-    });
+    const ctrl = new AbortController();
+    fetch(`/api/servicos?barbeiroId=${barbeiroId}`, { signal: ctrl.signal })
+      .then(r => r.json()).then(d => {
+        setServicos(d.servicos);
+        setServicoId(atual => (atual && !d.servicos.some((s: Servico) => s.id === atual) ? '' : atual));
+      })
+      .catch(e => { if (e?.name !== 'AbortError') throw e; });
+    return () => ctrl.abort();
   }, [barbeiroId]);
 
   // Trocar serviço muda a DURAÇÃO, logo muda a grade inteira.
@@ -59,8 +73,12 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
     const janela = inicioPendente
       ? `de=${diaLocalDe(inicioPendente)}&dias=1`
       : `dias=2`;
-    fetch(`/api/horarios?barbeiroId=${barbeiroId}&servicoId=${servicoId}&${janela}`)
-      .then(r => r.json()).then(d => setDias(d.dias));
+    const ctrl = new AbortController();
+    fetch(`/api/horarios?barbeiroId=${barbeiroId}&servicoId=${servicoId}&${janela}`,
+          { signal: ctrl.signal })
+      .then(r => r.json()).then(d => setDias(d.dias))
+      .catch(e => { if (e?.name !== 'AbortError') throw e; });
+    return () => ctrl.abort();
   }, [servicoId, barbeiroId, inicioPendente]);
 
   // Reeleger o horário que veio do calendário assim que a lista chega.

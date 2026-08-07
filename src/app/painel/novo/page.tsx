@@ -7,10 +7,14 @@ export default function Novo() {
   const [eu, setEu] = useState<{ id: string; papel: 'DONO' | 'BARBEIRO' } | null>(null);
 
   useEffect(() => {
-    fetch('/api/auth/eu').then(async (r) => {
-      if (!r.ok) { window.location.href = '/painel/login'; return; }
-      setEu(await r.json());
-    });
+    const ctrl = new AbortController();
+    fetch('/api/auth/eu', { signal: ctrl.signal })
+      .then(async (r) => {
+        if (!r.ok) { window.location.href = '/painel/login'; return; }
+        setEu(await r.json());
+      })
+      .catch((e) => { if (e?.name !== 'AbortError') throw e; });
+    return () => ctrl.abort();
   }, []);
 
   return (

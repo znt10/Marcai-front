@@ -12,16 +12,27 @@ export function MiniCalendario({ barbeiroId, servicoId }: { barbeiroId: string; 
   const [slots, setSlots] = useState<{ hora: string; inicio: string; barbeiroNome: string }[]>([]);
   const [escolhido, setEscolhido] = useState<string | null>(null);
 
+  // Todo fetch em efeito leva `signal` e aborta na limpeza: passar de mês
+  // rápido deixaria duas buscas no ar, e a última a responder pintaria a
+  // grade — os dias com vaga de setembro sobre o calendário de outubro.
   useEffect(() => {
-    fetch(`/api/dias-com-vaga?barbeiroId=${barbeiroId}&servicoId=${servicoId}&mes=${mes}`)
-      .then(r => r.json()).then(d => setComVaga(d.dias));
+    const ctrl = new AbortController();
+    fetch(`/api/dias-com-vaga?barbeiroId=${barbeiroId}&servicoId=${servicoId}&mes=${mes}`,
+          { signal: ctrl.signal })
+      .then(r => r.json()).then(d => setComVaga(d.dias))
+      .catch(e => { if (e?.name !== 'AbortError') throw e; });
     setDia(null); setSlots([]); setEscolhido(null);
+    return () => ctrl.abort();
   }, [mes, barbeiroId, servicoId]);
 
   useEffect(() => {
     if (!dia) return;
-    fetch(`/api/horarios?barbeiroId=${barbeiroId}&servicoId=${servicoId}&de=${dia}&dias=1`)
-      .then(r => r.json()).then(d => setSlots(d.dias[0]?.slots ?? []));
+    const ctrl = new AbortController();
+    fetch(`/api/horarios?barbeiroId=${barbeiroId}&servicoId=${servicoId}&de=${dia}&dias=1`,
+          { signal: ctrl.signal })
+      .then(r => r.json()).then(d => setSlots(d.dias[0]?.slots ?? []))
+      .catch(e => { if (e?.name !== 'AbortError') throw e; });
+    return () => ctrl.abort();
   }, [dia, barbeiroId, servicoId]);
 
   const [ano, m] = mes.split('-').map(Number);
