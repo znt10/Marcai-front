@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Box, Chip, Row, Lbl } from '@/components/wf';
+import { publicoApi, ignorarAborto } from '@/lib/api';
 
 const CABECALHO = ['s', 't', 'q', 'q', 's', 's', 'd']; // semana começa na segunda
 
@@ -17,10 +18,8 @@ export function MiniCalendario({ barbeiroId, servicoId }: { barbeiroId: string; 
   // grade — os dias com vaga de setembro sobre o calendário de outubro.
   useEffect(() => {
     const ctrl = new AbortController();
-    fetch(`/api/dias-com-vaga?barbeiroId=${barbeiroId}&servicoId=${servicoId}&mes=${mes}`,
-          { signal: ctrl.signal })
-      .then(r => r.json()).then(d => setComVaga(d.dias))
-      .catch(e => { if (e?.name !== 'AbortError') throw e; });
+    publicoApi.diasComVaga({ barbeiroId, servicoId, mes }, ctrl.signal)
+      .then(setComVaga).catch(ignorarAborto);
     setDia(null); setSlots([]); setEscolhido(null);
     return () => ctrl.abort();
   }, [mes, barbeiroId, servicoId]);
@@ -28,10 +27,8 @@ export function MiniCalendario({ barbeiroId, servicoId }: { barbeiroId: string; 
   useEffect(() => {
     if (!dia) return;
     const ctrl = new AbortController();
-    fetch(`/api/horarios?barbeiroId=${barbeiroId}&servicoId=${servicoId}&de=${dia}&dias=1`,
-          { signal: ctrl.signal })
-      .then(r => r.json()).then(d => setSlots(d.dias[0]?.slots ?? []))
-      .catch(e => { if (e?.name !== 'AbortError') throw e; });
+    publicoApi.horarios({ barbeiroId, servicoId, de: dia, dias: 1 }, ctrl.signal)
+      .then(dias => setSlots(dias[0]?.slots ?? [])).catch(ignorarAborto);
     return () => ctrl.abort();
   }, [dia, barbeiroId, servicoId]);
 

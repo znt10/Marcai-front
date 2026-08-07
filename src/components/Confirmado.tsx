@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Box, Lbl, Sub, Sep } from '@/components/wf';
+import { publicoApi, mensagemDoErro } from '@/lib/api';
 
 type Props = {
   codigo: string; clienteNome: string; barbeiroNome: string; servicoNome: string;
@@ -18,9 +19,12 @@ export function Confirmado(p: Props) {
   });
 
   async function cancelar() {
-    const r = await fetch(`/api/agendamentos/${p.codigo}/cancelar`, { method: 'POST' });
-    const corpo = await r.json();
-    if (r.ok) setStatus('CANCELADO_CLIENTE'); else setErro(corpo.erro);
+    try {
+      await publicoApi.cancelar(p.codigo);
+      setStatus('CANCELADO_CLIENTE');
+    } catch (e) {
+      setErro(mensagemDoErro(e));
+    }
   }
 
   function baixarIcs() {

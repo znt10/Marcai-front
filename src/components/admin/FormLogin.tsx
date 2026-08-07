@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Box, Lbl, Sub } from '@/components/wf';
+import { adminApi, mensagemDoErro } from '@/lib/api';
 
 export function FormLogin() {
   const [usuario, setUsuario] = useState('');
@@ -13,13 +14,13 @@ export function FormLogin() {
   async function entrar() {
     if (!pronto) return;
     setEnviando(true); setErro('');
-    const r = await fetch('/api/admin/auth/login', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ usuario, senha }),
-    });
-    if (r.ok) { window.location.href = '/admin'; return; }
-    setErro((await r.json()).erro);
-    setEnviando(false);
+    try {
+      await adminApi.entrar(usuario, senha);
+      window.location.href = '/admin';
+    } catch (e) {
+      setErro(mensagemDoErro(e));
+      setEnviando(false);
+    }
   }
 
   return (

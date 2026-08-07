@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Box, Lbl, Sub } from '@/components/wf';
+import { adminApi, mensagemDoErro, type NovaBarbearia } from '@/lib/api';
 
 const CAMPOS = [
   { chave: 'slug',            rotulo: 'slug (vira o subdomínio)' },
@@ -23,16 +24,18 @@ export function FormBarbearia({ aoCriar }: { aoCriar?: () => void }) {
   async function criar() {
     if (!completo) return;
     setEnviando(true); setErro(''); setLink('');
-    const r = await fetch('/api/admin/barbearias', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(dados),
-    });
-    const corpo = await r.json();
-    setEnviando(false);
-    if (!r.ok) { setErro(corpo.erro); return; }
-    setLink(corpo.linkConvite);
-    setDados({});
-    aoCriar?.();
+    try {
+      // Os sete campos de CAMPOS são exatamente os de NovaBarbearia, e o
+      // botão só habilita com todos preenchidos.
+      const criada = await adminApi.criarBarbearia(dados as unknown as NovaBarbearia);
+      setLink(criada.linkConvite);
+      setDados({});
+      aoCriar?.();
+    } catch (e) {
+      setErro(mensagemDoErro(e));
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (

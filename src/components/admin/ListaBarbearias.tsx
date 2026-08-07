@@ -1,11 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Box, Chip, Lbl, Sub } from '@/components/wf';
+import {
+  adminApi, ignorarAborto, mensagemDoErro, type BarbeariaDaLista,
+} from '@/lib/api';
 
-export type Barbearia = {
-  id: string; slug: string; nome: string; ativo: boolean;
-  barbeiros: number; agendamentos: number;
-};
+/// Reexportado porque a tela do admin já importava o tipo daqui; a definição
+/// mora junto das rotas, em `lib/api/adminAPI.ts`.
+export type Barbearia = BarbeariaDaLista;
 
 export function ListaBarbearias({ recarregarEm }: { recarregarEm?: number }) {
   const [barbearias, setBarbearias] = useState<Barbearia[]>([]);
@@ -13,9 +15,7 @@ export function ListaBarbearias({ recarregarEm }: { recarregarEm?: number }) {
   const [erro, setErro] = useState('');
 
   const carregar = (signal?: AbortSignal) =>
-    fetch('/api/admin/barbearias', { signal })
-      .then((r) => r.json()).then((d) => setBarbearias(d.barbearias))
-      .catch((e) => { if (e?.name !== 'AbortError') throw e; });
+    adminApi.barbearias(signal).then(setBarbearias).catch(ignorarAborto);
 
   // Aborta na limpeza: criar duas barbearias em seguida muda `recarregarEm`
   // duas vezes, e a resposta da primeira busca chegando depois da segunda
@@ -28,19 +28,21 @@ export function ListaBarbearias({ recarregarEm }: { recarregarEm?: number }) {
 
   async function alternar(b: Barbearia) {
     setErro('');
-    const r = await fetch(`/api/admin/barbearias/${b.id}`, {
-      method: 'PATCH', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ativo: !b.ativo }),
-    });
-    if (!r.ok) { setErro((await r.json()).erro); return; }
-    carregar();
+    try {
+      await adminApi.alternarAtivo(b.id, !b.ativo);
+      void carregar();
+    } catch (e) {
+      setErro(mensagemDoErro(e));
+    }
   }
 
   async function reemitir(b: Barbearia) {
     setErro(''); setLink('');
-    const r = await fetch(`/api/admin/barbearias/${b.id}/convite`, { method: 'POST' });
-    const d = await r.json();
-    if (r.ok) setLink(d.linkConvite); else setErro(d.erro);
+    try {
+      setLink((await adminApi.reemitirConvite(b.id)).linkConvite);
+    } catch (e) {
+      setErro(mensagemDoErro(e));
+    }
   }
 
   return (

@@ -1,13 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { Box, Lbl, Sub, Sep } from '@/components/wf';
-
-type Item = {
-  id: string; inicio: string; fim: string; servicoNome: string;
-  barbeiroId: string; barbeiroNome: string;
-  clienteNome: string; clienteWhatsapp: string;
-};
-type Eu = { id: string; nome: string; papel: 'DONO' | 'BARBEIRO' };
+import { painelApi, ignorarAborto, type Eu, type ItemDaAgenda } from '@/lib/api';
 
 /// `sv-SE` porque é o locale que formata como YYYY-MM-DD — o formato que a
 /// rota espera — sem passar por UTC e cair no dia anterior.
@@ -23,7 +17,7 @@ const hora = (iso: string) =>
 export function AgendaDoDia() {
   const [eu, setEu] = useState<Eu | null>(null);
   const [dia, setDia] = useState(hoje());
-  const [itens, setItens] = useState<Item[] | null>(null);
+  const [itens, setItens] = useState<ItemDaAgenda[] | null>(null);
 
   /// Toda busca leva um `signal`, e todo efeito aborta ao sair. Sem isso,
   /// trocar de dia rápido deixa duas requisições no ar e quem responde por
@@ -35,20 +29,15 @@ export function AgendaDoDia() {
   const carregar = useCallback(async (d: string, signal?: AbortSignal) => {
     setItens(null);
     try {
-      const r = await fetch(`/api/painel/agenda?dia=${d}`, { signal });
-      if (r.status === 401) { window.location.href = '/painel/login'; return; }
-      setItens((await r.json()).itens);
+      setItens((await painelApi.agenda(d, undefined, signal)).itens);
     } catch (e) {
-      if ((e as Error)?.name !== 'AbortError') throw e;
+      ignorarAborto(e);
     }
   }, []);
 
   useEffect(() => {
     const ctrl = new AbortController();
-    fetch('/api/auth/eu', { signal: ctrl.signal })
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setEu)
-      .catch((e) => { if (e?.name !== 'AbortError') throw e; });
+    painelApi.eu(ctrl.signal).then(setEu).catch(ignorarAborto);
     return () => ctrl.abort();
   }, []);
 
@@ -58,10 +47,10 @@ export function AgendaDoDia() {
     return () => ctrl.abort();
   }, [dia, carregar]);
 
-  async function cancelar(item: Item) {
+  async function cancelar(item: ItemDaAgenda) {
     if (!confirm(`Cancelar o horário de ${item.clienteNome} às ${hora(item.inicio)}?`)) return;
-    const r = await fetch(`/api/painel/agendamentos/${item.id}/cancelar`, { method: 'POST' });
-    if (r.ok) void carregar(dia);
+    await painelApi.cancelar(item.id);
+    void carregar(dia);
   }
 
   return (

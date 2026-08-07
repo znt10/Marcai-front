@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ListaBarbearias } from '@/components/admin/ListaBarbearias';
 import { FormBarbearia } from '@/components/admin/FormBarbearia';
 import { Sep, Lbl } from '@/components/wf';
+import { adminApi, LOGIN_DO_ADMIN } from '@/lib/api';
 
 export default function Admin() {
   // Criar uma barbearia tem que aparecer na lista sem F5. Um contador é o
@@ -10,8 +11,8 @@ export default function Admin() {
   const [versao, setVersao] = useState(0);
 
   async function sair() {
-    await fetch('/api/admin/auth/logout', { method: 'POST' });
-    window.location.href = '/admin/login';
+    await adminApi.sair();
+    window.location.href = LOGIN_DO_ADMIN;
   }
 
   return (

@@ -2,11 +2,10 @@
 import { useEffect, useState } from 'react';
 import { Box, Chip, Row, Lbl, Sub, Avatar } from '@/components/wf';
 import { formatar } from '@/lib/telefone';
-
-type Barbeiro = { id: string; nome: string; fotoUrl: string | null };
-type Servico = { id: string; nome: string; duracaoMin: number };
-type Slot = { hora: string; inicio: string; barbeiroId: string; barbeiroNome: string };
-type Dia = { data: string; rotulo: string; slots: Slot[] };
+import {
+  publicoApi, ignorarAborto, mensagemDoErro, ErroApi,
+  type Barbeiro, type Servico, type Slot, type DiaComSlots as Dia,
+} from '@/lib/api';
 
 /// 'YYYY-MM-DD' de um instante ISO, no fuso do navegador. Não usa
 /// `@/lib/datas` de propósito: aquele módulo é o ponto único de conversão do
@@ -43,9 +42,7 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
   // confirmação, de outro — 409 na cara do cliente.
   useEffect(() => {
     const ctrl = new AbortController();
-    fetch('/api/barbeiros', { signal: ctrl.signal })
-      .then(r => r.json()).then(d => setBarbeiros(d.barbeiros))
-      .catch(e => { if (e?.name !== 'AbortError') throw e; });
+    publicoApi.barbeiros(ctrl.signal).then(setBarbeiros).catch(ignorarAborto);
     return () => ctrl.abort();
   }, []);
 
@@ -54,12 +51,12 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
     setSlot(null);
     if (!barbeiroId) { setServicos([]); setServicoId(''); return; }
     const ctrl = new AbortController();
-    fetch(`/api/servicos?barbeiroId=${barbeiroId}`, { signal: ctrl.signal })
-      .then(r => r.json()).then(d => {
-        setServicos(d.servicos);
-        setServicoId(atual => (atual && !d.servicos.some((s: Servico) => s.id === atual) ? '' : atual));
+    publicoApi.servicos(barbeiroId, ctrl.signal)
+      .then(lista => {
+        setServicos(lista);
+        setServicoId(atual => (atual && !lista.some(s => s.id === atual) ? '' : atual));
       })
-      .catch(e => { if (e?.name !== 'AbortError') throw e; });
+      .catch(ignorarAborto);
     return () => ctrl.abort();
   }, [barbeiroId]);
 
@@ -71,13 +68,11 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
     // Vindo do calendário, o dia escolhido pode estar muito além dos dois
     // dias da home — busca-se o dia dele, não os próximos.
     const janela = inicioPendente
-      ? `de=${diaLocalDe(inicioPendente)}&dias=1`
-      : `dias=2`;
+      ? { de: diaLocalDe(inicioPendente), dias: 1 }
+      : { dias: 2 };
     const ctrl = new AbortController();
-    fetch(`/api/horarios?barbeiroId=${barbeiroId}&servicoId=${servicoId}&${janela}`,
-          { signal: ctrl.signal })
-      .then(r => r.json()).then(d => setDias(d.dias))
-      .catch(e => { if (e?.name !== 'AbortError') throw e; });
+    publicoApi.horarios({ barbeiroId, servicoId, ...janela }, ctrl.signal)
+      .then(setDias).catch(ignorarAborto);
     return () => ctrl.abort();
   }, [servicoId, barbeiroId, inicioPendente]);
 
@@ -94,21 +89,20 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
   async function confirmar() {
     if (!pronto || enviando) return;
     setEnviando(true); setErro('');
-    const r = await fetch('/api/agendamentos', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        barbeiroId: slot!.barbeiroId, servicoId, inicio: slot!.inicio, nome, whatsapp: whats,
-      }),
-    });
-    const corpo = await r.json();
-    if (r.ok) { window.location.href = `/agendamento/${corpo.codigo}`; return; }
-    setErro(corpo.erro);
-    setEnviando(false);
-    if (r.status === 409) {
-      // Recarrega a lista mantendo nome e telefone preenchidos.
-      setSlot(null);
-      fetch(`/api/horarios?barbeiroId=${barbeiroId}&servicoId=${servicoId}&dias=2`)
-        .then(x => x.json()).then(d => setDias(d.dias));
+    try {
+      const { codigo } = await publicoApi.agendar({
+        barbeiroId: slot!.barbeiroId, servicoId, inicio: slot!.inicio,
+        nome, whatsapp: whats,
+      });
+      window.location.href = `/agendamento/${codigo}`;
+    } catch (e) {
+      setErro(mensagemDoErro(e));
+      setEnviando(false);
+      if (e instanceof ErroApi && e.status === 409) {
+        // Recarrega a lista mantendo nome e telefone preenchidos.
+        setSlot(null);
+        void publicoApi.horarios({ barbeiroId, servicoId, dias: 2 }).then(setDias);
+      }
     }
   }
 
