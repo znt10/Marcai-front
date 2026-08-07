@@ -6,6 +6,10 @@ import { ehDono } from '@/lib/autorizacao';
 import { podeDesativar, podeRebaixar } from '@/lib/equipe';
 import { GET as equipe, POST as cadastrar } from '@/app/api/painel/equipe/route';
 import { GET as barbeirosPublicos } from '@/app/api/barbeiros/route';
+import { PATCH as editar } from '@/app/api/painel/equipe/[id]/route';
+import { POST as desativar } from '@/app/api/painel/equipe/[id]/desativar/route';
+import { POST as reativar } from '@/app/api/painel/equipe/[id]/reativar/route';
+import { POST as reemitir } from '@/app/api/painel/equipe/[id]/convite/route';
 
 beforeAll(() => {
   process.env.SESSAO_JWT_SECRET = 'segredo-do-painel-com-mais-de-32-bytes-aqui';
@@ -209,5 +213,169 @@ describe('POST /api/painel/equipe', () => {
     // Sem serviço vinculado ele não tem o que agendar — é a consequência que a
     // tela de equipe precisa avisar em destaque.
     expect(barbeiros.map((b: { nome: string }) => b.nome)).not.toContain('Duda');
+  });
+});
+
+const comId = (jwt: string, id: string, caminho: string, corpo?: unknown) => [
+  new Request(`http://brutus.localhost/api/painel/equipe/${id}${caminho}`, {
+    method: corpo ? 'PATCH' : 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-barbearia-slug': 'brutus', cookie: `sessao=${jwt}`,
+    },
+    body: corpo ? JSON.stringify(corpo) : undefined,
+  }),
+  { params: Promise.resolve({ id }) },
+] as const;
+
+describe('PATCH /api/painel/equipe/[id]', () => {
+  it('rebaixar dono incrementa o tokenVersion', async () => {
+    const ctx = await montarCenarioBrutus();
+    await prismaOwner.barbeiro.update({
+      where: { id: ctx.rael.id }, data: { papel: 'DONO' },
+    });
+    const jwt = await sessaoDoDono(ctx);
+    expect((await editar(...comId(jwt, ctx.rael.id, '', { papel: 'BARBEIRO' }))).status).toBe(200);
+
+    const depois = await prismaOwner.barbeiro.findUniqueOrThrow({ where: { id: ctx.rael.id } });
+    expect(depois.papel).toBe('BARBEIRO');
+    // O papel viaja no token: sem incrementar, o rebaixado manteria alcance de
+    // dono por até 12 horas.
+    expect(depois.tokenVersion).toBe(1);
+  });
+
+  it('trocar o celular incrementa o tokenVersion', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDoDono(ctx);
+    await editar(...comId(jwt, ctx.rael.id, '', { whatsapp: '11988887777' }));
+
+    const depois = await prismaOwner.barbeiro.findUniqueOrThrow({ where: { id: ctx.rael.id } });
+    expect(depois.whatsapp).toBe('11988887777');
+    expect(depois.tokenVersion).toBe(1);
+  });
+
+  it('trocar só o nome NÃO derruba a sessão', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDoDono(ctx);
+    await editar(...comId(jwt, ctx.rael.id, '', { nome: 'Raelzito' }));
+
+    const depois = await prismaOwner.barbeiro.findUniqueOrThrow({ where: { id: ctx.rael.id } });
+    expect(depois.nome).toBe('Raelzito');
+    expect(depois.tokenVersion).toBe(0);
+  });
+
+  it('rebaixar o último dono é 409', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDoDono(ctx);
+    expect((await editar(...comId(jwt, ctx.teo.id, '', { papel: 'BARBEIRO' }))).status).toBe(409);
+  });
+
+  it('celular de outro membro é 409', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDoDono(ctx);
+    expect((await editar(...comId(jwt, ctx.rael.id, '', { whatsapp: '11911112222' }))).status).toBe(409);
+  });
+
+  it('barbeiro não edita ninguém', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await emitirSessao({
+      sub: ctx.rael.id, bid: ctx.barbearia.id, papel: 'BARBEIRO', tv: 0,
+    });
+    expect((await editar(...comId(jwt, ctx.rael.id, '', { nome: 'Eu mesmo' }))).status).toBe(403);
+  });
+});
+
+describe('desativar, reativar e reemitir', () => {
+  it('desativar a si mesmo é 409', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDoDono(ctx);
+    expect((await desativar(...comId(jwt, ctx.teo.id, '/desativar'))).status).toBe(409);
+  });
+
+  it('desativar com agenda futura é 409 com a contagem', async () => {
+    const ctx = await montarCenarioBrutus();
+    await agendaFutura(ctx, ctx.rael.id);
+    const jwt = await sessaoDoDono(ctx);
+
+    const res = await desativar(...comId(jwt, ctx.rael.id, '/desativar'));
+    expect(res.status).toBe(409);
+    expect((await res.json()).erro).toContain('1');
+
+    const intacto = await prismaOwner.barbeiro.findUniqueOrThrow({ where: { id: ctx.rael.id } });
+    expect(intacto.ativo).toBe(true);
+  });
+
+  it('desativar limpo derruba a sessão e marca a data', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDoDono(ctx);
+    expect((await desativar(...comId(jwt, ctx.rael.id, '/desativar'))).status).toBe(200);
+
+    const depois = await prismaOwner.barbeiro.findUniqueOrThrow({ where: { id: ctx.rael.id } });
+    expect(depois.ativo).toBe(false);
+    expect(depois.desativadoEm).not.toBeNull();
+    expect(depois.tokenVersion).toBe(1);
+  });
+
+  it('agendamento que já passou não impede', async () => {
+    const ctx = await montarCenarioBrutus();
+    const cliente = await prismaOwner.cliente.create({
+      data: { barbeariaId: ctx.barbearia.id, nome: 'Antigo', whatsapp: '11911110000' },
+    });
+    const inicio = new Date(Date.now() - 3 * 3600_000);
+    await prismaOwner.agendamento.create({
+      data: {
+        barbeariaId: ctx.barbearia.id, codigo: Math.random().toString(36).slice(2, 12),
+        barbeiroId: ctx.rael.id, clienteId: cliente.id, servicoId: ctx.corte.id,
+        servicoNome: 'Corte', inicio, fim: new Date(inicio.getTime() + 1800_000),
+        duracaoMin: 30, status: 'CONFIRMADO',
+      },
+    });
+    const jwt = await sessaoDoDono(ctx);
+    expect((await desativar(...comId(jwt, ctx.rael.id, '/desativar'))).status).toBe(200);
+  });
+
+  it('reativar volta atrás', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDoDono(ctx);
+    await desativar(...comId(jwt, ctx.rael.id, '/desativar'));
+    expect((await reativar(...comId(jwt, ctx.rael.id, '/reativar'))).status).toBe(200);
+
+    const depois = await prismaOwner.barbeiro.findUniqueOrThrow({ where: { id: ctx.rael.id } });
+    expect(depois.ativo).toBe(true);
+    expect(depois.desativadoEm).toBeNull();
+  });
+
+  it('reemitir zera a senha, troca o convite e derruba a sessão', async () => {
+    const ctx = await montarCenarioBrutus();
+    await prismaOwner.barbeiro.update({
+      where: { id: ctx.rael.id }, data: { senhaHash: 'qualquer-coisa' },
+    });
+    const jwt = await sessaoDoDono(ctx);
+    const res = await reemitir(...comId(jwt, ctx.rael.id, '/convite'));
+    expect(res.status).toBe(200);
+    expect((await res.json()).linkConvite).toContain('/convite/');
+
+    const depois = await prismaOwner.barbeiro.findUniqueOrThrow({ where: { id: ctx.rael.id } });
+    // Reemitir convite E o reset de senha: quem tomou a conta perde o acesso.
+    expect(depois.senhaHash).toBeNull();
+    expect(depois.conviteTokenHash).not.toBeNull();
+    expect(depois.tokenVersion).toBe(1);
+  });
+
+  it('barbeiro de outra barbearia é 404', async () => {
+    const ctx = await montarCenarioBrutus();
+    const outra = await prismaOwner.barbearia.create({
+      data: { slug: 'dontony', nome: 'Dom Tony', endereco: 'Av. Central, 12',
+              horarioResumo: 'ter a sáb', whatsappContato: '11977778888' },
+    });
+    const tony = await prismaOwner.barbeiro.create({
+      data: { barbeariaId: outra.id, nome: 'Tony', whatsapp: '11977778888', papel: 'DONO' },
+    });
+    const jwt = await sessaoDoDono(ctx);
+    // Aqui o 404 e honesto: dentro deste tenant aquele id nao existe.
+    expect((await desativar(...comId(jwt, tony.id, '/desativar'))).status).toBe(404);
+
+    const intacto = await prismaOwner.barbeiro.findUniqueOrThrow({ where: { id: tony.id } });
+    expect(intacto.ativo).toBe(true);
   });
 });
