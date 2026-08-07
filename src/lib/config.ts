@@ -39,6 +39,14 @@ export const ADMIN_TRAVA_BLOQUEIO_MS = 10 * 60_000;
 export const CONVITE_VALIDADE_HORAS = 48;
 export const SENHA_MINIMA = 8;
 
+// Sessão do barbeiro (cliente §9.5, painel §3)
+export const SESSAO_BARBEIRO_HORAS = 12;      // um turno
+export const BARBEIRO_TRAVA_TENTATIVAS = 5;
+export const BARBEIRO_TRAVA_MIN = 15;
+
+// Padrão da tela de marcar na mão (painel §7)
+export const PAINEL_ANTECEDENCIA_PADRAO_MIN = 30;
+
 // Verificação de número no WhatsApp (§10.5)
 export const CHECK_NUMERO_TIMEOUT_MS = 3_000;
 export const CHECK_NUMERO_TTL_MS = 86_400_000;
