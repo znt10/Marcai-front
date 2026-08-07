@@ -6,6 +6,10 @@ import { emitirSessao, lerSessao, type Sessao } from '@/lib/auth';
 import { estaTravado, aposFalha, LIMPO } from '@/lib/trava-barbeiro';
 import { BARBEIRO_TRAVA_TENTATIVAS, BARBEIRO_TRAVA_MIN } from '@/lib/config';
 import { POST as login } from '@/app/api/auth/login/route';
+import { GET as eu } from '@/app/api/auth/eu/route';
+import {
+  emitirSessao as emitirAdmin, lerSessao as lerAdmin, COOKIE_ADMIN,
+} from '@/lib/admin-sessao';
 
 beforeAll(() => {
   process.env.SESSAO_JWT_SECRET = 'segredo-do-painel-com-mais-de-32-bytes-aqui';
@@ -146,5 +150,62 @@ describe('POST /api/auth/login', () => {
 
     const depois = await prismaOwner.barbeiro.findUniqueOrThrow({ where: { id: ctx.teo.id } });
     expect(depois.tentativasLogin).toBe(0);
+  });
+});
+
+const comCookie = (host: string, cookie: string) =>
+  new Request(`http://${host}.localhost/api/auth/eu`, {
+    headers: { 'x-barbearia-slug': host, cookie },
+  });
+
+describe('os dois cruzamentos', () => {
+  it('cookie da BRUTUS não vale no host da Dom Tony', async () => {
+    const { teo, barbearia } = await montarCenarioBrutus();
+    await prismaOwner.barbearia.create({
+      data: { slug: 'dontony', nome: 'Dom Tony', endereco: 'Av. Central, 12',
+              horarioResumo: 'ter a sáb', whatsappContato: '11977778888' },
+    });
+
+    const jwt = await emitirSessao({ sub: teo.id, bid: barbearia.id, papel: 'DONO', tv: 0 });
+
+    // No host certo, abre.
+    expect((await eu(comCookie('brutus', `sessao=${jwt}`))).status).toBe(200);
+
+    // No host errado, 401 — assinatura válida, não expirado, barbeiro
+    // existente. É o `bid` que recusa, e é o pior bug do multi-tenant.
+    const cruzado = await eu(comCookie('dontony', `sessao=${jwt}`));
+    expect(cruzado.status).toBe(401);
+    expect(cruzado.headers.get('set-cookie')).toContain('sessao=;');
+  });
+
+  it('cookie de admin não abre rota do painel', async () => {
+    await montarCenarioBrutus();
+    const doAdmin = await emitirAdmin();
+    expect((await eu(comCookie('brutus', `sessao=${doAdmin}`))).status).toBe(401);
+    expect((await eu(comCookie('brutus', `${COOKIE_ADMIN}=${doAdmin}`))).status).toBe(401);
+  });
+
+  it('cookie de barbeiro não abre sessão de admin', async () => {
+    const { teo, barbearia } = await montarCenarioBrutus();
+    const jwt = await emitirSessao({ sub: teo.id, bid: barbearia.id, papel: 'DONO', tv: 0 });
+    expect(await lerAdmin(jwt)).toBe(false);
+  });
+
+  it('tokenVersion incrementado derruba a sessão já emitida', async () => {
+    const { teo, barbearia } = await montarCenarioBrutus();
+    const jwt = await emitirSessao({ sub: teo.id, bid: barbearia.id, papel: 'DONO', tv: 0 });
+    expect((await eu(comCookie('brutus', `sessao=${jwt}`))).status).toBe(200);
+
+    await prismaOwner.barbeiro.update({
+      where: { id: teo.id }, data: { tokenVersion: { increment: 1 } },
+    });
+    expect((await eu(comCookie('brutus', `sessao=${jwt}`))).status).toBe(401);
+  });
+
+  it('barbeiro desativado perde a sessão', async () => {
+    const { teo, barbearia } = await montarCenarioBrutus();
+    const jwt = await emitirSessao({ sub: teo.id, bid: barbearia.id, papel: 'DONO', tv: 0 });
+    await prismaOwner.barbeiro.update({ where: { id: teo.id }, data: { ativo: false } });
+    expect((await eu(comCookie('brutus', `sessao=${jwt}`))).status).toBe(401);
   });
 });
