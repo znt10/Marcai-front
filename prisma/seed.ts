@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { hash } from '@node-rs/argon2';
 
 // Papel DONO (DATABASE_URL): ignora RLS, que é o que popular oito tabelas de
 // dois tenants diferentes exige. O runtime jamais usa esta URL — ver src/lib/db.ts.
@@ -40,13 +41,18 @@ async function main() {
 
   const [corte, barba, combo, pezinho] = servicos;
 
+  // Senha conhecida, só no seed (cliente §5.5): sem ela o painel da Etapa 2
+  // nasce intestável — os dois papéis existem, e nenhum dos dois entra. O
+  // `throw` de NODE_ENV=production lá em cima é o que segura isso aqui.
+  const senhaDoSeed = await hash('123456');
+
   const teo = await prisma.barbeiro.create({
     data: { barbeariaId: brutus.id, nome: 'Téo', whatsapp: '11911112222',
-            papel: 'DONO', ordem: 0 },
+            papel: 'DONO', senhaHash: senhaDoSeed, ordem: 0 },
   });
   const rael = await prisma.barbeiro.create({
     data: { barbeariaId: brutus.id, nome: 'Rael', whatsapp: '11933334444',
-            papel: 'BARBEIRO', ordem: 1 },
+            papel: 'BARBEIRO', senhaHash: senhaDoSeed, ordem: 1 },
   });
   // Convite pendente — o estado que o wireframe 3e desenha.
   await prisma.barbeiro.create({
@@ -106,7 +112,10 @@ async function main() {
             duracaoMinimaMin: 25, duracaoSugeridaMin: 50 },
   });
   const tony = await prisma.barbeiro.create({
-    data: { barbeariaId: domTony.id, nome: 'Tony', whatsapp: '11977778888', papel: 'DONO' },
+    // Mesma senha do seed: é com este login que se prova, na mão, que o
+    // cookie da BRUTUS não abre a Dom Tony.
+    data: { barbeariaId: domTony.id, nome: 'Tony', whatsapp: '11977778888',
+            papel: 'DONO', senhaHash: senhaDoSeed },
   });
   await prisma.barbeiroServico.create({
     data: { barbeariaId: domTony.id, barbeiroId: tony.id,
