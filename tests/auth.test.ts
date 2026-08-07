@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { emitirSessao, lerSessao, type Sessao } from '@/lib/auth';
+import { estaTravado, aposFalha, LIMPO } from '@/lib/trava-barbeiro';
+import { BARBEIRO_TRAVA_TENTATIVAS, BARBEIRO_TRAVA_MIN } from '@/lib/config';
 
 beforeAll(() => {
   process.env.SESSAO_JWT_SECRET = 'segredo-do-painel-com-mais-de-32-bytes-aqui';
@@ -37,5 +39,39 @@ describe('sessão do barbeiro', () => {
       .setExpirationTime('1h')
       .sign(new TextEncoder().encode(process.env.ADMIN_JWT_SECRET));
     expect(await lerSessao(doAdmin)).toBeNull();
+  });
+});
+
+describe('trava por barbeiro', () => {
+  const agora = new Date('2026-08-07T12:00:00Z');
+
+  it('barbeiro sem bloqueio não está travado', () => {
+    expect(estaTravado({ bloqueadoAte: null }, agora)).toBe(false);
+  });
+
+  it('bloqueio que já venceu não trava', () => {
+    const antes = new Date(agora.getTime() - 60_000);
+    expect(estaTravado({ bloqueadoAte: antes }, agora)).toBe(false);
+  });
+
+  it('bloqueio no futuro trava', () => {
+    const depois = new Date(agora.getTime() + 60_000);
+    expect(estaTravado({ bloqueadoAte: depois }, agora)).toBe(true);
+  });
+
+  it('errar antes do limite só conta', () => {
+    expect(aposFalha(0, agora)).toEqual({ tentativasLogin: 1, bloqueadoAte: null });
+  });
+
+  it('a quinta falha bloqueia por 15 minutos', () => {
+    const r = aposFalha(BARBEIRO_TRAVA_TENTATIVAS - 1, agora);
+    expect(r.tentativasLogin).toBe(BARBEIRO_TRAVA_TENTATIVAS);
+    expect(r.bloqueadoAte).not.toBeNull();
+    const min = (r.bloqueadoAte!.getTime() - agora.getTime()) / 60_000;
+    expect(Math.round(min)).toBe(BARBEIRO_TRAVA_MIN);
+  });
+
+  it('acertar zera tudo', () => {
+    expect(LIMPO).toEqual({ tentativasLogin: 0, bloqueadoAte: null });
   });
 });
