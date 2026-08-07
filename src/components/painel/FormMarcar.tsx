@@ -2,10 +2,10 @@
 import { useEffect, useState } from 'react';
 import { Box, Lbl, Sub } from '@/components/wf';
 import { GRANULARIDADE_MIN, PAINEL_ANTECEDENCIA_PADRAO_MIN } from '@/lib/config';
-
-type Servico = { id: string; nome: string; duracaoMin: number };
-type Slot = { hora: string; inicio: string; barbeiroId: string };
-type Barbeiro = { id: string; nome: string };
+import {
+  painelApi, publicoApi, ignorarAborto, mensagemDoErro, ErroApi,
+  type Barbeiro, type Servico, type Slot,
+} from '@/lib/api';
 
 /// O caso do balcão: o cliente está ali e quer o próximo horário. O padrão
 /// economiza toque; não é regra — os dois campos continuam trocáveis.
@@ -40,10 +40,7 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
   useEffect(() => {
     if (eu.papel !== 'DONO') return;
     const ctrl = new AbortController();
-    fetch('/api/barbeiros', { signal: ctrl.signal })
-      .then((r) => r.json())
-      .then((d) => setBarbeiros(d.barbeiros ?? []))
-      .catch((e) => { if (e?.name !== 'AbortError') throw e; });
+    publicoApi.barbeiros(ctrl.signal).then(setBarbeiros).catch(ignorarAborto);
     return () => ctrl.abort();
   }, [eu.papel]);
 
@@ -53,30 +50,26 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
   // esse serviço" no envio, sem a tela ter dado pista nenhuma.
   useEffect(() => {
     const ctrl = new AbortController();
-    fetch(`/api/servicos?barbeiroId=${barbeiroId}`, { signal: ctrl.signal })
-      .then((r) => r.json())
-      .then((d: { servicos?: Servico[] }) => {
-        const s = d.servicos ?? [];
+    publicoApi.servicos(barbeiroId, ctrl.signal)
+      .then((s) => {
         setServicos(s);
         setServicoId((atual) => (s.some((x) => x.id === atual) ? atual : s[0]?.id ?? ''));
       })
-      .catch((e) => { if (e?.name !== 'AbortError') throw e; });
+      .catch(ignorarAborto);
     return () => ctrl.abort();
   }, [barbeiroId]);
 
   useEffect(() => {
     if (!servicoId) return;
     const ctrl = new AbortController();
-    fetch(`/api/horarios?barbeiroId=${barbeiroId}&servicoId=${servicoId}&de=${dia}&dias=1`,
-          { signal: ctrl.signal })
-      .then((r) => r.json())
-      .then((d) => {
-        const livres: Slot[] = d.dias?.[0]?.slots ?? [];
+    publicoApi.horarios({ barbeiroId, servicoId, de: dia, dias: 1 }, ctrl.signal)
+      .then((dias) => {
+        const livres = dias[0]?.slots ?? [];
         setSlots(livres);
         const alvo = padraoDeHorario().toISOString();
         setInicio(livres.find((s) => s.inicio >= alvo)?.inicio ?? livres[0]?.inicio ?? '');
       })
-      .catch((e) => { if (e?.name !== 'AbortError') throw e; });
+      .catch(ignorarAborto);
     return () => ctrl.abort();
   }, [servicoId, dia, barbeiroId, recarga]);
 
@@ -85,15 +78,15 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
   async function marcar() {
     if (!pronto) return;
     setEnviando(true); setErro('');
-    const r = await fetch('/api/painel/agendamentos', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ barbeiroId, servicoId, inicio, nome, whatsapp }),
-    });
-    if (r.ok) { window.location.href = '/painel'; return; }
-    setErro((await r.json()).erro);
-    setEnviando(false);
-    // 409 é horário que acabou de ser pego: recarregar a lista é o conserto.
-    if (r.status === 409) setRecarga((n) => n + 1);
+    try {
+      await painelApi.marcar({ barbeiroId, servicoId, inicio, nome, whatsapp });
+      window.location.href = '/painel';
+    } catch (e) {
+      setErro(mensagemDoErro(e));
+      setEnviando(false);
+      // 409 é horário que acabou de ser pego: recarregar a lista é o conserto.
+      if (e instanceof ErroApi && e.status === 409) setRecarga((n) => n + 1);
+    }
   }
 
   return (

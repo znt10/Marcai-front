@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Box, Lbl, Sub } from '@/components/wf';
+import { painelApi, mensagemDoErro } from '@/lib/api';
 
 export function FormLoginBarbeiro() {
   const [whatsapp, setWhatsapp] = useState('');
@@ -13,15 +14,15 @@ export function FormLoginBarbeiro() {
   async function entrar() {
     if (!pronto) return;
     setEnviando(true); setErro('');
-    const r = await fetch('/api/auth/login', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ whatsapp, senha }),
-    });
-    if (r.ok) { window.location.href = '/painel'; return; }
-    // O texto vem pronto da rota. Inventar mensagem aqui faria a resposta
-    // deixar de ser uma só, e o formulário voltaria a enumerar a equipe.
-    setErro((await r.json()).erro);
-    setEnviando(false);
+    try {
+      await painelApi.entrar(whatsapp, senha);
+      window.location.href = '/painel';
+    } catch (e) {
+      // O texto vem pronto da rota. Inventar mensagem aqui faria a resposta
+      // deixar de ser uma só, e o formulário voltaria a enumerar a equipe.
+      setErro(mensagemDoErro(e));
+      setEnviando(false);
+    }
   }
 
   return (
