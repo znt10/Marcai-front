@@ -12,10 +12,19 @@ export function ListaBarbearias({ recarregarEm }: { recarregarEm?: number }) {
   const [link, setLink] = useState('');
   const [erro, setErro] = useState('');
 
-  const carregar = () =>
-    fetch('/api/admin/barbearias').then((r) => r.json()).then((d) => setBarbearias(d.barbearias));
+  const carregar = (signal?: AbortSignal) =>
+    fetch('/api/admin/barbearias', { signal })
+      .then((r) => r.json()).then((d) => setBarbearias(d.barbearias))
+      .catch((e) => { if (e?.name !== 'AbortError') throw e; });
 
-  useEffect(() => { carregar(); }, [recarregarEm]);
+  // Aborta na limpeza: criar duas barbearias em seguida muda `recarregarEm`
+  // duas vezes, e a resposta da primeira busca chegando depois da segunda
+  // deixaria a lista sem a barbearia recém-criada.
+  useEffect(() => {
+    const ctrl = new AbortController();
+    void carregar(ctrl.signal);
+    return () => ctrl.abort();
+  }, [recarregarEm]);
 
   async function alternar(b: Barbearia) {
     setErro('');
