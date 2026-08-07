@@ -17,6 +17,13 @@ export const msgCancelamento = (d: Omit<Dados, 'link'>) =>
   `Seu horário de ${formatarDiaLongo(d.inicio)} às ${formatarHora(d.inicio)} ` +
   `com ${d.barbeiroNome} foi cancelado. Até a próxima!`;
 
+/// Fala com colega de trabalho, não com cliente — e o link entra uma vez só,
+/// no fim, porque é ele que o barbeiro vai tocar.
+export const msgConvite = (d: { nome: string; barbeariaNome: string; link: string }) =>
+  `Oi, ${d.nome.split(' ')[0]}! Você entrou na equipe da ${d.barbeariaNome}. ` +
+  `Cria sua senha por aqui pra ver sua agenda:\n\n${d.link}\n\n` +
+  `O link vale por 48 horas.`;
+
 /// Separada de msgCancelamento: aquela diz que o CLIENTE cancelou, e mandá-la
 /// aqui seria mentira na cara de quem perdeu o horário.
 export const msgCancelamentoPelaBarbearia = (d: Omit<Dados, 'link'>) =>
