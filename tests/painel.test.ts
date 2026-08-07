@@ -3,7 +3,9 @@ import { prismaOwner, limparBanco } from './setup';
 import { montarCenarioBrutus } from './cenarios';
 import { emitirSessao } from '@/lib/auth';
 import { GET as agenda } from '@/app/api/painel/agenda/route';
+import { POST as marcarNaMao } from '@/app/api/painel/agendamentos/route';
 import { localParaUtc, diaDeHoje } from '@/lib/datas';
+import { GRANULARIDADE_MIN } from '@/lib/config';
 
 beforeAll(() => {
   process.env.SESSAO_JWT_SECRET = 'segredo-do-painel-com-mais-de-32-bytes-aqui';
@@ -96,5 +98,98 @@ describe('GET /api/painel/agenda', () => {
     });
     const { itens } = await (await agenda(pedido(await sessaoDe(ctx, 'teo')))).json();
     expect(itens).toHaveLength(0);
+  });
+});
+
+const pedidoMarcar = (jwt: string, corpo: unknown) =>
+  new Request('http://brutus.localhost/api/painel/agendamentos', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-barbearia-slug': 'brutus',
+      cookie: `sessao=${jwt}`,
+    },
+    body: JSON.stringify(corpo),
+  });
+
+/// Um horário livre daqui a `minutos`, alinhado à granularidade — o motor de
+/// slots só oferece horário alinhado, e pedir fora dele daria 409 sempre.
+function daquiAlinhado(minutos: number) {
+  const d = new Date(Date.now() + minutos * 60_000);
+  d.setSeconds(0, 0);
+  d.setMinutes(Math.ceil(d.getMinutes() / GRANULARIDADE_MIN) * GRANULARIDADE_MIN);
+  return d;
+}
+
+describe('POST /api/painel/agendamentos', () => {
+  it('o barbeiro marca para si', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDe(ctx, 'rael');
+    const res = await marcarNaMao(pedidoMarcar(jwt, {
+      barbeiroId: ctx.rael.id, servicoId: ctx.corte.id,
+      inicio: daquiAlinhado(60).toISOString(),
+      nome: 'Seu Osvaldo', whatsapp: '11955554444',
+    }));
+    expect(res.status).toBe(201);
+    expect((await res.json()).codigo).toHaveLength(10);
+  });
+
+  it('o barbeiro não marca na agenda do colega', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDe(ctx, 'rael');
+    const res = await marcarNaMao(pedidoMarcar(jwt, {
+      barbeiroId: ctx.teo.id, servicoId: ctx.corte.id,
+      inicio: daquiAlinhado(60).toISOString(),
+      nome: 'Seu Osvaldo', whatsapp: '11955554444',
+    }));
+    expect(res.status).toBe(404);
+  });
+
+  it('horário ocupado responde 409 e não duplica', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDe(ctx, 'teo');
+    const inicio = daquiAlinhado(90);
+    const corpo = {
+      barbeiroId: ctx.teo.id, servicoId: ctx.corte.id,
+      inicio: inicio.toISOString(), nome: 'Seu Osvaldo', whatsapp: '11955554444',
+    };
+
+    expect((await marcarNaMao(pedidoMarcar(jwt, corpo))).status).toBe(201);
+    expect((await marcarNaMao(pedidoMarcar(jwt, corpo))).status).toBe(409);
+
+    const quantos = await prismaOwner.agendamento.count({
+      where: { barbeariaId: ctx.barbearia.id, inicio, status: 'CONFIRMADO' },
+    });
+    expect(quantos).toBe(1);
+  });
+
+  it('horário que já passou é 422', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDe(ctx, 'teo');
+    const res = await marcarNaMao(pedidoMarcar(jwt, {
+      barbeiroId: ctx.teo.id, servicoId: ctx.corte.id,
+      inicio: new Date(Date.now() - 60 * 60_000).toISOString(),
+      nome: 'Seu Osvaldo', whatsapp: '11955554444',
+    }));
+    expect(res.status).toBe(422);
+  });
+
+  it('cliente que já existe é reaproveitado e o nome é atualizado', async () => {
+    const ctx = await montarCenarioBrutus();
+    await prismaOwner.cliente.create({
+      data: { barbeariaId: ctx.barbearia.id, nome: 'osvaldo', whatsapp: '11955554444' },
+    });
+    const jwt = await sessaoDe(ctx, 'teo');
+    await marcarNaMao(pedidoMarcar(jwt, {
+      barbeiroId: ctx.teo.id, servicoId: ctx.corte.id,
+      inicio: daquiAlinhado(120).toISOString(),
+      nome: 'Seu Osvaldo', whatsapp: '11955554444',
+    }));
+
+    const clientes = await prismaOwner.cliente.findMany({
+      where: { barbeariaId: ctx.barbearia.id, whatsapp: '11955554444' },
+    });
+    expect(clientes).toHaveLength(1);
+    expect(clientes[0].nome).toBe('Seu Osvaldo');
   });
 });
