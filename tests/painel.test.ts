@@ -4,6 +4,7 @@ import { montarCenarioBrutus } from './cenarios';
 import { emitirSessao } from '@/lib/auth';
 import { GET as agenda } from '@/app/api/painel/agenda/route';
 import { POST as marcarNaMao } from '@/app/api/painel/agendamentos/route';
+import { POST as cancelar } from '@/app/api/painel/agendamentos/[id]/cancelar/route';
 import { localParaUtc, diaDeHoje } from '@/lib/datas';
 import { GRANULARIDADE_MIN } from '@/lib/config';
 
@@ -191,5 +192,70 @@ describe('POST /api/painel/agendamentos', () => {
     });
     expect(clientes).toHaveLength(1);
     expect(clientes[0].nome).toBe('Seu Osvaldo');
+  });
+});
+
+const pedidoCancelar = (jwt: string, id: string) => [
+  new Request(`http://brutus.localhost/api/painel/agendamentos/${id}/cancelar`, {
+    method: 'POST',
+    headers: { 'x-barbearia-slug': 'brutus', cookie: `sessao=${jwt}` },
+  }),
+  { params: Promise.resolve({ id }) },
+] as const;
+
+describe('POST /api/painel/agendamentos/[id]/cancelar', () => {
+  it('cancela o próprio e libera o horário', async () => {
+    const ctx = await montarCenarioBrutus();
+    const a = await marcar(ctx, ctx.rael.id, 15, 'Cliente do Rael');
+    const res = await cancelar(...pedidoCancelar(await sessaoDe(ctx, 'rael'), a.id));
+    expect(res.status).toBe(200);
+
+    const depois = await prismaOwner.agendamento.findUniqueOrThrow({ where: { id: a.id } });
+    expect(depois.status).toBe('CANCELADO_BARBEIRO');
+    expect(depois.canceladoEm).not.toBeNull();
+  });
+
+  it('o agendamento do colega responde 404, não 403', async () => {
+    const ctx = await montarCenarioBrutus();
+    const doTeo = await marcar(ctx, ctx.teo.id, 16, 'Cliente do Téo');
+    const res = await cancelar(...pedidoCancelar(await sessaoDe(ctx, 'rael'), doTeo.id));
+    expect(res.status).toBe(404);
+
+    const intacto = await prismaOwner.agendamento.findUniqueOrThrow({ where: { id: doTeo.id } });
+    expect(intacto.status).toBe('CONFIRMADO');
+  });
+
+  it('o dono cancela o de qualquer um', async () => {
+    const ctx = await montarCenarioBrutus();
+    const doRael = await marcar(ctx, ctx.rael.id, 17, 'Cliente do Rael');
+    const res = await cancelar(...pedidoCancelar(await sessaoDe(ctx, 'teo'), doRael.id));
+    expect(res.status).toBe(200);
+  });
+
+  it('id que não existe é 404', async () => {
+    const ctx = await montarCenarioBrutus();
+    const res = await cancelar(...pedidoCancelar(
+      await sessaoDe(ctx, 'teo'), '00000000-0000-0000-0000-000000000000'));
+    expect(res.status).toBe(404);
+  });
+
+  it('cancelar em cima da hora é permitido para o barbeiro', async () => {
+    const ctx = await montarCenarioBrutus();
+    const cliente = await prismaOwner.cliente.create({
+      data: { barbeariaId: ctx.barbearia.id, nome: 'Daqui a pouco', whatsapp: '11944443333' },
+    });
+    // Dentro do PRAZO_CANCELAMENTO_MIN, que vale para o cliente e não para
+    // o barbeiro.
+    const inicio = new Date(Date.now() + 10 * 60_000);
+    const a = await prismaOwner.agendamento.create({
+      data: {
+        barbeariaId: ctx.barbearia.id, codigo: Math.random().toString(36).slice(2, 12),
+        barbeiroId: ctx.teo.id, clienteId: cliente.id, servicoId: ctx.corte.id,
+        servicoNome: 'Corte', inicio, fim: new Date(inicio.getTime() + 40 * 60_000),
+        duracaoMin: 40, status: 'CONFIRMADO',
+      },
+    });
+    const res = await cancelar(...pedidoCancelar(await sessaoDe(ctx, 'teo'), a.id));
+    expect(res.status).toBe(200);
   });
 });
