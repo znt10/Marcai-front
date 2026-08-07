@@ -5,6 +5,7 @@ import { GRANULARIDADE_MIN, PAINEL_ANTECEDENCIA_PADRAO_MIN } from '@/lib/config'
 
 type Servico = { id: string; nome: string; duracaoMin: number };
 type Slot = { hora: string; inicio: string; barbeiroId: string };
+type Barbeiro = { id: string; nome: string };
 
 /// O caso do balcão: o cliente está ali e quer o próximo horário. O padrão
 /// economiza toque; não é regra — os dois campos continuam trocáveis.
@@ -16,6 +17,11 @@ function padraoDeHorario() {
 }
 
 export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO' } }) {
+  // O dono marca para qualquer um da equipe; o barbeiro, só para si. Não é
+  // decisão da tela: a rota responde 404 para o BARBEIRO que mandar o id de um
+  // colega. Aqui o seletor só some — um controle com uma opção só é ruído.
+  const [barbeiros, setBarbeiros] = useState<Barbeiro[]>([]);
+  const [barbeiroId, setBarbeiroId] = useState(eu.id);
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [servicoId, setServicoId] = useState('');
   const [dia, setDia] = useState(padraoDeHorario().toLocaleDateString('sv-SE'));
@@ -27,16 +33,30 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
   const [enviando, setEnviando] = useState(false);
   const [recarga, setRecarga] = useState(0);
 
-  // O primeiro da lista já vem escolhido — é o serviço mais comum da casa.
   useEffect(() => {
-    fetch(`/api/servicos?barbeiroId=${eu.id}`)
+    if (eu.papel !== 'DONO') return;
+    fetch('/api/barbeiros')
       .then((r) => r.json())
-      .then((s: Servico[]) => { setServicos(s); setServicoId(s[0]?.id ?? ''); });
-  }, [eu.id]);
+      .then((d) => setBarbeiros(d.barbeiros ?? []));
+  }, [eu.papel]);
+
+  // O primeiro da lista já vem escolhido — é o serviço mais comum da casa.
+  // Refeito quando o barbeiro muda: nem todos fazem os mesmos serviços, e um
+  // serviço que ficasse escolhido sem vínculo daria "esse barbeiro não faz
+  // esse serviço" no envio, sem a tela ter dado pista nenhuma.
+  useEffect(() => {
+    fetch(`/api/servicos?barbeiroId=${barbeiroId}`)
+      .then((r) => r.json())
+      .then((d: { servicos?: Servico[] }) => {
+        const s = d.servicos ?? [];
+        setServicos(s);
+        setServicoId((atual) => (s.some((x) => x.id === atual) ? atual : s[0]?.id ?? ''));
+      });
+  }, [barbeiroId]);
 
   useEffect(() => {
     if (!servicoId) return;
-    fetch(`/api/horarios?barbeiroId=${eu.id}&servicoId=${servicoId}&de=${dia}&dias=1`)
+    fetch(`/api/horarios?barbeiroId=${barbeiroId}&servicoId=${servicoId}&de=${dia}&dias=1`)
       .then((r) => r.json())
       .then((d) => {
         const livres: Slot[] = d.dias?.[0]?.slots ?? [];
@@ -44,7 +64,7 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
         const alvo = padraoDeHorario().toISOString();
         setInicio(livres.find((s) => s.inicio >= alvo)?.inicio ?? livres[0]?.inicio ?? '');
       });
-  }, [servicoId, dia, eu.id, recarga]);
+  }, [servicoId, dia, barbeiroId, recarga]);
 
   const pronto = servicoId && inicio && nome.trim().length >= 2 && whatsapp && !enviando;
 
@@ -53,7 +73,7 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
     setEnviando(true); setErro('');
     const r = await fetch('/api/painel/agendamentos', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ barbeiroId: eu.id, servicoId, inicio, nome, whatsapp }),
+      body: JSON.stringify({ barbeiroId, servicoId, inicio, nome, whatsapp }),
     });
     if (r.ok) { window.location.href = '/painel'; return; }
     setErro((await r.json()).erro);
@@ -64,6 +84,20 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
 
   return (
     <>
+      {barbeiros.length > 1 && (
+        <>
+          <Lbl>barbeiro</Lbl>
+          <div className="flex flex-wrap gap-2">
+            {barbeiros.map((b) => (
+              <Box key={b.id} variante={b.id === barbeiroId ? 'fill' : 'normal'}
+                   className="cursor-pointer" onClick={() => setBarbeiroId(b.id)}>
+                {b.id === eu.id ? `${b.nome} (você)` : b.nome}
+              </Box>
+            ))}
+          </div>
+        </>
+      )}
+
       <Lbl>serviço</Lbl>
       <div className="flex flex-wrap gap-2">
         {servicos.map((s) => (
