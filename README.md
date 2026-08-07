@@ -80,6 +80,33 @@ seed recria a barbearia com um uuid novo e o processo ainda guarda o antigo por
 `TTL_CACHE_TENANT_MS`. O sintoma é "celular ou senha inválidos" com a senha
 certa.
 
+## Equipe (só o dono)
+
+`/painel/equipe` — cadastrar barbeiro, corrigir nome, celular e papel, reemitir
+convite, desativar e reativar. Barbeiro que abrir a rota recebe **403**, e o
+link nem aparece no painel dele.
+
+O convite vai por **dois caminhos**: pelo WhatsApp e na tela, uma vez só. O
+envio é fire-and-forget, então API fora do ar não pode deixar o barbeiro sem
+convite — e o token só existe em hash no banco, então perdido não se recupera:
+reemite.
+
+**Quem entra agora não aparece para o cliente.** Sem serviço vinculado e sem
+expediente, a agenda dele é vazia e ele desaparece da tela pública em silêncio.
+A lista avisa isso em destaque; preencher os dois é a Etapa 3 fatia B e C.
+
+**Três recusas**, todas para não deixar a barbearia sem saída:
+
+- desativar quem tem horário marcado no futuro (mostra a contagem e a data);
+- desativar ou rebaixar o **último dono ativo**;
+- desativar a si mesmo.
+
+**Trocar papel ou celular derruba a sessão** daquela pessoa na hora — o `papel`
+viaja no token, então rebaixar sem invalidar deixaria alcance de dono valendo
+por até 12 h. Trocar só o nome não derruba nada.
+
+Reemitir convite **é** o reset de senha: `senhaHash` volta a nulo.
+
 ## Testar
 
 ```bash
