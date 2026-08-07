@@ -259,3 +259,25 @@ describe('POST /api/painel/agendamentos/[id]/cancelar', () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe('o dono marcando para outro barbeiro', () => {
+  it('o dono marca na agenda do Rael', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDe(ctx, 'teo');
+    const inicio = daquiAlinhado(150);
+
+    const res = await marcarNaMao(pedidoMarcar(jwt, {
+      barbeiroId: ctx.rael.id, servicoId: ctx.corte.id,
+      inicio: inicio.toISOString(), nome: 'Seu Osvaldo', whatsapp: '11955554444',
+    }));
+    expect(res.status).toBe(201);
+
+    const criado = await prismaOwner.agendamento.findFirstOrThrow({
+      where: { barbeariaId: ctx.barbearia.id, inicio },
+    });
+    expect(criado.barbeiroId).toBe(ctx.rael.id);
+    // A duração vem do vínculo do barbeiro ESCOLHIDO, não do logado: Rael faz
+    // corte em 30, o Téo em 40.
+    expect(criado.duracaoMin).toBe(30);
+  });
+});
