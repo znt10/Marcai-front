@@ -1,12 +1,21 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { hash } from '@node-rs/argon2';
+import { prismaOwner, limparBanco } from './setup';
+import { montarCenarioBrutus } from './cenarios';
 import { emitirSessao, lerSessao, type Sessao } from '@/lib/auth';
 import { estaTravado, aposFalha, LIMPO } from '@/lib/trava-barbeiro';
 import { BARBEIRO_TRAVA_TENTATIVAS, BARBEIRO_TRAVA_MIN } from '@/lib/config';
+import { POST as login } from '@/app/api/auth/login/route';
 
 beforeAll(() => {
   process.env.SESSAO_JWT_SECRET = 'segredo-do-painel-com-mais-de-32-bytes-aqui';
   process.env.ADMIN_JWT_SECRET  = 'segredo-do-admin-com-mais-de-32-bytes-aqui';
 });
+
+/// Sem isto, a segunda chamada de montarCenarioBrutus() estoura o slug único
+/// — e o `limparBanco` também zera o cache de slug→Barbearia, que guardaria um
+/// id que o TRUNCATE acabou de apagar.
+beforeEach(limparBanco);
 
 const sessao: Sessao = {
   sub: '11111111-1111-1111-1111-111111111111',
@@ -73,5 +82,69 @@ describe('trava por barbeiro', () => {
 
   it('acertar zera tudo', () => {
     expect(LIMPO).toEqual({ tentativasLogin: 0, bloqueadoAte: null });
+  });
+});
+
+const pedidoLogin = (corpo: unknown, host = 'brutus') =>
+  new Request(`http://${host}.localhost/api/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-barbearia-slug': host },
+    body: JSON.stringify(corpo),
+  });
+
+/// Cenário com o Téo já com senha — o do seed nasce sem, de propósito.
+async function comSenhaDoTeo() {
+  const ctx = await montarCenarioBrutus();
+  await prismaOwner.barbeiro.update({
+    where: { id: ctx.teo.id }, data: { senhaHash: await hash('senha-do-teo') },
+  });
+  return ctx;
+}
+
+describe('POST /api/auth/login', () => {
+  it('celular e senha certos devolvem cookie de sessão', async () => {
+    await comSenhaDoTeo();
+    const res = await login(pedidoLogin({ whatsapp: '11911112222', senha: 'senha-do-teo' }));
+    expect(res.status).toBe(200);
+    expect(res.headers.get('set-cookie')).toContain('sessao=');
+    expect(res.headers.get('set-cookie')).toContain('HttpOnly');
+  });
+
+  it('senha errada responde o mesmo que celular inexistente', async () => {
+    await comSenhaDoTeo();
+    const errada = await login(pedidoLogin({ whatsapp: '11911112222', senha: 'chutando' }));
+    const inexistente = await login(pedidoLogin({ whatsapp: '11900000000', senha: 'chutando' }));
+
+    expect(errada.status).toBe(401);
+    expect(inexistente.status).toBe(401);
+    expect(await errada.json()).toEqual(await inexistente.json());
+  });
+
+  it('barbeiro sem senha ainda não entra', async () => {
+    await montarCenarioBrutus();   // Téo e Rael nascem com senhaHash nulo
+    const res = await login(pedidoLogin({ whatsapp: '11911112222', senha: 'qualquer' }));
+    expect(res.status).toBe(401);
+  });
+
+  it('cinco erros travam a conta', async () => {
+    const ctx = await comSenhaDoTeo();
+    for (let i = 0; i < BARBEIRO_TRAVA_TENTATIVAS; i++) {
+      await login(pedidoLogin({ whatsapp: '11911112222', senha: 'chutando' }));
+    }
+    // Agora nem a senha certa entra.
+    const res = await login(pedidoLogin({ whatsapp: '11911112222', senha: 'senha-do-teo' }));
+    expect(res.status).toBe(429);
+
+    const depois = await prismaOwner.barbeiro.findUniqueOrThrow({ where: { id: ctx.teo.id } });
+    expect(depois.bloqueadoAte).not.toBeNull();
+  });
+
+  it('acertar zera o contador', async () => {
+    const ctx = await comSenhaDoTeo();
+    await login(pedidoLogin({ whatsapp: '11911112222', senha: 'chutando' }));
+    await login(pedidoLogin({ whatsapp: '11911112222', senha: 'senha-do-teo' }));
+
+    const depois = await prismaOwner.barbeiro.findUniqueOrThrow({ where: { id: ctx.teo.id } });
+    expect(depois.tentativasLogin).toBe(0);
   });
 });
