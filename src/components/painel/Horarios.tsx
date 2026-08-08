@@ -160,7 +160,7 @@ export function Horarios({ eu }: { eu: Eu }) {
             A mudança valeu; estes ficaram pendurados. Cancelar avisa o cliente.
           </Sub>
           {conflitos.map((c) => (
-            <Box key={c.id} variante="dash">
+            <Box key={c.id} variante="alerta">
               <div className="flex flex-wrap gap-2 items-center justify-between">
                 <span>{quando(c.inicio)} · {c.clienteNome}</span>
                 <Chip acento onClick={() => agir(() => painelApi.cancelar(c.id))}>

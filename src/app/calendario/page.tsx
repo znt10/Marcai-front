@@ -1,4 +1,4 @@
-import { Frame, StatusBar, Lbl } from '@/components/wf';
+import { Frame, Sub } from '@/components/wf';
 import { MiniCalendario } from '@/components/MiniCalendario';
 
 export default async function Calendario({
@@ -10,16 +10,15 @@ export default async function Calendario({
   if (!barbeiroId || !servicoId) {
     return (
       <Frame>
-        <Lbl>Escolhe o barbeiro e o serviço antes.</Lbl>
+        <Sub>Escolhe o barbeiro e o serviço antes.</Sub>
         <a href="/" className="text-[11px] md:text-xs text-lbl">‹ voltar</a>
       </Frame>
     );
   }
   return (
     <Frame>
-      <StatusBar />
       <a href="/" className="text-[11px] md:text-xs text-lbl">‹ voltar</a>
-      <h1 className="text-[17px] md:text-2xl font-normal m-0">Escolher outro dia</h1>
+      <h1>Escolher outro dia</h1>
       <MiniCalendario barbeiroId={barbeiroId} servicoId={servicoId} />
     </Frame>
   );

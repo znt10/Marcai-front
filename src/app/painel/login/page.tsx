@@ -4,7 +4,7 @@ import { FormLoginBarbeiro } from '@/components/painel/FormLoginBarbeiro';
 export default function LoginDoPainel() {
   return (
     <Frame>
-      <h1 className="text-[17px] font-normal">Painel</h1>
+      <h1>Painel</h1>
       <FormLoginBarbeiro />
     </Frame>
   );

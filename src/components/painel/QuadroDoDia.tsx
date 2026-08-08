@@ -50,9 +50,11 @@ export function QuadroDoDia() {
 
   return (
     <>
-      <div className="flex items-center justify-between gap-2">
+      {/* Estreito e centrado: num quadro de 1100px, `justify-between` jogava
+          as setas para os cantos opostos da tela. */}
+      <div className="flex items-center justify-between gap-3 w-full max-w-[260px]">
         <Box className="cursor-pointer" onClick={() => setDia(somar(dia, -1))}>←</Box>
-        <Lbl>{dia === hoje() ? 'hoje' : dia}</Lbl>
+        <Lbl className="font-dado">{dia === hoje() ? 'hoje' : dia}</Lbl>
         <Box className="cursor-pointer" onClick={() => setDia(somar(dia, 1))}>→</Box>
       </div>
 
@@ -87,10 +89,11 @@ function Coluna({ c }: { c: ColunaDoDia }) {
             {/* O horário sozinho mentiria: ele sai do serviço mais curto que
                 a pessoa faz, então vem sempre com o serviço que o justifica. */}
             {c.proximoLivre ? (
-              <div className="mt-1">
+              <div className="mt-1.5">
                 <Lbl>próximo livre</Lbl>
-                <div className="text-sm">
-                  {hora(c.proximoLivre)} <Sub className="inline">({c.servicoMaisCurto})</Sub>
+                <div className="text-base md:text-lg font-dado text-acento">
+                  {hora(c.proximoLivre)}{' '}
+                  <span className="font-corpo text-[12px] text-sub">({c.servicoMaisCurto})</span>
                 </div>
               </div>
             ) : c.servicoMaisCurto === null ? (
@@ -115,7 +118,7 @@ function Item({ i }: { i: ItemDoQuadro }) {
     return (
       <Box variante="mut">
         <div className="flex items-baseline justify-between gap-2">
-          <span>{hora(i.inicio)}</span>
+          <span className="font-dado">{hora(i.inicio)}</span>
           <Sub>▨ {MOTIVO[i.motivo] ?? 'bloqueio'}</Sub>
         </div>
         {i.observacao && <Sub>{i.observacao}</Sub>}

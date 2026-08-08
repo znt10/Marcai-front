@@ -15,7 +15,7 @@ export default function ServicosDoPainel() {
 
   return (
     <Frame>
-      <h1 className="text-[17px] font-normal">Serviços</h1>
+      <h1>Serviços</h1>
       {/* Todos entram: cada um marca o que faz. O catálogo, embaixo, só o dono. */}
       {eu ? <Servicos eu={eu} /> : <Sub>carregando…</Sub>}
       <a href="/painel"><Box>← voltar para a agenda</Box></a>
