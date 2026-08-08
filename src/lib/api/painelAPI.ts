@@ -38,6 +38,65 @@ export const painelApi = {
     pedir<{ ok: true }>(`/painel/agendamentos/${id}/cancelar`, { metodo: 'POST' }),
 };
 
+export type DiaDeTrabalho = {
+  diaSemana: number;
+  /// `null` nos dois = dia fechado. A ausência da linha é a representação de
+  /// "não trabalho" (o motor devolve vazio), e o `GET` manda os sete dias
+  /// sempre para a tela não confundir "fechado" com "não carregou".
+  minutosInicio: number | null;
+  minutosFim: number | null;
+};
+
+export type Bloqueio = {
+  id: string;
+  motivo: 'ALMOCO' | 'FOLGA' | 'PESSOAL' | 'OUTRO';
+  observacao: string | null;
+  repeteSemanalmente: boolean;
+  diaSemana: number | null;
+  minutosInicio: number | null;
+  minutosFim: number | null;
+  inicio: string | null;
+  fim: string | null;
+};
+
+export type Conflito = {
+  id: string; inicio: string; fim: string; servicoNome: string;
+  clienteNome: string; clienteWhatsapp: string;
+};
+
+/// Dono mexe no de todos, barbeiro no seu: `barbeiroId` ausente é "eu", e
+/// barbeiro pedindo o de um colega recebe 404.
+export const horariosApi = {
+  ver: (barbeiroId?: string, signal?: AbortSignal) =>
+    pedir<{ barbeiroId: string; expediente: DiaDeTrabalho[]; bloqueios: Bloqueio[] }>(
+      '/painel/expediente', { busca: { barbeiroId }, signal, loginEm: LOGIN_DO_PAINEL }),
+
+  definirDia: (p: { barbeiroId?: string; diaSemana: number; minutosInicio: number; minutosFim: number }) =>
+    pedir<{ ok: true }>('/painel/expediente', {
+      metodo: 'PUT', corpo: p, loginEm: LOGIN_DO_PAINEL,
+    }),
+
+  fecharDia: (diaSemana: number, barbeiroId?: string) =>
+    pedir<{ ok: true }>('/painel/expediente', {
+      metodo: 'DELETE', busca: { diaSemana, barbeiroId }, loginEm: LOGIN_DO_PAINEL,
+    }),
+
+  criarBloqueio: (p: Partial<Bloqueio> & { motivo: Bloqueio['motivo']; repeteSemanalmente: boolean; barbeiroId?: string }) =>
+    pedir<{ id: string }>('/painel/bloqueios', {
+      metodo: 'POST', corpo: p, loginEm: LOGIN_DO_PAINEL,
+    }),
+
+  apagarBloqueio: (id: string) =>
+    pedir<{ ok: true }>(`/painel/bloqueios/${id}`, {
+      metodo: 'DELETE', loginEm: LOGIN_DO_PAINEL,
+    }),
+
+  conflitos: (barbeiroId?: string, signal?: AbortSignal) =>
+    pedir<{ conflitos: Conflito[] }>('/painel/conflitos', {
+      busca: { barbeiroId }, signal, loginEm: LOGIN_DO_PAINEL,
+    }).then((d) => d.conflitos),
+};
+
 export type MembroDaEquipe = {
   id: string; nome: string; whatsapp: string;
   papel: Eu['papel']; ativo: boolean; desativadoEm: string | null;

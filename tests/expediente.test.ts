@@ -10,6 +10,7 @@ import { jornadaValida, bloqueioValido } from '@/lib/horarios';
 import { GET as ver, PUT as definir, DELETE as fechar } from '@/app/api/painel/expediente/route';
 import { POST as criarBloqueio } from '@/app/api/painel/bloqueios/route';
 import { DELETE as apagarBloqueio } from '@/app/api/painel/bloqueios/[id]/route';
+import { GET as conflitos } from '@/app/api/painel/conflitos/route';
 
 beforeAll(() => {
   process.env.SESSAO_JWT_SECRET = 'segredo-do-painel-com-mais-de-32-bytes-aqui';
@@ -320,5 +321,115 @@ describe('bloqueios', () => {
     });
     const jwt = await sessaoDe(ctx, 'teo');
     expect((await apagarBloqueio(...pedidoApagar(jwt, doRael.id))).status).toBe(200);
+  });
+});
+
+const pedidoConflitos = (jwt: string, busca = '') =>
+  new Request(`http://brutus.localhost/api/painel/conflitos${busca}`, {
+    headers: { 'x-barbearia-slug': 'brutus', cookie: `sessao=${jwt}` },
+  });
+
+/// Um agendamento CONFIRMADO amanhã, na hora local pedida.
+async function agendarAmanha(ctx: Ctx, barbeiroId: string, minutos: number, nome: string) {
+  const dia = somarDias(diaDeHoje(new Date()), 1);
+  const inicio = localParaUtc(dia, minutos);
+  const cliente = await prismaOwner.cliente.create({
+    data: { barbeariaId: ctx.barbearia.id, nome, whatsapp: `11955${minutos}0000`.slice(0, 11) },
+  });
+  return prismaOwner.agendamento.create({
+    data: {
+      barbeariaId: ctx.barbearia.id, codigo: Math.random().toString(36).slice(2, 12),
+      barbeiroId, clienteId: cliente.id, servicoId: ctx.corte.id,
+      servicoNome: 'Corte', inicio, fim: new Date(inicio.getTime() + 30 * 60_000),
+      duracaoMin: 30, status: 'CONFIRMADO',
+    },
+  });
+}
+
+describe('conflitos', () => {
+  it('lista o agendamento que ficou fora do expediente encurtado', async () => {
+    const ctx = await montarCenarioBrutus();
+    await agendarAmanha(ctx, ctx.rael.id, 19 * 60, 'Cliente das 19h');
+    const jwt = await sessaoDe(ctx, 'rael');
+
+    // Sem conflito enquanto o dia vai até meia-noite.
+    expect((await (await conflitos(pedidoConflitos(jwt))).json()).conflitos).toHaveLength(0);
+
+    // Encurta para 9h-18h: as 19h ficam de fora.
+    const amanha = diaSemanaDe(somarDias(diaDeHoje(new Date()), 1));
+    await definir(pedidoPut(jwt, {
+      diaSemana: amanha, minutosInicio: 9 * 60, minutosFim: 18 * 60,
+    }));
+
+    const { conflitos: lista } = await (await conflitos(pedidoConflitos(jwt))).json();
+    expect(lista).toHaveLength(1);
+    expect(lista[0].clienteNome).toBe('Cliente das 19h');
+  });
+
+  it('lista o que caiu dentro de bloqueio novo', async () => {
+    const ctx = await montarCenarioBrutus();
+    await agendarAmanha(ctx, ctx.rael.id, 14 * 60, 'Cliente das 14h');
+    const jwt = await sessaoDe(ctx, 'rael');
+
+    const dia = somarDias(diaDeHoje(new Date()), 1);
+    await criarBloqueio(pedidoBloqueio(jwt, {
+      motivo: 'PESSOAL', repeteSemanalmente: false,
+      inicio: localParaUtc(dia, 13 * 60).toISOString(),
+      fim: localParaUtc(dia, 15 * 60).toISOString(),
+    }));
+
+    const { conflitos: lista } = await (await conflitos(pedidoConflitos(jwt))).json();
+    expect(lista).toHaveLength(1);
+    expect(lista[0].clienteNome).toBe('Cliente das 14h');
+  });
+
+  it('não lista o que já passou nem o cancelado', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDe(ctx, 'rael');
+
+    // Passado: fora do expediente de ontem, mas já aconteceu.
+    const ontem = somarDias(diaDeHoje(new Date()), -1);
+    const cliente = await prismaOwner.cliente.create({
+      data: { barbeariaId: ctx.barbearia.id, nome: 'Antigo', whatsapp: '11933330000' },
+    });
+    const inicio = localParaUtc(ontem, 19 * 60);
+    await prismaOwner.agendamento.create({
+      data: {
+        barbeariaId: ctx.barbearia.id, codigo: Math.random().toString(36).slice(2, 12),
+        barbeiroId: ctx.rael.id, clienteId: cliente.id, servicoId: ctx.corte.id,
+        servicoNome: 'Corte', inicio, fim: new Date(inicio.getTime() + 1800_000),
+        duracaoMin: 30, status: 'CONFIRMADO',
+      },
+    });
+
+    // Cancelado no futuro, fora de qualquer expediente.
+    const futuro = await agendarAmanha(ctx, ctx.rael.id, 23 * 60, 'Cancelado');
+    await prismaOwner.agendamento.update({
+      where: { id: futuro.id },
+      data: { status: 'CANCELADO_CLIENTE', canceladoEm: new Date() },
+    });
+
+    const amanha = diaSemanaDe(somarDias(diaDeHoje(new Date()), 1));
+    await definir(pedidoPut(jwt, {
+      diaSemana: amanha, minutosInicio: 9 * 60, minutosFim: 18 * 60,
+    }));
+
+    const { conflitos: lista } = await (await conflitos(pedidoConflitos(jwt))).json();
+    expect(lista).toHaveLength(0);
+  });
+
+  it('o dono vê o conflito de qualquer um', async () => {
+    const ctx = await montarCenarioBrutus();
+    await agendarAmanha(ctx, ctx.rael.id, 19 * 60, 'Cliente das 19h');
+    const doRael = await sessaoDe(ctx, 'rael');
+    const amanha = diaSemanaDe(somarDias(diaDeHoje(new Date()), 1));
+    await definir(pedidoPut(doRael, {
+      diaSemana: amanha, minutosInicio: 9 * 60, minutosFim: 18 * 60,
+    }));
+
+    const doTeo = await sessaoDe(ctx, 'teo');
+    const { conflitos: lista } = await (await conflitos(
+      pedidoConflitos(doTeo, `?barbeiroId=${ctx.rael.id}`))).json();
+    expect(lista).toHaveLength(1);
   });
 });
