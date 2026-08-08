@@ -155,6 +155,33 @@ ativo, ter expediente e fazer algum serviço ativo. Faltando qualquer uma, o
 barbeiro não aparece na home — e a partir da Etapa 3 as três se resolvem pelo
 painel.
 
+## Quadro do dia (a equipe lado a lado)
+
+`/painel/dia` — uma coluna por barbeiro, no mesmo dia, com a jornada, quanto da
+agenda já está vendida e **o próximo horário livre de cada um**.
+
+Existe para a pergunta que a agenda não responde: com um cliente parado no
+balcão, *quem pega esse cara agora?* Na tela de agenda isso é trocar o barbeiro
+no seletor, procurar buraco, voltar e repetir — que é o tipo de coisa que faz o
+dono voltar para o caderno, porque o caderno mostra a equipe inteira de uma vez.
+
+**O horário livre nunca aparece sozinho**: ele sai do serviço *mais curto* que
+aquele barbeiro pratica, então vem com o nome dele (`16:00 (pezinho)`).
+Prometer "16:00" e o corte de 40 min não caber seria pior que não mostrar nada.
+
+**Ocupação desconta o almoço do denominador**, não conta como cliente. Com o
+bloqueio no denominador, um dia genuinamente lotado marcaria 88% e o dono nunca
+veria 100% — o número perderia a única leitura que interessa.
+
+Três estados diferentes no cabeçalho, porque pedem ações diferentes:
+`próximo livre 16:00` (encaixa), `sem buraco` (manda para outro) e **`sem
+serviço marcado`** (o mesmo defeito que a tela de equipe denuncia — esse
+barbeiro também não aparece para o cliente).
+
+**Barbeiro é para todo mundo, não só para o dono.** O barbeiro vê uma coluna, a
+dele, com o próximo livre que o painel não mostra em lugar nenhum. Quem filtra
+é o `filtroDoBarbeiro` da rota: pedir a coluna do colega devolve a própria.
+
 ## Testar
 
 ```bash

@@ -89,6 +89,9 @@ export function AgendaDoDia() {
       {/* O barbeiro não vê o link. A segurança está no 403 da rota; isto é não
           oferecer o que vai ser negado. */}
       {/* Horários e serviços são para todos: cada um mexe no que é seu. */}
+      {/* O quadro também: para o dono é a equipe lado a lado, para o barbeiro
+          é a própria coluna com o "próximo livre" que esta tela não mostra. */}
+      <a href="/painel/dia"><Box>quadro do dia</Box></a>
       <a href="/painel/horarios"><Box>meus horários</Box></a>
       <a href="/painel/servicos"><Box>meus serviços</Box></a>
       {eu?.papel === 'DONO' && <a href="/painel/equipe"><Box>equipe</Box></a>}
