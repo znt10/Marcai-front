@@ -10,7 +10,13 @@ const Corpo = z.object({
   nome: z.string().trim().min(2).max(80).optional(),
   whatsapp: z.string().optional(),
   papel: z.enum(['DONO', 'BARBEIRO']).optional(),
-});
+}).refine(
+  // Sem isto, `{}` passava e a rota respondia `ok: true` depois de um UPDATE
+  // sem campo nenhum — e a mensagem "Nada para mudar" só aparecia para JSON
+  // quebrado, que é outro problema.
+  (c) => c.nome !== undefined || c.whatsapp !== undefined || c.papel !== undefined,
+  { message: 'Nada para mudar.' },
+);
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const aberta = await comoDono(req);
@@ -34,8 +40,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const resultado = await comBarbeiro(aberta.barbearia.id, id, async (tx, barbeiro) => {
-    if (papel === 'BARBEIRO' && barbeiro.papel === 'DONO') {
-      const recusa = podeRebaixar({ donosAtivos: await contarDonosAtivos(tx) });
+    // `barbeiro.ativo` na condição: `contarDonosAtivos` conta só os ativos, e
+    // rebaixar um dono JÁ DESATIVADO não pode deixar a barbearia órfã. Sem
+    // isso, a casa com um dono ativo e um desativado recusava mexer no
+    // desativado dizendo "esse é o único dono ativo" — que ele não é.
+    if (papel === 'BARBEIRO' && barbeiro.papel === 'DONO' && barbeiro.ativo) {
+      const recusa = podeRebaixar({ donosAtivos: await contarDonosAtivos(tx, aberta.barbearia.id) });
       if (recusa) return { tipo: 'recusado' as const, erro: recusa };
     }
 

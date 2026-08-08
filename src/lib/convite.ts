@@ -26,8 +26,27 @@ export function gerarConvite(): { token: string; hash: string; expiraEm: Date } 
 /// domínio sem porta e sem esquema, porque é o que `slug.ts` compara com o
 /// host da requisição. Juntar as duas quebraria a resolução de tenant.
 export function linkDoConvite(slug: string, token: string): string {
-  const base = new URL(process.env.NEXT_PUBLIC_URL_BASE ?? 'http://localhost:3000');
+  const base = baseValida(process.env.NEXT_PUBLIC_URL_BASE);
   return `${base.protocol}//${slug}.${base.host}/convite/${token}`;
+}
+
+/// `new URL('seudominio.com.br')` LANÇA — falta o esquema. E esta função roda
+/// **depois** do commit: o barbeiro (ou a barbearia) já está gravado quando o
+/// erro subiria, e como o banco guarda só o hash, o link em claro se perderia
+/// para sempre. Uma variável mal preenchida no deploy não pode custar isso.
+///
+/// Sem esquema, assume `https` — quem escreve o domínio nu no `.env` de
+/// produção quer o site de produção, não localhost.
+function baseValida(bruta: string | undefined): URL {
+  const PADRAO = 'http://localhost:3000';
+  if (!bruta?.trim()) return new URL(PADRAO);
+  const comEsquema = /^https?:\/\//.test(bruta) ? bruta : `https://${bruta}`;
+  try {
+    return new URL(comEsquema);
+  } catch {
+    console.error('[convite] NEXT_PUBLIC_URL_BASE inválida:', bruta);
+    return new URL(PADRAO);
+  }
 }
 
 export const hashDe = (token: string) =>

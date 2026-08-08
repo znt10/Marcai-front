@@ -1,3 +1,5 @@
+import { formatarDiaCurto } from './datas';
+
 /// As recusas da tela de equipe, como funções **puras**: devolvem `null`
 /// quando pode, ou a mensagem quando não. Puras porque é a parte que precisa de
 /// teste exaustivo, e assim o teste não monta cenário de banco para exercitar
@@ -23,8 +25,11 @@ export function podeDesativar(p: {
     return 'Esse é o único dono ativo. Promove outra pessoa antes.';
   }
   if (p.agendamentosFuturos > 0) {
+    // Pelo fuso da barbearia, não pelo do servidor: em servidor UTC, um
+    // horário das 22h daqui cairia no dia seguinte, e a recusa apontaria uma
+    // data em que não há nada marcado.
     const quando = p.proximoEm
-      ? ` até ${p.proximoEm.toLocaleDateString('pt-BR')}`
+      ? ` até ${formatarDiaCurto(p.proximoEm)}`
       : '';
     return `Tem ${p.agendamentosFuturos} horário(s) marcado(s)${quando}. ` +
            'Cancela ou remarca antes de desativar.';

@@ -58,20 +58,32 @@ export const equipeApi = {
       signal, loginEm: LOGIN_DO_PAINEL,
     }).then((d) => d.equipe),
 
+  // As mutações também levam `loginEm`: a de editar pode derrubar a PRÓPRIA
+  // sessão (papel e celular incrementam o tokenVersion), e sem isso o 401
+  // seguinte pintaria "não autorizado" numa tela morta em vez de levar para a
+  // entrada.
   cadastrar: (dados: NovoBarbeiro) =>
     pedir<{ id: string; linkConvite: string }>('/painel/equipe', {
-      metodo: 'POST', corpo: dados,
+      metodo: 'POST', corpo: dados, loginEm: LOGIN_DO_PAINEL,
     }),
 
   editar: (id: string, dados: Partial<NovoBarbeiro>) =>
-    pedir<{ ok: true }>(`/painel/equipe/${id}`, { metodo: 'PATCH', corpo: dados }),
+    pedir<{ ok: true }>(`/painel/equipe/${id}`, {
+      metodo: 'PATCH', corpo: dados, loginEm: LOGIN_DO_PAINEL,
+    }),
 
   reemitirConvite: (id: string) =>
-    pedir<{ linkConvite: string }>(`/painel/equipe/${id}/convite`, { metodo: 'POST' }),
+    pedir<{ linkConvite: string }>(`/painel/equipe/${id}/convite`, {
+      metodo: 'POST', loginEm: LOGIN_DO_PAINEL,
+    }),
 
   desativar: (id: string) =>
-    pedir<{ ok: true }>(`/painel/equipe/${id}/desativar`, { metodo: 'POST' }),
+    pedir<{ ok: true }>(`/painel/equipe/${id}/desativar`, {
+      metodo: 'POST', loginEm: LOGIN_DO_PAINEL,
+    }),
 
   reativar: (id: string) =>
-    pedir<{ ok: true }>(`/painel/equipe/${id}/reativar`, { metodo: 'POST' }),
+    pedir<{ ok: true }>(`/painel/equipe/${id}/reativar`, {
+      metodo: 'POST', loginEm: LOGIN_DO_PAINEL,
+    }),
 };

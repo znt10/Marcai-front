@@ -33,8 +33,27 @@ export const ehResposta = (x: unknown): x is NextResponse => x instanceof NextRe
 /// Conta quantos donos ATIVOS a barbearia tem. É o número que sustenta as duas
 /// recusas de "último dono" — sem ele, rebaixar ou desativar deixaria a
 /// barbearia órfã, e só o admin da plataforma destravaria.
-export function contarDonosAtivos(tx: Prisma.TransactionClient): Promise<number> {
-  return tx.barbeiro.count({ where: { papel: 'DONO', ativo: true } });
+///
+/// **Trava os donos ativos antes de contar.** A conta é lida numa transação
+/// READ COMMITTED e o UPDATE vem depois: dois donos se rebaixando ao mesmo
+/// tempo leriam `2` os dois, os dois passariam, e a barbearia terminaria com
+/// zero donos ativos — exatamente o estado que a recusa existe para impedir.
+/// Com o `FOR UPDATE`, a segunda transação espera a primeira e relê o número
+/// já atualizado.
+///
+/// A trava é nas linhas de `Barbeiro`, não na da `Barbearia`: o Postgres exige
+/// privilégio de UPDATE para `FOR UPDATE`, e o papel `brutus_app` não tem
+/// UPDATE em `Barbearia` de propósito — só o admin da plataforma mexe lá.
+/// Travar as linhas de que a decisão depende é mais preciso, e cabe dentro do
+/// que o papel pode.
+export async function contarDonosAtivos(
+  tx: Prisma.TransactionClient, barbeariaId: string,
+): Promise<number> {
+  const travados = await tx.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "Barbeiro"
+    WHERE "barbeariaId" = ${barbeariaId} AND papel = 'DONO' AND ativo = true
+    FOR UPDATE`;
+  return travados.length;
 }
 
 /// Agendamentos CONFIRMADOS no futuro daquele barbeiro, e a data do último.
