@@ -125,3 +125,29 @@ describe('linkDoConvite', () => {
     expect(linkDoConvite('brutus', 'abc')).toBe('http://brutus.localhost:3000/convite/abc');
   });
 });
+
+describe('linkDoConvite com variavel mal preenchida', () => {
+  const original = process.env.NEXT_PUBLIC_URL_BASE;
+  afterEach(() => { process.env.NEXT_PUBLIC_URL_BASE = original; });
+
+  it('dominio sem esquema assume https em vez de lancar', async () => {
+    // `new URL('agenda.com.br')` lança — e esta função roda DEPOIS do commit,
+    // com o convite ja gravado e so o hash no banco: o link em claro se
+    // perderia para sempre por causa de um .env mal preenchido.
+    process.env.NEXT_PUBLIC_URL_BASE = 'agenda.com.br';
+    const { linkDoConvite } = await import('@/lib/convite');
+    expect(linkDoConvite('brutus', 'abc')).toBe('https://brutus.agenda.com.br/convite/abc');
+  });
+
+  it('valor impossivel cai no padrao sem lancar', async () => {
+    process.env.NEXT_PUBLIC_URL_BASE = ':::';
+    const { linkDoConvite } = await import('@/lib/convite');
+    expect(() => linkDoConvite('brutus', 'abc')).not.toThrow();
+  });
+
+  it('vazio cai no padrao', async () => {
+    process.env.NEXT_PUBLIC_URL_BASE = '';
+    const { linkDoConvite } = await import('@/lib/convite');
+    expect(linkDoConvite('brutus', 'abc')).toBe('http://brutus.localhost:3000/convite/abc');
+  });
+});

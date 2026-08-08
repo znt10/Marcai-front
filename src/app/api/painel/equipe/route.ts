@@ -36,7 +36,17 @@ export async function GET(req: Request) {
       select: {
         id: true, nome: true, whatsapp: true, papel: true, ativo: true,
         desativadoEm: true, senhaHash: true, conviteExpiraEm: true,
-        _count: { select: { servicos: true, horarios: true } },
+        // Os MESMOS filtros de `GET /api/servicos`: vínculo ativo E serviço
+        // ativo. Contar tudo diria "3 serviços" para quem tem os três
+        // desativados — e aí o aviso "sem serviço" não apareceria justamente
+        // para quem sumiu da tela do cliente, que é o caso que esta tela
+        // existe para revelar.
+        _count: {
+          select: {
+            servicos: { where: { ativo: true, servico: { ativo: true } } },
+            horarios: true,
+          },
+        },
       },
     });
 

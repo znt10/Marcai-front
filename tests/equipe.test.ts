@@ -379,3 +379,75 @@ describe('desativar, reativar e reemitir', () => {
     expect(intacto.ativo).toBe(true);
   });
 });
+
+// ─── Achados da revisão da PR #8 ──────────────────────────────────────────
+
+describe('o que a revisao pegou', () => {
+  it('serviço desativado não conta: quem sumiu da tela do cliente é avisado', async () => {
+    const ctx = await montarCenarioBrutus();
+    // Rael faz só Corte; desativando o vínculo, ele some da rota pública.
+    await prismaOwner.barbeiroServico.updateMany({
+      where: { barbeiroId: ctx.rael.id }, data: { ativo: false },
+    });
+
+    const { equipe: lista } = await (await equipe(pedido(await sessaoDoDono(ctx)))).json();
+    expect(lista.find((m: { nome: string }) => m.nome === 'Rael').servicos).toBe(0);
+
+    const { barbeiros } = await (await barbeirosPublicos(
+      new Request('http://brutus.localhost/api/barbeiros',
+                  { headers: { 'x-barbearia-slug': 'brutus' } }),
+    )).json();
+    expect(barbeiros.map((b: { nome: string }) => b.nome)).not.toContain('Rael');
+  });
+
+  it('serviço desativado NA BARBEARIA também não conta', async () => {
+    const ctx = await montarCenarioBrutus();
+    await prismaOwner.servico.update({
+      where: { id: ctx.corte.id }, data: { ativo: false },
+    });
+    const { equipe: lista } = await (await equipe(pedido(await sessaoDoDono(ctx)))).json();
+    // Rael só fazia Corte.
+    expect(lista.find((m: { nome: string }) => m.nome === 'Rael').servicos).toBe(0);
+  });
+
+  it('rebaixar dono JÁ DESATIVADO é permitido', async () => {
+    const ctx = await montarCenarioBrutus();
+    await prismaOwner.barbeiro.update({
+      where: { id: ctx.rael.id },
+      data: { papel: 'DONO', ativo: false, desativadoEm: new Date() },
+    });
+    const jwt = await sessaoDoDono(ctx);
+    // Téo é o único dono ATIVO, mas rebaixar o desativado não orfana nada.
+    expect((await editar(...comId(jwt, ctx.rael.id, '', { papel: 'BARBEIRO' }))).status).toBe(200);
+  });
+
+  it('corpo vazio é 422, não um ok que não mudou nada', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDoDono(ctx);
+    const res = await editar(...comId(jwt, ctx.rael.id, '', {}));
+    expect(res.status).toBe(422);
+  });
+
+  it('reemitir convite para quem está desativado é 409', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDoDono(ctx);
+    await desativar(...comId(jwt, ctx.rael.id, '/desativar'));
+
+    const res = await reemitir(...comId(jwt, ctx.rael.id, '/convite'));
+    expect(res.status).toBe(409);
+
+    // E nada foi mexido: sem convite novo, sem senha zerada.
+    const depois = await prismaOwner.barbeiro.findUniqueOrThrow({ where: { id: ctx.rael.id } });
+    expect(depois.conviteTokenHash).toBeNull();
+  });
+
+  it('a data da recusa sai no fuso da barbearia', async () => {
+    // 2026-08-08T01:30Z é ainda dia 7 em Sao Paulo (22:30). Formatar pelo fuso
+    // do servidor diria 08/08, e a recusa apontaria um dia sem nada marcado.
+    const erro = podeDesativar({
+      ehEuMesmo: false, papel: 'BARBEIRO', donosAtivos: 2,
+      agendamentosFuturos: 1, proximoEm: new Date('2026-08-08T01:30:00Z'),
+    });
+    expect(erro).toContain('07/08');
+  });
+});
