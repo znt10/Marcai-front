@@ -16,7 +16,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const recusa = podeDesativar({
       ehEuMesmo: barbeiro.id === aberta.sessao.sub,
       papel: barbeiro.papel,
-      donosAtivos: await contarDonosAtivos(tx),
+      donosAtivos: await contarDonosAtivos(tx, aberta.barbearia.id),
       agendamentosFuturos: agenda.quantos,
       proximoEm: agenda.proximoEm,
     });

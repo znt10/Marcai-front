@@ -23,8 +23,17 @@ export function Equipe({ recarregarEm, euId }: { recarregarEm?: number; euId?: s
   const [erro, setErro] = useState('');
   const [link, setLink] = useState('');
 
+  /// O erro da CARGA precisa virar texto na tela, não rejeição solta: sem
+  /// isto, um 403 (barbeiro abrindo a rota na unha) ou um 500 deixavam
+  /// `equipe` em null e a tela em "carregando…" para sempre, sem dizer nada.
   const carregar = useCallback((signal?: AbortSignal) =>
-    equipeApi.listar(signal).then(setEquipe).catch(ignorarAborto), []);
+    equipeApi.listar(signal)
+      .then((lista) => { setEquipe(lista); setErro(''); })
+      .catch((e) => {
+        if ((e as Error)?.name === 'AbortError') return;
+        setEquipe([]);
+        setErro(mensagemDoErro(e));
+      }), []);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -70,11 +79,17 @@ export function Equipe({ recarregarEm, euId }: { recarregarEm?: number; euId?: s
               setLink((await equipeApi.reemitirConvite(m.id)).linkConvite))}>
               novo convite
             </Chip>
-            <Chip onClick={() => agir(() => equipeApi.editar(m.id, {
-              papel: m.papel === 'DONO' ? 'BARBEIRO' : 'DONO',
-            }))}>
-              {m.papel === 'DONO' ? 'rebaixar' : 'promover'}
-            </Chip>
+            {/* Não na própria linha: rebaixar a si mesmo é permitido pela
+                regra (havendo outro dono) e incrementa o tokenVersion — um
+                clique sem confirmação mataria a sua própria sessão. É o mesmo
+                cuidado que o servidor tem em `ehEuMesmo` para desativar. */}
+            {m.id !== euId && (
+              <Chip onClick={() => agir(() => equipeApi.editar(m.id, {
+                papel: m.papel === 'DONO' ? 'BARBEIRO' : 'DONO',
+              }))}>
+                {m.papel === 'DONO' ? 'rebaixar' : 'promover'}
+              </Chip>
+            )}
             {m.ativo
               ? <Chip acento onClick={() => agir(() => equipeApi.desativar(m.id))}>desativar</Chip>
               : <Chip onClick={() => agir(() => equipeApi.reativar(m.id))}>reativar</Chip>}
