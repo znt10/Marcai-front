@@ -19,7 +19,7 @@ export class ErroApi extends Error {
 export type Busca = Record<string, string | number | undefined>;
 
 export type Pedido = {
-  metodo?: 'GET' | 'POST' | 'PATCH';
+  metodo?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   corpo?: unknown;
   busca?: Busca;
   signal?: AbortSignal;

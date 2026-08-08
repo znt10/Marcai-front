@@ -88,6 +88,8 @@ export function AgendaDoDia() {
       <a href="/painel/novo"><Box variante="fill">+ marcar na mão</Box></a>
       {/* O barbeiro não vê o link. A segurança está no 403 da rota; isto é não
           oferecer o que vai ser negado. */}
+      {/* Horários é para todos: cada um mexe no próprio expediente. */}
+      <a href="/painel/horarios"><Box>meus horários</Box></a>
       {eu?.papel === 'DONO' && <a href="/painel/equipe"><Box>equipe</Box></a>}
     </>
   );
