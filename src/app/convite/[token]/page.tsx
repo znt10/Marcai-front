@@ -1,5 +1,5 @@
 import { barbeariaAtual } from '@/lib/tenant';
-import { Frame, StatusBar, Sub } from '@/components/wf';
+import { Frame, Sub } from '@/components/wf';
 import { DefinirSenha } from '@/components/DefinirSenha';
 
 export default async function Convite({ params }: { params: Promise<{ token: string }> }) {
@@ -9,9 +9,8 @@ export default async function Convite({ params }: { params: Promise<{ token: str
   const b = await barbeariaAtual();
 
   return (
-    <Frame>
-      <StatusBar />
-      <h1 className="text-[17px] md:text-2xl font-normal m-0">Criar sua senha</h1>
+    <Frame>
+      <h1>Criar sua senha</h1>
       <Sub>{b.nome}</Sub>
       <DefinirSenha token={token} />
     </Frame>

@@ -143,11 +143,11 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
         {!servicoId && <Sub>Escolhe o serviço pra ver os horários.</Sub>}
         {dias.map(d => (
           <div key={d.data} className="flex flex-col gap-2">
-            <Lbl className="text-[#444]">{d.rotulo}</Lbl>
+            <Lbl>{d.rotulo}</Lbl>
             {d.slots.length === 0 ? <Sub>sem vaga nesse dia</Sub> : (
               <Row wrap>
                 {d.slots.map(s => (
-                  <Chip key={s.inicio} ativo={slot?.inicio === s.inicio} onClick={() => setSlot(s)}>
+                  <Chip key={s.inicio} dado ativo={slot?.inicio === s.inicio} onClick={() => setSlot(s)}>
                     {s.hora}
                   </Chip>
                 ))}
@@ -155,7 +155,7 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
             )}
           </div>
         ))}
-        {servicoId && <Lbl>só aparece o que está livre</Lbl>}
+        {servicoId && <Sub>só aparece o que está livre</Sub>}
 
         {barbeiroId && servicoId && (
           <a href={`/calendario?barbeiroId=${barbeiroId}&servicoId=${servicoId}`}>
