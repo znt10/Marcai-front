@@ -19,7 +19,7 @@ export default function EquipeDoPainel() {
 
   return (
     <Frame>
-      <h1 className="text-[17px] font-normal">Equipe</h1>
+      <h1>Equipe</h1>
 
       {/* A barreira de verdade é o 403 da rota; isto aqui é só não mostrar ao
           barbeiro uma tela que não vai carregar. */}

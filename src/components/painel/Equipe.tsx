@@ -99,12 +99,12 @@ export function Equipe({ recarregarEm, euId }: { recarregarEm?: number; euId?: s
 
       {erro && <Sub className="text-acento">{erro}</Sub>}
       {link && (
-        <Box variante="dash" className="break-all">
-          <Lbl>manda esse link — ele só aparece uma vez</Lbl>
+        <Box variante="copia" className="break-all">
+          <Sub>manda esse link — ele só aparece uma vez</Sub>
           {link}
         </Box>
       )}
-      <Lbl>trocar o celular ou o papel derruba a sessão daquela pessoa</Lbl>
+      <Sub>trocar o celular ou o papel derruba a sessão daquela pessoa</Sub>
     </>
   );
 }

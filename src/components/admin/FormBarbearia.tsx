@@ -54,8 +54,8 @@ export function FormBarbearia({ aoCriar }: { aoCriar?: () => void }) {
         {enviando ? 'criando…' : 'criar barbearia'}
       </Box>
       {link && (
-        <Box variante="dash" className="break-all">
-          <Lbl>link de convite do dono — só aparece uma vez</Lbl>
+        <Box variante="copia" className="break-all">
+          <Sub>link de convite do dono — só aparece uma vez</Sub>
           {link}
         </Box>
       )}

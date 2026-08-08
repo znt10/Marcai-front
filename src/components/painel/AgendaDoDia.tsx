@@ -67,7 +67,7 @@ export function AgendaDoDia() {
       {itens?.map((i) => (
         <Box key={i.id}>
           <div className="flex items-baseline justify-between gap-2">
-            <span>{hora(i.inicio)} · {i.clienteNome}</span>
+            <span><span className="font-dado">{hora(i.inicio)}</span> · {i.clienteNome}</span>
             <Sub>{i.servicoNome}</Sub>
           </div>
           {/* O nome do barbeiro só faz sentido para quem vê a agenda de mais

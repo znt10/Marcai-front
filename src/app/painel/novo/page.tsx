@@ -17,7 +17,7 @@ export default function Novo() {
 
   return (
     <Frame>
-      <h1 className="text-[17px] font-normal">Marcar na mão</h1>
+      <h1>Marcar na mão</h1>
       {eu ? <FormMarcar eu={eu} /> : <Sub>carregando…</Sub>}
     </Frame>
   );

@@ -62,12 +62,12 @@ export function ListaBarbearias({ recarregarEm }: { recarregarEm?: number }) {
       ))}
       {erro && <Sub className="text-acento">{erro}</Sub>}
       {link && (
-        <Box variante="dash" className="break-all">
-          <Lbl>manda esse link pro dono — ele só aparece uma vez</Lbl>
+        <Box variante="copia" className="break-all">
+          <Sub>manda esse link pro dono — ele só aparece uma vez</Sub>
           {link}
         </Box>
       )}
-      <Lbl>desativar leva até um minuto para tirar a barbearia do ar</Lbl>
+      <Sub>desativar leva até um minuto para tirar a barbearia do ar</Sub>
     </>
   );
 }

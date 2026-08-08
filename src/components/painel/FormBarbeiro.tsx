@@ -59,12 +59,12 @@ export function FormBarbeiro({ aoCriar }: { aoCriar?: () => void }) {
       </Box>
 
       {link && (
-        <Box variante="dash" className="break-all">
-          <Lbl>link do convite — mandamos no WhatsApp, e ele só aparece aqui uma vez</Lbl>
+        <Box variante="copia" className="break-all">
+          <Sub>link do convite — mandamos no WhatsApp, e ele só aparece aqui uma vez</Sub>
           {link}
         </Box>
       )}
-      <Lbl>quem entra agora não aparece para o cliente até ter serviço e expediente</Lbl>
+      <Sub>quem entra agora não aparece para o cliente até ter serviço e expediente</Sub>
     </>
   );
 }
