@@ -10,12 +10,13 @@ export type {
 } from './publicoAPI';
 
 export {
-  painelApi, equipeApi, horariosApi, servicosApi, LOGIN_DO_PAINEL,
+  painelApi, equipeApi, horariosApi, servicosApi, quadroApi, LOGIN_DO_PAINEL,
 } from './painelAPI';
 export type {
   Eu, ItemDaAgenda, MembroDaEquipe, NovoBarbeiro,
   DiaDeTrabalho, Bloqueio, Conflito,
   ServicoDoCatalogo, VinculoDeServico,
+  ColunaDoDia, ItemDoQuadro,
 } from './painelAPI';
 
 export { adminApi, LOGIN_DO_ADMIN } from './adminAPI';
