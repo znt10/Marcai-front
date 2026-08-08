@@ -8,6 +8,7 @@ import { slotsDoDia } from '@/lib/agenda';
 import { normalizar } from '@/lib/telefone';
 import { enviarTexto } from '@/lib/whatsapp';
 import { msgConfirmacao } from '@/lib/mensagens';
+import { lembreteAoCriar } from '@/lib/lembrete';
 import { utcParaLocal } from '@/lib/datas';
 
 const gerarCodigo = customAlphabet('23456789abcdefghjkmnpqrstuvwxyz', 10);
@@ -109,6 +110,10 @@ export async function POST(req: Request) {
           barbeiroId, clienteId: cliente.id, servicoId,
           servicoNome: vinculo.servico.nome,
           inicio, fim, duracaoMin, status: 'CONFIRMADO',
+          // O encaixe de balcão cai SEMPRE aqui: o padrão da tela é 30 min, e
+          // sem isto o cliente receberia "Lembrete:" minutos depois de ter
+          // marcado com o barbeiro na frente dele.
+          lembreteEnviadoEm: lembreteAoCriar(inicio, agora),
         },
         include: { barbeiro: { select: { nome: true } } },
       });

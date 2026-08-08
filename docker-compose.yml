@@ -40,5 +40,36 @@ services:
     depends_on:
       db: { condition: service_healthy }
 
+  # O que faz o lembrete existir. A rota `/api/cron/lembretes` estava escrita e
+  # protegida desde a Etapa 1, e nada a chamava — a tela prometia ao cliente
+  # "mandamos o lembrete 1h antes" e ninguém mandava.
+  #
+  # Processo separado, e não um cron dentro do Next, por duas razões: ele
+  # sobrevive a reinício da aplicação, e `docker compose logs agendador`
+  # responde "está rodando?" sem instrumentar nada.
+  #
+  # O tique é de 10 min (LEMBRETE_TIQUE_MIN) contra uma janela de 60: a
+  # mensagem sai entre 50 e 60 minutos antes. Tique MAIOR que a janela perderia
+  # agendamento — quem entra nela entre dois tiques nunca seria visto.
+  agendador:
+    image: curlimages/curl:8.11.1
+    restart: unless-stopped
+    environment:
+      # `$$` escapa a interpolação do compose: quem expande é o shell de
+      # dentro, então o segredo não fica escrito no comando do contêiner.
+      CRON_SECRET: ${CRON_SECRET}
+    # Bate assim que sobe, e só então dorme: `docker compose up` dá o retorno
+    # na hora em vez de dez minutos depois. Erro de curl não mata o laço —
+    # app ainda subindo é normal.
+    #
+    # Vetor, e não `command: >`: em escalar dobrado do YAML, linha MAIS
+    # indentada conserva a quebra em vez de virar espaço, e o comando chega
+    # partido ao shell (`sh: -H: not found`).
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - 'while true; do echo "[agendador] $$(date -u +%H:%M:%S) $$(curl -sS -X POST -H "Authorization: Bearer $$CRON_SECRET" http://app:3000/api/cron/lembretes || echo falhou)"; sleep 600; done'
+    depends_on:
+      app: { condition: service_started }
+
 volumes:
   pgdata:
