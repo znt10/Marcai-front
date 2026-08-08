@@ -5,6 +5,8 @@ import { montarCenarioBrutus } from './cenarios';
 import { GET as servicos } from '@/app/api/servicos/route';
 import { GET as barbeiros } from '@/app/api/barbeiros/route';
 import { GET as horarios } from '@/app/api/horarios/route';
+import { GET as dia } from '@/app/api/painel/dia/route';
+import { emitirSessao } from '@/lib/auth';
 import { diaDeHoje } from '@/lib/datas';
 
 /// As telas do painel consomem três rotas públicas em vez de ganharem rotas
@@ -55,6 +57,25 @@ describe('contratos que o painel consome', () => {
     expect(corpo.dias[0].data).toBe(hoje);
     expect(typeof corpo.dias[0].rotulo).toBe('string');
     expect(Array.isArray(corpo.dias[0].slots)).toBe(true);
+  });
+
+  it('/api/painel/dia devolve { colunas: [...] } com as chaves que o quadro lê', async () => {
+    const ctx = await montarCenarioBrutus();
+    process.env.SESSAO_JWT_SECRET = 'segredo-do-painel-com-mais-de-32-bytes-aqui';
+    const jwt = await emitirSessao({
+      sub: ctx.teo.id, bid: ctx.barbearia.id, papel: 'DONO', tv: 0,
+    });
+    const corpo = await (await dia(new Request('http://brutus.localhost/api/painel/dia', {
+      headers: { 'x-barbearia-slug': 'brutus', cookie: `sessao=${jwt}` },
+    }))).json();
+
+    expect(Array.isArray(corpo.colunas)).toBe(true);
+    // Renomear um campo aqui passa por `tsc` (a rota não implementa o tipo da
+    // camada de API, ela só devolve um objeto) e só quebra no navegador.
+    expect(Object.keys(corpo.colunas[0]).sort()).toEqual([
+      'abre', 'ativo', 'barbeiroId', 'barbeiroNome', 'fecha', 'itens',
+      'ocupacaoPct', 'papel', 'proximoLivre', 'servicoMaisCurto',
+    ]);
   });
 
   it('cada slot traz hora, inicio e barbeiroId — o que o formulário usa', async () => {

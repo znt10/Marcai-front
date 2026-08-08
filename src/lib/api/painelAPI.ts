@@ -38,6 +38,41 @@ export const painelApi = {
     pedir<{ ok: true }>(`/painel/agendamentos/${id}/cancelar`, { metodo: 'POST' }),
 };
 
+/// O bloqueio chega aqui já traduzido em instante do dia pedido — a tela nunca
+/// vê `repeteSemanalmente`. Por isso os dois itens têm a mesma forma e cabem
+/// na mesma lista ordenada por hora.
+export type ItemDoQuadro =
+  | {
+      tipo: 'AGENDAMENTO'; id: string; inicio: string; fim: string;
+      servicoNome: string; clienteNome: string; clienteWhatsapp: string;
+    }
+  | {
+      tipo: 'BLOQUEIO'; id: string; inicio: string; fim: string;
+      motivo: Bloqueio['motivo']; observacao: string | null;
+    };
+
+export type ColunaDoDia = {
+  barbeiroId: string; barbeiroNome: string; papel: Eu['papel']; ativo: boolean;
+  /// `null` nos dois = dia fechado. Diferente de zero por cento: um é ruim, o
+  /// outro é sábado à noite.
+  abre: number | null; fecha: number | null;
+  ocupacaoPct: number | null;
+  /// O horário nunca aparece sem `servicoMaisCurto`: ele sai do serviço MAIS CURTO
+  /// que o barbeiro pratica, então prometer "16:00 livre" sozinho seria
+  /// prometer o corte de 40 min que não cabe ali.
+  proximoLivre: string | null; servicoMaisCurto: string | null;
+  itens: ItemDoQuadro[];
+};
+
+/// Uma chamada, o quadro pronto: a lista de barbeiros só sai de `/painel/equipe`
+/// (403 para barbeiro) e o próximo horário livre é cálculo do motor de slots.
+export const quadroApi = {
+  ver: (dia: string, signal?: AbortSignal) =>
+    pedir<{ dia: string; colunas: ColunaDoDia[] }>('/painel/dia', {
+      busca: { dia }, signal, loginEm: LOGIN_DO_PAINEL,
+    }).then((d) => d.colunas),
+};
+
 export type DiaDeTrabalho = {
   diaSemana: number;
   /// `null` nos dois = dia fechado. A ausência da linha é a representação de
