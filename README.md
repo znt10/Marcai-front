@@ -107,6 +107,31 @@ por até 12 h. Trocar só o nome não derruba nada.
 
 Reemitir convite **é** o reset de senha: `senhaHash` volta a nulo.
 
+## Horários (cada um no seu)
+
+`/painel/horarios` — expediente por dia da semana, folgas e pausas. **Dono mexe
+no de todos, barbeiro só no seu**; expediente de colega responde 404. É
+diferente da equipe, que é só do dono: lá se decide quem é da casa, aqui quando
+cada um trabalha.
+
+**Fechar um dia é apagar a linha** de `HorarioTrabalho`. A ausência já é a
+representação de "não trabalho" — o motor devolve agenda vazia na primeira
+linha —, e ter uma segunda forma de dizer isso (jornada de duração zero) daria
+dois jeitos de expressar o mesmo estado.
+
+**Um intervalo por dia.** Jornada partida se escreve como expediente 9h–20h mais
+um bloqueio semanal de 12h–13h, que é como o seed já monta o almoço.
+
+**Bloqueio é semanal ou pontual, nunca os dois.** Mandar os dois conjuntos de
+campos é 422: o motor lê um formato ou o outro, e uma linha com os dois teria
+interpretação dependente de qual campo alguém leu primeiro.
+
+**Encurtar o expediente por cima de horário vendido é permitido** — e a tela
+lista o que ficou pendurado, com o botão de cancelar (que avisa o cliente). É de
+propósito diferente da recusa ao desativar barbeiro: fechar a agenda é o que se
+faz agora, com o braço quebrado, e recusar deixaria o cliente batendo numa porta
+fechada.
+
 ## Testar
 
 ```bash
