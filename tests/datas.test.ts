@@ -48,3 +48,16 @@ describe('navegação de dias', () => {
     expect(diaSemanaDe('2026-08-05')).toBe(3);
   });
 });
+
+describe('localParaUtc no limite do dia', () => {
+  it('1440 minutos é a meia-noite do dia seguinte, não data inválida', () => {
+    const fim = localParaUtc('2026-08-07', 24 * 60);
+    expect(Number.isNaN(fim.getTime())).toBe(false);
+    expect(fim.getTime()).toBe(localParaUtc('2026-08-08', 0).getTime());
+  });
+
+  it('meia-noite continua sendo o começo do próprio dia', () => {
+    expect(localParaUtc('2026-08-07', 0).getTime())
+      .toBeLessThan(localParaUtc('2026-08-07', 1).getTime());
+  });
+});
