@@ -1,5 +1,5 @@
 import { barbeariaAtual } from '@/lib/tenant';
-import { Frame, StatusBar, Sub, Sep } from '@/components/wf';
+import { Frame, Sub, Sep } from '@/components/wf';
 import { FormAgendamento } from '@/components/FormAgendamento';
 
 export default async function Home({
@@ -11,9 +11,8 @@ export default async function Home({
   const { barbeiroId, servicoId, inicio } = await searchParams;
 
   return (
-    <Frame largo>
-      <StatusBar />
-      <h1 className="text-[17px] md:text-2xl font-normal m-0">
+    <Frame largo>
+      <h1>
         {b.nome} <span className="text-[11px] md:text-sm text-sub">barbearia</span>
       </h1>
       <Sub>{b.endereco} · {b.horarioResumo}</Sub>

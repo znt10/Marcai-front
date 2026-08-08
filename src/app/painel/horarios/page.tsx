@@ -15,7 +15,7 @@ export default function HorariosDoPainel() {
 
   return (
     <Frame>
-      <h1 className="text-[17px] font-normal">Horários</h1>
+      <h1>Horários</h1>
       {/* Todo mundo entra aqui: cada um mexe no seu, e o dono no de todos. */}
       {eu ? <Horarios eu={eu} /> : <Sub>carregando…</Sub>}
       <a href="/painel"><Box>← voltar para a agenda</Box></a>

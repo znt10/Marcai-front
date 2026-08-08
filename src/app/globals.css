@@ -1,26 +1,77 @@
 @import "tailwindcss";
 
-/* Tokens travados do wireframe. Nenhuma cor literal fora daqui: o wireframe
-   é a fonte da verdade visual, e um #2a2a2a solto num componente é como a
-   próxima tela começa a divergir dele. */
+/* Identidade BRUTUS — Etapa 4. Nenhuma cor literal fora daqui: um #c98a45
+   solto num componente é como a próxima tela começa a divergir desta.
+
+   Nogueira queimada em vez de preto neutro. Preto puro com um acento
+   fluorescente é o escuro que todo mundo faz; o marrom escuro é o de uma
+   barbearia com a luz morna acesa — e é o que faz o âmbar parecer luz, e não
+   destaque de marca-texto. */
 @theme {
-  /* traço — cor de toda borda e todo preenchimento sólido */
-  --color-traco:      #2a2a2a;
-  --color-acento:     #5b46d9;
+  --color-fundo:      #14100e;   /* o chão */
+  --color-superficie: #1e1815;   /* cartão, um degrau acima do chão */
+  --color-borda:      #34291f;   /* fio quente de 1px, discreto de propósito */
 
-  /* texto */
-  --color-sub:        #777777;
-  --color-lbl:        #888888;
-  --color-apagado:    #999999;
+  /* Branco morno. Branco puro sobre #14100e é lâmina: cansa em lista longa,
+     que é o que estas telas são. */
+  --color-tinta:      #f2ebe1;
+  --color-sub:        #a3948a;
+  --color-lbl:        #8d7f75;
+  --color-apagado:    #6c5e54;
 
-  /* superfícies e linhas */
-  --color-mut:        #efefef;
-  --color-mut-borda:  #cccccc;
-  --color-linha:      #e2e2e2;
-  --color-regua:      #dddddd;
+  /* Latão: botão que conclui, escolhido, erro. */
+  --color-acento:     #c98a45;
 
-  --radius-wf:        6px;
-  --shadow-sel:       2px 2px 0 #2a2a2a;
+  /* Verde esmalte — SÓ "tem vaga". É o segundo sinal da interface: no
+     calendário, dia livre e dia lotado deixam de se distinguir só por
+     opacidade, que é a diferença que some no sol da calçada. */
+  --color-livre:      #5c8a6d;
+
+  --color-mut:        #191411;   /* superfície desligada */
+  --color-mut-borda:  #29211b;
+  --color-linha:      #241d18;
+
+  --radius-wf:        4px;
+
+  /* O gesto mais característico do wireframe, traduzido: sombra sólida sem
+     blur é o que uma barbearia tem na fachada — letreiro pintado. */
+  --shadow-sel:       3px 3px 0 var(--color-acento);
+
+  --font-letreiro: var(--fonte-letreiro), ui-sans-serif, system-ui, sans-serif;
+  --font-corpo:    var(--fonte-corpo), ui-sans-serif, system-ui, sans-serif;
+  --font-dado:     var(--fonte-dado), ui-monospace, monospace;
 }
 
-body { background: #f0eee9; }
+@layer base {
+  body {
+    background: var(--color-fundo);
+    color: var(--color-tinta);
+    font-family: var(--font-corpo);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* A voz dos títulos mora aqui, e não repetida em dez `h1`. É o mesmo
+     princípio dos tokens de cor, aplicado à tipografia: mudar o tom do
+     produto vira uma regra, não dez edições. */
+  h1 {
+    font-family: var(--font-letreiro);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    line-height: 1.05;
+    font-size: 1.75rem;
+  }
+  @media (min-width: 768px) {
+    h1 { font-size: 2.25rem; }
+  }
+
+  /* Foco visível sempre — o painel é usado de teclado, no balcão, com a mão
+     ocupada. */
+  :focus-visible {
+    outline: 2px solid var(--color-acento);
+    outline-offset: 2px;
+  }
+
+  a { text-decoration: none; }
+  a:hover { color: var(--color-acento); }
+}

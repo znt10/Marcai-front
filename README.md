@@ -182,6 +182,37 @@ barbeiro também não aparece para o cliente).
 dele, com o próximo livre que o painel não mostra em lugar nenhum. Quem filtra
 é o `filtroDoBarbeiro` da rota: pedir a coluna do colega devolve a própria.
 
+## Visual
+
+Identidade única do produto: nogueira escura, latão e letreiro condensado. Uma
+para todas as barbearias — cor por barbearia seria coluna nova, token injetado
+em runtime e tela no painel, e fica para quando alguém pedir.
+
+**Toda cor mora no bloco `@theme` de `src/app/globals.css`.** Um `#c98a45`
+solto num componente é como a próxima tela começa a divergir desta — e a
+varredura que garante isso é um `grep` de hex em `src/`, hoje com zero
+resultado.
+
+Três fontes, três trabalhos:
+
+| papel | face | onde |
+|---|---|---|
+| letreiro | Big Shoulders | títulos e o botão que conclui |
+| corpo | Archivo | nomes, textos, rótulos |
+| dado | Space Mono | **horas, contagens** |
+
+A terceira justifica as outras duas: este app é sobre tempo. A tela do cliente
+é uma lista de horas e o quadro do dia é uma coluna de horas por barbeiro — com
+fonte proporcional, `09:00` e `14:30` não alinham e a varredura vertical se
+perde. Hora nova na tela nasce com `font-dado`.
+
+**A voz dos títulos está no `h1` do `globals.css`**, não repetida em cada
+página. `<h1>` sem classe é o certo; `text-[17px]` num título é o defeito que
+os tokens de cor já tinham resolvido, reaparecendo na tipografia.
+
+`Lbl` é rótulo curto — ele é caixa alta com tracking largo, e uma frase inteira
+dentro dele vira grito ilegível. Frase é `Sub`.
+
 ## Testar
 
 ```bash
@@ -212,10 +243,23 @@ DATABASE_URL="postgresql://brutus_owner:owner@localhost:5433/brutus_test" npx pr
 - Conversão de fuso só em `src/lib/datas.ts`.
 - Tabela nova com `barbeariaId` precisa de política de RLS. O teste
   `varredura estrutural` falha se você esquecer.
-- Arquivo de rota criado com `docker compose up` já rodando não é enxergado
-  pelo watcher do Turbopack através do bind mount do Windows: a rota responde
-  404 até `docker compose restart app`.
+- **O watcher do Turbopack não enxerga o bind mount do Windows.** Arquivo de
+  rota criado com `docker compose up` rodando responde 404, e edição em
+  componente não aparece na tela por mais que se recarregue — nos dois casos a
+  saída é `docker compose restart app`. Antes de caçar bug de layout que
+  "não mudou nada", reinicia.
 
-Specs:
-- `docs/superpowers/specs/2026-08-05-brutus-agendamento-cliente-design.md`
-- `docs/superpowers/specs/2026-08-06-brutus-admin-da-plataforma-design.md`
+Specs, na ordem em que foram escritos:
+
+| etapa | spec |
+|---|---|
+| 1 — fluxo do cliente | `2026-08-05-brutus-agendamento-cliente-design.md` |
+| — admin da plataforma | `2026-08-06-brutus-admin-da-plataforma-design.md` |
+| 2 — painel do barbeiro | `2026-08-07-brutus-painel-do-barbeiro-design.md` |
+| 3A — equipe | `2026-08-07-brutus-equipe-design.md` |
+| 3B — expediente e bloqueios | `2026-08-07-brutus-expediente-design.md` |
+| 3C — serviços e durações | `2026-08-07-brutus-servicos-design.md` |
+| 3D — quadro do dia | `2026-08-08-brutus-quadro-do-dia-design.md` |
+| 4 — visual definitivo | `2026-08-08-brutus-visual-definitivo-design.md` |
+
+Todos em `docs/superpowers/specs/`.

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Box, Chip, Row, Lbl } from '@/components/wf';
+import { Box, Chip, Row, Lbl, Sub } from '@/components/wf';
 import { publicoApi, ignorarAborto } from '@/lib/api';
 
 const CABECALHO = ['s', 't', 'q', 'q', 's', 's', 'd']; // semana começa na segunda
@@ -59,24 +59,28 @@ export function MiniCalendario({ barbeiroId, servicoId }: { barbeiroId: string; 
           return (
             // aspect-square porque `rounded-full` num botão que só tem a
             // largura do número desenha uma pílula, não o círculo do wireframe.
+            // Dia com vaga ganha COR, não só contorno: opacidade sozinha é a
+            // diferença que some na tela do celular na calçada.
             <button key={d} disabled={!tem} onClick={() => setDia(data)}
-              className={`aspect-square flex items-center justify-center
+              className={`aspect-square flex items-center justify-center font-dado
                           text-xs md:text-sm rounded-full ${
-                !tem ? 'text-[#ccc]'
-                     : dia === data ? 'border-[2px] border-traco' : 'border-[1.5px] border-traco'}`}>
+                !tem ? 'text-apagado'
+                     : dia === data ? 'border-2 border-acento text-acento'
+                                    : 'border border-livre text-livre'}`}>
               {d}
             </button>
           );
         })}
       </div>
-      <Lbl>círculo = tem vaga · apagado = lotado ou fechado</Lbl>
+      <Sub>círculo verde = tem vaga · apagado = lotado ou fechado</Sub>
 
       {dia && (
         <>
-          <Lbl className="text-[#444]">{dia}</Lbl>
+          <Lbl>{dia}</Lbl>
           <Row wrap>
             {slots.map(s => (
-              <Chip key={s.inicio} ativo={escolhido === s.inicio} onClick={() => setEscolhido(s.inicio)}>
+              <Chip key={s.inicio} dado ativo={escolhido === s.inicio}
+                    onClick={() => setEscolhido(s.inicio)}>
                 {s.hora}
               </Chip>
             ))}

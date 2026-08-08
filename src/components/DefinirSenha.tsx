@@ -34,7 +34,7 @@ export function DefinirSenha({ token }: { token: string }) {
 
   return (
     <>
-      <Lbl>escolhe uma senha de ao menos {MINIMO} caracteres</Lbl>
+      <Sub>escolhe uma senha de ao menos {MINIMO} caracteres</Sub>
       <Box variante={senha ? 'normal' : 'dash'}>
         <input className="w-full outline-none bg-transparent" type="password" placeholder="senha"
                autoComplete="new-password"
