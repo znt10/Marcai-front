@@ -9,10 +9,13 @@ export type {
   Barbeiro, Servico, Slot, DiaComSlots, NovoAgendamento,
 } from './publicoAPI';
 
-export { painelApi, equipeApi, horariosApi, LOGIN_DO_PAINEL } from './painelAPI';
+export {
+  painelApi, equipeApi, horariosApi, servicosApi, LOGIN_DO_PAINEL,
+} from './painelAPI';
 export type {
   Eu, ItemDaAgenda, MembroDaEquipe, NovoBarbeiro,
   DiaDeTrabalho, Bloqueio, Conflito,
+  ServicoDoCatalogo, VinculoDeServico,
 } from './painelAPI';
 
 export { adminApi, LOGIN_DO_ADMIN } from './adminAPI';
