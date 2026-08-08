@@ -37,3 +37,41 @@ export const painelApi = {
   cancelar: (id: string) =>
     pedir<{ ok: true }>(`/painel/agendamentos/${id}/cancelar`, { metodo: 'POST' }),
 };
+
+export type MembroDaEquipe = {
+  id: string; nome: string; whatsapp: string;
+  papel: Eu['papel']; ativo: boolean; desativadoEm: string | null;
+  temSenha: boolean; conviteExpirado: boolean;
+  /// Zero em `servicos` ou em `expediente` e o barbeiro **não aparece para o
+  /// cliente** — é o que a tela avisa em destaque.
+  servicos: number; expediente: number;
+  /// O que impede desativar.
+  agendamentosFuturos: number;
+};
+
+export type NovoBarbeiro = { nome: string; whatsapp: string; papel: Eu['papel'] };
+
+/// Só o dono chega aqui: as rotas respondem 403 para `BARBEIRO`.
+export const equipeApi = {
+  listar: (signal?: AbortSignal) =>
+    pedir<{ equipe: MembroDaEquipe[] }>('/painel/equipe', {
+      signal, loginEm: LOGIN_DO_PAINEL,
+    }).then((d) => d.equipe),
+
+  cadastrar: (dados: NovoBarbeiro) =>
+    pedir<{ id: string; linkConvite: string }>('/painel/equipe', {
+      metodo: 'POST', corpo: dados,
+    }),
+
+  editar: (id: string, dados: Partial<NovoBarbeiro>) =>
+    pedir<{ ok: true }>(`/painel/equipe/${id}`, { metodo: 'PATCH', corpo: dados }),
+
+  reemitirConvite: (id: string) =>
+    pedir<{ linkConvite: string }>(`/painel/equipe/${id}/convite`, { metodo: 'POST' }),
+
+  desativar: (id: string) =>
+    pedir<{ ok: true }>(`/painel/equipe/${id}/desativar`, { metodo: 'POST' }),
+
+  reativar: (id: string) =>
+    pedir<{ ok: true }>(`/painel/equipe/${id}/reativar`, { metodo: 'POST' }),
+};

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prismaAdmin } from '@/lib/db';
 import { comBarbeariaAdmin } from '@/lib/tenant';
-import { gerarConvite } from '@/lib/convite';
+import { gerarConvite, linkDoConvite } from '@/lib/convite';
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -37,8 +37,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ erro: 'Essa barbearia não tem dono ativo.' }, { status: 404 });
   }
 
-  const base = process.env.NEXT_PUBLIC_DOMINIO_BASE ?? 'localhost';
   return NextResponse.json({
-    linkConvite: `http://${barbearia.slug}.${base}:3000/convite/${convite.token}`,
+    linkConvite: linkDoConvite(barbearia.slug, convite.token),
   });
 }
