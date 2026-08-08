@@ -132,6 +132,29 @@ propósito diferente da recusa ao desativar barbeiro: fechar a agenda é o que s
 faz agora, com o braço quebrado, e recusar deixaria o cliente batendo numa porta
 fechada.
 
+## Serviços (catálogo do dono, vínculos de cada um)
+
+`/painel/servicos` — o que cada um faz e em quanto tempo; embaixo, para o dono,
+o catálogo da barbearia e a frase de horário da home.
+
+A divisão segue o critério das outras telas: **o catálogo é decisão da casa**
+(o que a barbearia vende), então é só do dono; **quem faz o quê e em quanto
+tempo começa na pessoa**, então o barbeiro mexe no seu e o dono em todos.
+
+**Marcar cria o vínculo com a duração sugerida do serviço**, e a duração fica
+editável por barbeiro — é ela que o motor de horários usa, e é o que deixa o
+barbeiro rápido atender mais gente. **Desmarcar preserva o número praticado**:
+remarcar devolve o que era, não a sugerida.
+
+**Serviço se desativa, nunca se apaga.** Agendamentos antigos guardam o nome do
+serviço copiado no momento da marcação, então o histórico não depende do
+catálogo de hoje.
+
+**As três condições para receber cliente**, que a tela de equipe cobra: estar
+ativo, ter expediente e fazer algum serviço ativo. Faltando qualquer uma, o
+barbeiro não aparece na home — e a partir da Etapa 3 as três se resolvem pelo
+painel.
+
 ## Testar
 
 ```bash
