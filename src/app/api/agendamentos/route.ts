@@ -6,6 +6,7 @@ import { slotsDoDia } from '@/lib/agenda';
 import { normalizar } from '@/lib/telefone';
 import { numeroExiste, enviarTexto } from '@/lib/whatsapp';
 import { msgConfirmacao } from '@/lib/mensagens';
+import { lembreteAoCriar } from '@/lib/lembrete';
 import { utcParaLocal } from '@/lib/datas';
 
 // Sem 0/O e 1/l/I — código é lido em voz alta e digitado à mão.
@@ -110,6 +111,9 @@ export async function POST(req: Request) {
           barbeiroId, clienteId: cliente.id, servicoId,
           servicoNome: vinculo.servico.nome,
           inicio, fim, duracaoMin, status: 'CONFIRMADO',
+          // Dentro da janela do lembrete, a confirmação que sai logo abaixo
+          // JÁ é o lembrete: nasce avisado para o cron não repetir.
+          lembreteEnviadoEm: lembreteAoCriar(inicio, agora),
         },
         include: { barbeiro: { select: { nome: true } } },
       });
