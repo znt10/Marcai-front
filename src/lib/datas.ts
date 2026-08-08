@@ -7,10 +7,21 @@ import { FUSO } from './config';
 /// Espalhar conversão de fuso é o jeito mais rápido de produzir bug de
 /// agenda que só aparece meses depois.
 
+const MINUTOS_DIA = 24 * 60;
+
+/// `minutos` pode ser 1440 — é como "o dia inteiro" se escreve num intervalo
+/// semiaberto, e tanto a jornada quanto o bloqueio usam isso. Sem o
+/// transbordo para o dia seguinte, a string sairia `T24:00:00`, que é **data
+/// inválida**: e comparação com data inválida é sempre falsa, então o
+/// bloqueio das 0h às 24h não bloqueava nada, em silêncio.
 export function localParaUtc(dia: string, minutos: number): Date {
-  const h = String(Math.floor(minutos / 60)).padStart(2, '0');
-  const m = String(minutos % 60).padStart(2, '0');
-  return fromZonedTime(`${dia}T${h}:${m}:00`, FUSO);
+  const diasInteiros = Math.floor(minutos / MINUTOS_DIA);
+  const doDia = minutos - diasInteiros * MINUTOS_DIA;
+  const base = diasInteiros === 0 ? dia : somarDias(dia, diasInteiros);
+
+  const h = String(Math.floor(doDia / 60)).padStart(2, '0');
+  const m = String(doDia % 60).padStart(2, '0');
+  return fromZonedTime(`${base}T${h}:${m}:00`, FUSO);
 }
 
 export function utcParaLocal(d: Date): { dia: string; minutos: number } {
