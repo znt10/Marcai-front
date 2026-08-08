@@ -30,6 +30,32 @@ export type EntradaSlots = {
 const colide = (aIni: Date, aFim: Date, bIni: Date, bFim: Date) =>
   aIni < bFim && aFim > bIni;
 
+/// Os dois formatos de bloqueio traduzidos para instantes do dia pedido — o
+/// semanal virando hora daquela data, o pontual entrando só se encostar no dia.
+///
+/// Exportada porque o quadro do dia precisa **exatamente** desta tradução para
+/// desenhar as faixas. Uma segunda cópia seria uma segunda regra de
+/// recorrência, e a que diverge é sempre a que ninguém está olhando.
+export function bloqueiosDoDia(
+  bloqueios: BloqueioSlot[], dia: string, diaSemana: number,
+): { inicio: Date; fim: Date }[] {
+  const abre = localParaUtc(dia, 0);
+  const fecha = localParaUtc(dia, 24 * 60);
+
+  return bloqueios.flatMap((b) => {
+    if (b.repeteSemanalmente) {
+      if (b.diaSemana !== diaSemana) return [];
+      return [{
+        inicio: localParaUtc(dia, b.minutosInicio!),
+        fim:    localParaUtc(dia, b.minutosFim!),
+      }];
+    }
+    // Descartar o pontual de outra data não muda o que o motor decide (ele não
+    // colidiria mesmo), e é o que deixa a lista servir para desenhar o dia.
+    return colide(b.inicio!, b.fim!, abre, fecha) ? [{ inicio: b.inicio!, fim: b.fim! }] : [];
+  });
+}
+
 export function slotsLivres(e: EntradaSlots): Slot[] {
   const diaSemana = diaSemanaDe(e.dia);
   const jornada = e.expediente.find((h) => h.diaSemana === diaSemana);
@@ -37,16 +63,7 @@ export function slotsLivres(e: EntradaSlots): Slot[] {
 
   const limite = new Date(e.agora.getTime() + ANTECEDENCIA_MINIMA_MIN * 60_000);
 
-  const intervalosBloqueados = e.bloqueios.flatMap((b) => {
-    if (b.repeteSemanalmente) {
-      if (b.diaSemana !== diaSemana) return [];
-      return [{
-        inicio: localParaUtc(e.dia, b.minutosInicio!),
-        fim:    localParaUtc(e.dia, b.minutosFim!),
-      }];
-    }
-    return [{ inicio: b.inicio!, fim: b.fim! }];
-  });
+  const intervalosBloqueados = bloqueiosDoDia(e.bloqueios, e.dia, diaSemana);
 
   const livres: Slot[] = [];
   for (let m = jornada.minutosInicio; m + e.duracaoMin <= jornada.minutosFim; m += GRANULARIDADE_MIN) {
