@@ -97,6 +97,58 @@ export const horariosApi = {
     }).then((d) => d.conflitos),
 };
 
+export type ServicoDoCatalogo = {
+  id: string; nome: string; ativo: boolean; ordem: number;
+  duracaoMinimaMin: number; duracaoSugeridaMin: number;
+  /// Quantos barbeiros ativos oferecem. Zero é o aviso de que o serviço
+  /// existe e ninguém faz.
+  barbeiros: number;
+};
+
+export type VinculoDeServico = {
+  servicoId: string; nome: string; duracaoMinimaMin: number;
+  faz: boolean;
+  /// Sem vínculo, vem a sugerida do serviço — que é o que entra ao marcar.
+  duracaoMin: number;
+};
+
+/// Catálogo é decisão da casa (só o dono); vínculo e duração começam na pessoa
+/// (dono em todos, barbeiro no seu).
+export const servicosApi = {
+  catalogo: (signal?: AbortSignal) =>
+    pedir<{ servicos: ServicoDoCatalogo[] }>('/painel/servicos', {
+      signal, loginEm: LOGIN_DO_PAINEL,
+    }).then((d) => d.servicos),
+
+  criar: (dados: { nome: string; duracaoMinimaMin: number; duracaoSugeridaMin: number }) =>
+    pedir<{ id: string }>('/painel/servicos', {
+      metodo: 'POST', corpo: dados, loginEm: LOGIN_DO_PAINEL,
+    }),
+
+  editar: (id: string, dados: Partial<{
+    nome: string; duracaoMinimaMin: number; duracaoSugeridaMin: number;
+    ordem: number; ativo: boolean;
+  }>) =>
+    pedir<{ ok: true }>(`/painel/servicos/${id}`, {
+      metodo: 'PATCH', corpo: dados, loginEm: LOGIN_DO_PAINEL,
+    }),
+
+  vinculos: (barbeiroId?: string, signal?: AbortSignal) =>
+    pedir<{ barbeiroId: string; vinculos: VinculoDeServico[] }>('/painel/barbeiro-servicos', {
+      busca: { barbeiroId }, signal, loginEm: LOGIN_DO_PAINEL,
+    }).then((d) => d.vinculos),
+
+  vincular: (p: { barbeiroId?: string; servicoId: string; faz: boolean; duracaoMin?: number }) =>
+    pedir<{ ok: true }>('/painel/barbeiro-servicos', {
+      metodo: 'PUT', corpo: p, loginEm: LOGIN_DO_PAINEL,
+    }),
+
+  frase: (horarioResumo: string) =>
+    pedir<{ ok: true }>('/painel/barbearia', {
+      metodo: 'PATCH', corpo: { horarioResumo }, loginEm: LOGIN_DO_PAINEL,
+    }),
+};
+
 export type MembroDaEquipe = {
   id: string; nome: string; whatsapp: string;
   papel: Eu['papel']; ativo: boolean; desativadoEm: string | null;
