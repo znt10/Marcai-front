@@ -29,6 +29,11 @@ export const formatarHora = (d: Date) => formatInTimeZone(d, FUSO, 'HH:mm');
 export const formatarDiaLongo = (d: Date) =>
   formatInTimeZone(d, FUSO, 'EEEEEE d MMM', { locale: ptBR }).toLowerCase();
 
+/// `dd/MM` para texto curto — mensagem de erro, aviso de tela. No fuso da
+/// barbearia como tudo aqui: em servidor UTC, um horário das 22h daqui cairia
+/// no dia seguinte.
+export const formatarDiaCurto = (d: Date) => formatInTimeZone(d, FUSO, 'dd/MM');
+
 export const diaDeHoje = (agora: Date) => utcParaLocal(agora).dia;
 
 /// Ancorado ao meio-dia de propósito: às 00:00 qualquer deslocamento de fuso
