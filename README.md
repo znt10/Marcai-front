@@ -182,6 +182,48 @@ barbeiro também não aparece para o cliente).
 dele, com o próximo livre que o painel não mostra em lugar nenhum. Quem filtra
 é o `filtroDoBarbeiro` da rota: pedir a coluna do colega devolve a própria.
 
+## Lembrete no WhatsApp
+
+A tela de confirmado promete ao cliente *"mandamos o lembrete 1h antes"*. Quem
+cumpre isso é o serviço **`agendador`** do compose: ele bate em
+`POST /api/cron/lembretes` a cada 10 minutos, com `CRON_SECRET` no
+`Authorization`.
+
+```bash
+docker compose logs -f agendador
+# [agendador] 11:17:34 {"enviados":0}
+```
+
+**Precisa de `CRON_SECRET` no `.env`.** Vazio, a rota nega tudo — de propósito:
+sem segredo configurado ela ficaria sendo um disparador público de mensagens
+para a base inteira de clientes. Gerar com:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
+Sem o segredo o agendador sobe e toma 401 a cada tique, e isso aparece no log.
+É barulhento por escolha: falha em silêncio aqui é lembrete que nunca chega e
+ninguém descobre.
+
+**O tique tem que ser menor que a janela.** São 10 min contra 60
+(`LEMBRETE_TIQUE_MIN` e `LEMBRETE_ANTECEDENCIA_MIN`, lado a lado no
+`config.ts`): a mensagem sai entre 50 e 60 minutos antes. Tique maior que a
+janela perderia agendamento — quem entra nela entre dois tiques nunca seria
+visto.
+
+**Quem marca dentro da janela não recebe lembrete**, porque a confirmação que
+ele acabou de receber já é o lembrete. O agendamento nasce com
+`lembreteEnviadoEm` preenchido. Sem isso, todo encaixe de balcão viraria duas
+mensagens em minutos — o padrão da tela de marcar na mão é 30 minutos.
+
+**O cron marca antes de enviar.** Agendador que dispara duas vezes (reinício,
+tique atrasado) não manda duas mensagens; em troca, envio que falha não é
+repetido. Perder um lembrete é melhor que duplicar.
+
+Sem `EVOLUTION_API_URL` o envio cai no `console.info` do app — é o que deixa
+tudo isso verificável sem depender de um número de WhatsApp de verdade.
+
 ## Visual
 
 Identidade única do produto: nogueira escura, latão e letreiro condensado. Uma
@@ -261,5 +303,6 @@ Specs, na ordem em que foram escritos:
 | 3C — serviços e durações | `2026-08-07-brutus-servicos-design.md` |
 | 3D — quadro do dia | `2026-08-08-brutus-quadro-do-dia-design.md` |
 | 4 — visual definitivo | `2026-08-08-brutus-visual-definitivo-design.md` |
+| 5A — o lembrete que sai | `2026-08-08-brutus-lembrete-que-sai-design.md` |
 
 Todos em `docs/superpowers/specs/`.

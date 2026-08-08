@@ -13,7 +13,13 @@ export const ANTECEDENCIA_MINIMA_MIN = 0;
 export const PRAZO_CANCELAMENTO_MIN = 60;
 export const DIAS_NA_HOME = 2;
 export const JANELA_MAXIMA_DIAS = 60;
+// O lembrete e a cadência do agendador que o dispara, lado a lado porque um
+// depende do outro: TIQUE precisa ser MENOR que a antecedência, senão quem
+// entra na janela entre dois tiques nunca é visto. Com 60 e 10, a mensagem sai
+// entre 50 e 60 minutos antes — dentro do que a tela promete.
+// O tique é lido pelo serviço `agendador` do docker-compose, não pelo app.
 export const LEMBRETE_ANTECEDENCIA_MIN = 60;
+export const LEMBRETE_TIQUE_MIN = 10;
 
 // Multi-tenant (§9.4)
 export const SUBDOMINIOS_RESERVADOS = [
