@@ -2,12 +2,22 @@ import { NextResponse } from 'next/server';
 import { prismaAdmin } from '@/lib/db';
 import { comBarbeariaAdmin } from '@/lib/tenant';
 import { gerarConvite, linkDoConvite } from '@/lib/convite';
+import { enviarTexto } from '@/lib/whatsapp';
+import { msgConvite } from '@/lib/mensagens';
 import { SLUG_REGEX, SUBDOMINIOS_RESERVADOS } from '@/lib/config';
 import { normalizar } from '@/lib/telefone';
 
+/// Cinco campos, e nenhum deles é o horário: o admin da plataforma cadastra a
+/// barbearia e **não sabe** o horário dela. Quem sabe é o dono, e a tela dele já
+/// existe (`/painel/servicos`). `horarioResumo` nasce nulo.
+///
+/// Um número só, também de propósito. No cadastro, o contato da barbearia e o
+/// celular do dono são a mesma pessoa em praticamente todo caso — pedir dois
+/// era pedir para digitar o mesmo número duas vezes. O dono separa depois pela
+/// tela de equipe, se a barbearia crescer e ganhar um número próprio.
 type Corpo = {
-  slug: string; nome: string; endereco: string; horarioResumo: string;
-  whatsappContato: string; donoNome: string; donoWhatsapp: string;
+  slug: string; nome: string; endereco: string;
+  whatsappContato: string; donoNome: string;
 };
 
 export async function GET() {
@@ -40,9 +50,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ erro: 'Slug inválido ou reservado.' }, { status: 422 });
   }
 
-  const donoWhatsapp = normalizar(String(c.donoWhatsapp ?? ''));
   const contato = normalizar(String(c.whatsappContato ?? ''));
-  if (!donoWhatsapp || !contato || !c.nome || !c.donoNome || !c.endereco || !c.horarioResumo) {
+  if (!contato || !c.nome || !c.donoNome || !c.endereco) {
     return NextResponse.json({ erro: 'Faltou preencher algum campo.' }, { status: 422 });
   }
 
@@ -64,14 +73,15 @@ export async function POST(req: Request) {
     const barbearia = await tx.barbearia.create({
       data: {
         slug, nome: c.nome!, endereco: c.endereco!,
-        horarioResumo: c.horarioResumo!, whatsappContato: contato,
+        // Sem horário: o dono preenche pela tela dele.
+        whatsappContato: contato,
       },
     });
     // Só agora o RLS tem para onde apontar — a barbearia acabou de existir.
     await tx.$executeRaw`SELECT set_config('app.barbearia_id', ${barbearia.id}, true)`;
     await tx.barbeiro.create({
       data: {
-        barbeariaId: barbearia.id, nome: c.donoNome!, whatsapp: donoWhatsapp,
+        barbeariaId: barbearia.id, nome: c.donoNome!, whatsapp: contato,
         papel: 'DONO', senhaHash: null,
         conviteTokenHash: convite.hash, conviteExpiraEm: convite.expiraEm,
       },
@@ -79,11 +89,21 @@ export async function POST(req: Request) {
     return barbearia;
   });
 
+  const link = linkDoConvite(slug, convite.token);
+
+  // Fire-and-forget, DEPOIS do commit — igual ao convite de barbeiro. O link
+  // ia SÓ para a tela do admin, e o token só existe em hash: perdido ali, o
+  // dono não entrava mais e a barbearia nascia órfã. Duas vias resolvem, e
+  // falha de WhatsApp não pode desfazer a barbearia que acabou de nascer.
+  void enviarTexto(contato, msgConvite({
+    nome: c.donoNome!, barbeariaNome: nova.nome, link,
+  }));
+
   return NextResponse.json({
     id: nova.id,
     slug: nova.slug,
     // Em claro UMA vez só: o banco tem apenas o hash, então não existe jeito
     // de recuperar este link depois. Perdeu, reemite.
-    linkConvite: linkDoConvite(slug, convite.token),
+    linkConvite: link,
   }, { status: 201 });
 }

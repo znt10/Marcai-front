@@ -1,13 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { prismaOwner, limparBanco } from './setup';
 import { POST as criar } from '@/app/api/admin/barbearias/route';
 
 beforeEach(limparBanco);
+afterEach(() => vi.restoreAllMocks());
 
+/// Exatamente os cinco campos que a rota aceita. Deixar `horarioResumo` e
+/// `donoWhatsapp` sobrando aqui passaria — a rota ignora o que não conhece —
+/// mas o fixture deixaria de provar que o formulário e a rota falam a mesma
+/// língua, que é metade do valor deste arquivo.
 const corpoValido = {
   slug: 'novabarbearia', nome: 'Nova Barbearia', endereco: 'Rua Um, 1',
-  horarioResumo: 'seg a sex, 9h-18h', whatsappContato: '11900000000',
-  donoNome: 'Zé', donoWhatsapp: '11911112222',
+  whatsappContato: '11900000000', donoNome: 'Zé',
 };
 
 const pedido = (corpo: unknown) =>
@@ -66,10 +70,53 @@ describe('POST /api/admin/barbearias', () => {
     expect((await r.json()).slug).toBe('novabarbearia');
   });
 
-  it('falha ao criar o dono NÃO deixa barbearia órfã', async () => {
-    const r = await criar(pedido({ ...corpoValido, donoWhatsapp: '' }));
+  it('falha de validação NÃO deixa barbearia órfã', async () => {
+    // Barbearia sem dono é órfã: ninguém entra nela para cadastrar ninguém, e
+    // ela só sairia de lá pelo psql. A transação única é o que garante isso.
+    const r = await criar(pedido({ ...corpoValido, whatsappContato: '' }));
     expect(r.status).toBe(422);
     expect(await prismaOwner.barbearia.findMany()).toHaveLength(0);
+  });
+
+  it('nasce SEM horário — quem escreve a frase é o dono', async () => {
+    await criar(pedido(corpoValido));
+    const [barbearia] = await prismaOwner.barbearia.findMany();
+    // Nulo, não string vazia: são estados diferentes, e a home usa isso para
+    // decidir se mostra horário nenhum.
+    expect(barbearia.horarioResumo).toBeNull();
+  });
+
+  it('o número da barbearia vira o login do dono', async () => {
+    await criar(pedido(corpoValido));
+    const [barbearia] = await prismaOwner.barbearia.findMany();
+    const [dono] = await prismaOwner.barbeiro.findMany();
+    expect(dono.whatsapp).toBe(barbearia.whatsappContato);
+    expect(dono.whatsapp).toBe('11900000000');
+  });
+
+  it('recusa cada campo obrigatório que falte', async () => {
+    for (const campo of ['nome', 'endereco', 'donoNome', 'whatsappContato']) {
+      const r = await criar(pedido({ ...corpoValido, [campo]: '' }));
+      expect(r.status, `faltando ${campo}`).toBe(422);
+    }
+  });
+
+  it('manda o convite no WhatsApp da barbearia, com o mesmo link da tela', async () => {
+    process.env.EVOLUTION_API_URL = 'http://evolution.teste';
+    process.env.EVOLUTION_INSTANCE = 'brutus';
+    const espiao = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal('fetch', espiao);
+
+    const { linkConvite } = await (await criar(pedido(corpoValido))).json();
+
+    // O link ia SÓ para a tela do admin, e o token só existe em hash: perdido
+    // ali, o dono não entrava mais e a barbearia nascia sem acesso.
+    const envios = espiao.mock.calls
+      .filter((c) => String(c[0]).includes('/message/sendText/'))
+      .map((c) => JSON.parse((c[1] as RequestInit).body as string));
+    expect(envios).toHaveLength(1);
+    expect(envios[0].number).toBe('5511900000000');
+    expect(envios[0].text).toContain(linkConvite);
   });
 
   it('o dono é carimbado com a barbearia recém-criada', async () => {

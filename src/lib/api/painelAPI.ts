@@ -184,6 +184,20 @@ export const servicosApi = {
     }),
 };
 
+export type DadosDaBarbearia = {
+  nome: string; endereco: string; whatsappContato: string;
+  /// `null` = o dono ainda não escreveu, e a home não mostra horário nenhum.
+  /// Diferente de string vazia, que não existe aqui.
+  horarioResumo: string | null;
+};
+
+export const barbeariaApi = {
+  ver: (signal?: AbortSignal) =>
+    pedir<DadosDaBarbearia>('/painel/barbearia', {
+      signal, loginEm: LOGIN_DO_PAINEL,
+    }),
+};
+
 export type MembroDaEquipe = {
   id: string; nome: string; whatsapp: string;
   papel: Eu['papel']; ativo: boolean; desativadoEm: string | null;

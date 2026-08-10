@@ -11,11 +11,13 @@ export default async function Home({
   const { barbeiroId, servicoId, inicio } = await searchParams;
 
   return (
-    <Frame largo>
+    <Frame largo>
       <h1>
         {b.nome} <span className="text-[11px] md:text-sm text-sub">barbearia</span>
       </h1>
-      <Sub>{b.endereco} · {b.horarioResumo}</Sub>
+      {/* O horário é nulo até o dono escrever a frase dele. Sem a condição,
+          a home mostraria "Rua Aurora, 88 · " com o separador pendurado. */}
+      <Sub>{b.endereco}{b.horarioResumo ? ` · ${b.horarioResumo}` : ''}</Sub>
       <Sep />
       <FormAgendamento inicial={{ barbeiroId, servicoId, inicio }} />
       <Sep />

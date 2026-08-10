@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prismaAdmin } from '@/lib/db';
 import { comBarbeariaAdmin } from '@/lib/tenant';
 import { gerarConvite, linkDoConvite } from '@/lib/convite';
+import { enviarTexto } from '@/lib/whatsapp';
+import { msgConvite } from '@/lib/mensagens';
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -37,7 +39,15 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ erro: 'Essa barbearia não tem dono ativo.' }, { status: 404 });
   }
 
-  return NextResponse.json({
-    linkConvite: linkDoConvite(barbearia.slug, convite.token),
-  });
+  const link = linkDoConvite(barbearia.slug, convite.token);
+
+  // Duas vias, como o convite de barbeiro: a tela mostra uma vez e o zap
+  // guarda. Reemitir já apagou a senha do dono neste ponto — se o link só
+  // existisse na tela do admin e ele fechasse a aba, o dono ficaria de fora
+  // sem caminho de volta.
+  void enviarTexto(dono.whatsapp, msgConvite({
+    nome: dono.nome, barbeariaNome: barbearia.nome, link,
+  }));
+
+  return NextResponse.json({ linkConvite: link });
 }
