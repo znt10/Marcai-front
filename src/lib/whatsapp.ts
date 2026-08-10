@@ -47,18 +47,24 @@ export async function enviarTexto(whatsappDigitos: string, mensagem: string): Pr
       return;
     }
 
-    // Sucesso também é registrado, e isso não é ruído: sem esta linha, "a
-    // mensagem saiu?" só era respondível por ausência de erro — que é a mesma
-    // coisa que "o código nem rodou", e as duas confundiram um diagnóstico
-    // inteiro hoje. O `remoteJid` é o que a Evolution resolveu de fato, e é
-    // onde aparece o nono dígito sendo derrubado nos números brasileiros.
+    // **ACEITO**, não "enviado". A palavra importa: a Evolution devolve 201 com
+    // `status: PENDING` e o jid resolvido mesmo quando o vínculo do WhatsApp
+    // está morto e a mensagem não sai do lugar. Foi exatamente o que aconteceu
+    // aqui — horas de "enviado" no log e nada chegando no aparelho. Log que
+    // afirma entrega sem saber é pior que log nenhum, porque encerra a
+    // investigação no lugar errado.
+    //
+    // Quem sabe sobre entrega é o `whatsapp:estado` (e o healthcheck do
+    // agendador, que roda a cada tique).
     //
     // O TEXTO da mensagem não entra: é conversa de cliente, e log não é lugar
     // para isso.
-    const jid = await r.json()
-      .then((c) => (c as { key?: { remoteJid?: string } })?.key?.remoteJid ?? '?')
-      .catch(() => '?');
-    console.info(`[whatsapp] enviado para ${whatsappDigitos} (jid ${jid})`);
+    const corpo = await r.json().catch(() => null) as
+      { key?: { remoteJid?: string }; status?: string } | null;
+    console.info(
+      `[whatsapp] aceito para ${whatsappDigitos}` +
+      ` (jid ${corpo?.key?.remoteJid ?? '?'}, status ${corpo?.status ?? '?'})`,
+    );
   } catch (e) {
     console.error('[whatsapp] falha ao enviar:', e);
   }

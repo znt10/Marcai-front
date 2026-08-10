@@ -67,6 +67,21 @@ describe('variáveis de ambiente', () => {
     expect(compose).toMatch(/EVOLUTION_API_KEY:\s*\$\{EVOLUTION_API_KEY\}/);
   });
 
+  it('o agendador confere o WhatsApp no mesmo tique do lembrete', () => {
+    const compose = readFileSync(join(RAIZ, 'docker-compose.yml'), 'utf8');
+    // O vínculo do WhatsApp cai sozinho (`Instance - LOGOUT`, sem ninguém
+    // pedir) e depois disso a Evolution responde 201 com `status: PENDING`
+    // para TUDO, sem entregar nada. Aconteceu, e ficou quase duas horas assim:
+    // o sintoma é cliente deixando de receber confirmação, que ninguém
+    // descobre olhando tela. O agendador não conserta — reconectar exige o QR,
+    // que exige uma pessoa — mas grita, e era isso que faltava.
+    expect(compose).toMatch(/connectionState/);
+    expect(compose).toMatch(/WHATSAPP FORA DO AR/);
+    // A cadência do aviso é a mesma do lembrete de propósito: um processo, um
+    // laço, um lugar para olhar.
+    expect(compose).toMatch(/EVOLUTION_API_KEY:\s*\$\{EVOLUTION_API_KEY\}/);
+  });
+
   it('a sessão da Evolution mora num volume nomeado', () => {
     const compose = readFileSync(join(RAIZ, 'docker-compose.yml'), 'utf8');
     // Sem volume, todo `docker compose down` obriga a escanear o QR de novo —
