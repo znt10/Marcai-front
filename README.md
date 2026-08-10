@@ -182,6 +182,59 @@ barbeiro também não aparece para o cliente).
 dele, com o próximo livre que o painel não mostra em lugar nenhum. Quem filtra
 é o `filtroDoBarbeiro` da rota: pedir a coluna do colega devolve a própria.
 
+## WhatsApp (conectar o número)
+
+Todo contato com gente de fora sai por aqui: confirmação, cancelamento, lembrete
+e convite de barbeiro. Quem manda é o serviço `evolution` do compose.
+
+Antes da primeira vez, gerar a chave e pôr em `EVOLUTION_API_KEY` no `.env`:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"
+```
+
+**Uma chave, dois consumidores:** o serviço `evolution` a exige como
+`AUTHENTICATION_API_KEY` e o `app` a manda como `EVOLUTION_API_KEY`. As duas
+saem da mesma variável no compose de propósito — chave errada é **401
+silencioso** (o envio é fire-and-forget), então o sintoma seria "a mensagem não
+chega", sem erro em log nenhum.
+
+Depois, parear o telefone:
+
+```bash
+docker compose up -d evolution
+npm run whatsapp:qr        # salva whatsapp-qr.png; escaneia em Aparelhos conectados
+npm run whatsapp:estado    # brutus: open — mensagem sai por aqui
+```
+
+O QR expira em ~40 s; rodar de novo gera outro. Alternativa com painel:
+`http://localhost:8080/manager`, entrando com a mesma chave.
+
+**A sessão mora num volume** (`evolution_instances`). É o que evita escanear o
+QR a cada `docker compose down` — e, em produção, o telefone da barbearia cair a
+cada deploy. `docker volume rm` derruba o pareamento.
+
+**Sem `EVOLUTION_API_URL` o envio cai no `console.info` do app.** É o modo de
+desenvolver sem número de verdade, e é o que torna o lembrete verificável:
+
+```
+[whatsapp] sem EVOLUTION_API_URL: 11977771234 Lembrete: corte hoje às 08:57…
+```
+
+**A URL tem duas formas**, como as do banco: o app fala com
+`http://evolution:8080` (nome de serviço, resolvível só dentro do compose) e os
+scripts `whatsapp:*`, que rodam do host, falam com `EVOLUTION_API_URL_HOST`.
+
+**A Evolution usa o Postgres que já existe**, com papel e banco próprios
+(`docker/init-db.sql`) e **nenhum GRANT** em `brutus`. Todo
+`DATABASE_SAVE_DATA_*` de conversa está **desligado**: o produto manda mensagem
+e consulta se um número existe — nunca lê conversa. Ligado, o banco guardaria
+mensagens, contatos e histórico de todo cliente de toda barbearia.
+
+**Um número para a plataforma inteira.** Quem identifica a casa é o texto da
+mensagem, que já leva nome e endereço. Número por barbearia seria uma coluna em
+`Barbearia` mais uma instância por tenant.
+
 ## Lembrete no WhatsApp
 
 A tela de confirmado promete ao cliente *"mandamos o lembrete 1h antes"*. Quem
@@ -304,5 +357,6 @@ Specs, na ordem em que foram escritos:
 | 3D — quadro do dia | `2026-08-08-brutus-quadro-do-dia-design.md` |
 | 4 — visual definitivo | `2026-08-08-brutus-visual-definitivo-design.md` |
 | 5A — o lembrete que sai | `2026-08-08-brutus-lembrete-que-sai-design.md` |
+| 5B — a Evolution no ar | `2026-08-08-brutus-evolution-no-ar-design.md` |
 
 Todos em `docs/superpowers/specs/`.
