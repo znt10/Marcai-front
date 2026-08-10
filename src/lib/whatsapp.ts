@@ -44,7 +44,21 @@ export async function enviarTexto(whatsappDigitos: string, mensagem: string): Pr
         `[whatsapp] envio recusado (${r.status}) para ${whatsappDigitos}:`,
         motivo.slice(0, 300),
       );
+      return;
     }
+
+    // Sucesso também é registrado, e isso não é ruído: sem esta linha, "a
+    // mensagem saiu?" só era respondível por ausência de erro — que é a mesma
+    // coisa que "o código nem rodou", e as duas confundiram um diagnóstico
+    // inteiro hoje. O `remoteJid` é o que a Evolution resolveu de fato, e é
+    // onde aparece o nono dígito sendo derrubado nos números brasileiros.
+    //
+    // O TEXTO da mensagem não entra: é conversa de cliente, e log não é lugar
+    // para isso.
+    const jid = await r.json()
+      .then((c) => (c as { key?: { remoteJid?: string } })?.key?.remoteJid ?? '?')
+      .catch(() => '?');
+    console.info(`[whatsapp] enviado para ${whatsappDigitos} (jid ${jid})`);
   } catch (e) {
     console.error('[whatsapp] falha ao enviar:', e);
   }

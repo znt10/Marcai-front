@@ -82,11 +82,27 @@ describe('enviarTexto', () => {
     expect(escrito).toContain('sendMessage');
   });
 
-  it('resposta ok não polui o log', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => '' }));
-    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
-    await enviarTexto('11977771234', 'oi');
-    expect(log).not.toHaveBeenCalled();
+  it('resposta ok registra o envio com o jid resolvido, e sem o texto', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ key: { remoteJid: '558382217869@s.whatsapp.net' } }),
+    }));
+    const erro = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    await enviarTexto('83982217869', 'texto da conversa do cliente');
+
+    expect(erro).not.toHaveBeenCalled();
+    const escrito = info.mock.calls[0].join(' ');
+    // Sem esta linha, "a mensagem saiu?" só era respondível por AUSÊNCIA de
+    // erro — que é indistinguível de "o código nem rodou". As duas confundiram
+    // um diagnóstico inteiro.
+    expect(escrito).toContain('83982217869');
+    // O jid é o que a Evolution resolveu de fato: aqui o nono dígito caiu, que
+    // é o comportamento normal dos números brasileiros e assustou no caminho.
+    expect(escrito).toContain('558382217869');
+    // Conversa de cliente não vai para log.
+    expect(escrito).not.toContain('texto da conversa');
   });
 
   it('sem a URL, cai no console.info e não faz rede', async () => {
