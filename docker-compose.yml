@@ -68,6 +68,9 @@ services:
       # `$$` escapa a interpolação do compose: quem expande é o shell de
       # dentro, então o segredo não fica escrito no comando do contêiner.
       CRON_SECRET: ${CRON_SECRET}
+      # Para o healthcheck do WhatsApp no mesmo tique.
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
+      EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE:-brutus}
     # Bate assim que sobe, e só então dorme: `docker compose up` dá o retorno
     # na hora em vez de dez minutos depois. Erro de curl não mata o laço —
     # app ainda subindo é normal.
@@ -75,9 +78,19 @@ services:
     # Vetor, e não `command: >`: em escalar dobrado do YAML, linha MAIS
     # indentada conserva a quebra em vez de virar espaço, e o comando chega
     # partido ao shell (`sh: -H: not found`).
+    #
+    # No MESMO tique, confere se o WhatsApp está de pé. Isto não é zelo: o
+    # vínculo do WhatsApp cai sozinho (`Instance - LOGOUT` sem ninguém pedir), e
+    # depois disso a Evolution responde 201 com `status: PENDING` para TUDO e
+    # nada é entregue. Aconteceu, e passou quase duas horas sem ninguém ver —
+    # o sintoma é cliente deixando de receber confirmação, que ninguém descobre
+    # olhando tela.
+    #
+    # Reconectar exige o QR, que exige uma pessoa com o celular. O agendador não
+    # conserta; ele grita, e é isso que faltava.
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - 'while true; do echo "[agendador] $$(date -u +%H:%M:%S) $$(curl -sS -X POST -H "Authorization: Bearer $$CRON_SECRET" http://app:3000/api/cron/lembretes || echo falhou)"; sleep 600; done'
+      - 'while true; do echo "[agendador] $$(date -u +%H:%M:%S) $$(curl -sS -X POST -H "Authorization: Bearer $$CRON_SECRET" http://app:3000/api/cron/lembretes || echo falhou)"; zap=$$(curl -sS -H "apikey: $$EVOLUTION_API_KEY" http://evolution:8080/instance/connectionState/$$EVOLUTION_INSTANCE || echo erro); case "$$zap" in *\"state\":\"open\"*) : ;; *) echo "[agendador] !!! WHATSAPP FORA DO AR: $$zap — rode: npm run whatsapp:qr" ;; esac; sleep 600; done'
     depends_on:
       app: { condition: service_started }
 
