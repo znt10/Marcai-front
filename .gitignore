@@ -59,3 +59,7 @@ desktop.ini
 
 # workspace do subagent-driven-development (scratch)
 .superpowers/
+
+# QR do WhatsApp gerado por `npm run whatsapp:qr` — imagem descartável, e
+# quem a tiver pareia o número.
+whatsapp-qr.png

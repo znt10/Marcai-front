@@ -22,8 +22,18 @@ CREATE ROLE brutus_app LOGIN PASSWORD 'app';
 -- continua sujeito ao RLS em toda tabela de tenant.
 CREATE ROLE brutus_admin LOGIN PASSWORD 'admin';
 
+-- Papel da Evolution API. Nada a ver com os três de cima: ele é dono do
+-- PRÓPRIO banco e não recebe GRANT nenhum em `brutus` — a instância de
+-- WhatsApp não tem por que enxergar dado de barbearia, e o RLS não é a
+-- barreira aqui, a separação de banco é.
+CREATE ROLE evolution LOGIN PASSWORD 'evolution';
+
 CREATE DATABASE brutus      OWNER brutus_owner;
 CREATE DATABASE brutus_test OWNER brutus_owner;
+
+-- A Evolution roda as próprias migrações ao subir, então precisa ser dona do
+-- banco dela.
+CREATE DATABASE evolution   OWNER evolution;
 
 \connect brutus
 GRANT USAGE ON SCHEMA public TO brutus_app;

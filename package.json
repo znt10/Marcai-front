@@ -10,7 +10,9 @@
     "test:ci": "dotenv -e .env -- vitest run --reporter=verbose",
     "test:watch": "dotenv -e .env -- vitest",
     "seed": "dotenv -e .env -- tsx prisma/seed.ts",
-    "admin:hash": "tsx scripts/hash-senha.ts"
+    "admin:hash": "tsx scripts/hash-senha.ts",
+    "whatsapp:qr": "dotenv -e .env -- tsx scripts/whatsapp-qr.ts",
+    "whatsapp:estado": "dotenv -e .env -- tsx scripts/whatsapp-estado.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
