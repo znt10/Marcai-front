@@ -6,7 +6,7 @@ import { diaDeHoje, diaSemanaDe } from '@/lib/datas';
 import { GET as verServicos, POST as criarServico } from '@/app/api/painel/servicos/route';
 import { PATCH as editarServico } from '@/app/api/painel/servicos/[id]/route';
 import { PUT as vincular, GET as verVinculos } from '@/app/api/painel/barbeiro-servicos/route';
-import { PATCH as editarBarbearia } from '@/app/api/painel/barbearia/route';
+import { GET as verBarbearia, PATCH as editarBarbearia } from '@/app/api/painel/barbearia/route';
 import { GET as barbeirosPublicos } from '@/app/api/barbeiros/route';
 import { PUT as definirDia } from '@/app/api/painel/expediente/route';
 
@@ -209,6 +209,46 @@ describe('a frase da barbearia', () => {
     const res = await editarBarbearia(
       comCorpo(jwt, '/api/painel/barbearia', 'PATCH', { horarioResumo: 'o que eu quiser' }));
     expect(res.status).toBe(403);
+  });
+
+  it('o GET devolve a frase atual — a tela não escreve no escuro', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDe(ctx, 'teo');
+
+    const antes = await (await verBarbearia(
+      get(jwt, "/api/painel/barbearia"))).json();
+    expect(antes.horarioResumo).toBe(ctx.barbearia.horarioResumo);
+    expect(antes.nome).toBe('BRUTUS');
+
+    await editarBarbearia(
+      comCorpo(jwt, '/api/painel/barbearia', 'PATCH', { horarioResumo: 'ter a dom, 10h-22h' }));
+
+    const depois = await (await verBarbearia(
+      get(jwt, "/api/painel/barbearia"))).json();
+    expect(depois.horarioResumo).toBe('ter a dom, 10h-22h');
+  });
+
+  it('frase nula chega como null, não como string vazia', async () => {
+    const ctx = await montarCenarioBrutus();
+    await prismaOwner.barbearia.update({
+      where: { id: ctx.barbearia.id }, data: { horarioResumo: null },
+    });
+    const jwt = await sessaoDe(ctx, 'teo');
+
+    const corpo = await (await verBarbearia(
+      get(jwt, "/api/painel/barbearia"))).json();
+    // A barbearia nasce assim: o admin da plataforma não sabe o horário dela.
+    // A tela usa o nulo para avisar que a home não mostra horário nenhum, e
+    // string vazia seria o mesmo estado disfarçado de valor preenchido.
+    expect(corpo.horarioResumo).toBeNull();
+  });
+
+  it('o barbeiro LÊ a frase — ele precisa saber o que a home promete', async () => {
+    const ctx = await montarCenarioBrutus();
+    const jwt = await sessaoDe(ctx, 'rael');
+    const res = await verBarbearia(get(jwt, "/api/painel/barbearia"));
+    // Escrever é do dono (403 acima); ler é da equipe.
+    expect(res.status).toBe(200);
   });
 });
 
