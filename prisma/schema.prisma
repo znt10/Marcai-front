@@ -30,7 +30,11 @@ model Barbearia {
   slug            String   @unique
   nome            String
   endereco        String
-  horarioResumo   String
+  /// Nulo até o DONO preencher. O admin da plataforma cadastra a barbearia e
+  /// não sabe o horário dela — exigir o campo no cadastro era pedir para ele
+  /// inventar um valor. Nulo e string vazia seriam dois jeitos de dizer a mesma
+  /// coisa, então é nulo: a home não mostra horário nenhum enquanto for.
+  horarioResumo   String?
   whatsappContato String
   ativo           Boolean  @default(true)
   criadoEm        DateTime @default(now())

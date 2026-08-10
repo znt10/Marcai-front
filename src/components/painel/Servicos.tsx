@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Box, Chip, Lbl, Sub, Sep } from '@/components/wf';
 import {
-  servicosApi, publicoApi, mensagemDoErro,
+  servicosApi, publicoApi, barbeariaApi, mensagemDoErro,
   type ServicoDoCatalogo, type VinculoDeServico, type Eu, type Barbeiro,
 } from '@/lib/api';
 
@@ -11,6 +11,11 @@ export function Servicos({ eu }: { eu: Eu }) {
   const [vinculos, setVinculos] = useState<VinculoDeServico[]>([]);
   const [barbeiros, setBarbeiros] = useState<Barbeiro[]>([]);
   const [barbeiroId, setBarbeiroId] = useState(eu.id);
+  /// Três estados, não dois: `undefined` é "ainda não buscamos", `null` é "a
+  /// barbearia não tem horário escrito" e string é a frase. Colapsar os dois
+  /// primeiros faria a tela acusar "a home não mostra horário" durante o
+  /// carregamento de toda barbearia que tem horário.
+  const [frase, setFrase] = useState<string | null | undefined>(undefined);
   const [erro, setErro] = useState('');
 
   const alvo = barbeiroId === eu.id ? undefined : barbeiroId;
@@ -41,6 +46,9 @@ export function Servicos({ eu }: { eu: Eu }) {
     if (eu.papel !== 'DONO') return;
     const ctrl = new AbortController();
     publicoApi.barbeiros(ctrl.signal).then(setBarbeiros).catch(() => {});
+    // A frase é do dono, então só ele busca. Vive fora do `carregar` porque não
+    // depende do barbeiro selecionado: é da casa, não da pessoa.
+    barbeariaApi.ver(ctrl.signal).then((b) => setFrase(b.horarioResumo)).catch(() => {});
     return () => ctrl.abort();
   }, [eu.papel]);
 
@@ -123,7 +131,12 @@ export function Servicos({ eu }: { eu: Eu }) {
           <NovoServico aoCriar={(d) => agir(() => servicosApi.criar(d))} />
 
           <Sep />
-          <FraseDoHorario aoSalvar={(f) => agir(() => servicosApi.frase(f))} />
+          {frase !== undefined && (
+            <FraseDoHorario atual={frase} aoSalvar={(f) => agir(async () => {
+              await servicosApi.frase(f);
+              setFrase(f);
+            })} />
+          )}
         </>
       )}
 
@@ -169,26 +182,49 @@ function NovoServico({ aoCriar }: {
   );
 }
 
-function FraseDoHorario({ aoSalvar }: { aoSalvar: (frase: string) => void }) {
+function FraseDoHorario({ atual, aoSalvar }: {
+  atual: string | null;
+  aoSalvar: (frase: string) => void;
+}) {
   const [frase, setFrase] = useState('');
 
+  // O campo nasce com o que está valendo. Sem isto ele abria sempre vazio e o
+  // dono escrevia por cima às cegas, sem saber o que a home estava mostrando.
+  // `atual` chega depois da busca, então a chave remonta o estado quando ele
+  // troca de null para a frase — em vez de um efeito que sobrescreveria o que
+  // o dono já começou a digitar.
   return (
-    <>
+    <div key={atual ?? ''} className="flex flex-col gap-2.5 md:gap-3.5">
       <Lbl>frase de horário da home</Lbl>
       <Sub>
         Escrita à mão de propósito: juntar as agendas da equipe produz frase
         ruim.
       </Sub>
-      <Box variante={frase ? 'normal' : 'dash'}>
+      {/* Nulo é um estado de verdade: a barbearia nasce sem horário porque o
+          admin da plataforma não sabe qual é. Enquanto ninguém escrever, a home
+          não mostra horário nenhum — e o dono precisa saber disso. */}
+      {atual === null && (
+        <Sub className="text-acento">
+          a home não está mostrando horário nenhum
+        </Sub>
+      )}
+      <Box variante={frase || atual ? 'normal' : 'dash'}>
         <input className="w-full outline-none bg-transparent"
                placeholder="seg a sáb, 9h–20h"
-               value={frase} onChange={(e) => setFrase(e.target.value)} />
+               defaultValue={atual ?? ''}
+               onChange={(e) => setFrase(e.target.value)} />
       </Box>
-      <Box variante={frase.trim().length >= 3 ? 'fill' : 'mut'}
-           className={frase.trim().length >= 3 ? 'cursor-pointer' : ''}
-           onClick={() => frase.trim().length >= 3 && aoSalvar(frase)}>
-        salvar a frase
-      </Box>
-    </>
+      {(() => {
+        const valor = (frase || atual || '').trim();
+        const vale = valor.length >= 3 && valor !== (atual ?? '');
+        return (
+          <Box variante={vale ? 'fill' : 'mut'}
+               className={vale ? 'cursor-pointer' : ''}
+               onClick={() => vale && aoSalvar(valor)}>
+            salvar a frase
+          </Box>
+        );
+      })()}
+    </div>
   );
 }
