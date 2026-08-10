@@ -19,16 +19,32 @@ const config = () => ({
 });
 
 /// Fire-and-forget. Falha de WhatsApp NUNCA derruba um agendamento (§10.2).
+///
+/// Fire-and-forget é sobre não desfazer o agendamento — **não** é licença para
+/// não contar. A resposta é conferida: número desconectado devolve 400 com
+/// "sendMessage of undefined", chave errada devolve 401, e nenhum dos dois
+/// lança. Sem o `r.ok`, os dois passavam sem uma linha de log, e o único
+/// sintoma era o cliente não receber nada — impossível de diagnosticar depois.
 export async function enviarTexto(whatsappDigitos: string, mensagem: string): Promise<void> {
   const { url, instancia, chave } = config();
   if (!url) { console.info('[whatsapp] sem EVOLUTION_API_URL:', whatsappDigitos, mensagem); return; }
   try {
-    await fetch(`${url}/message/sendText/${instancia}`, {
+    const r = await fetch(`${url}/message/sendText/${instancia}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: chave },
       body: JSON.stringify({ number: `55${whatsappDigitos}`, text: mensagem }),
       signal: AbortSignal.timeout(CHECK_NUMERO_TIMEOUT_MS),
     });
+    if (!r.ok) {
+      // O corpo é onde a Evolution diz o motivo, e é o que separa "instância
+      // desconectada" de "chave errada" — as duas causas mais comuns, com
+      // consertos completamente diferentes.
+      const motivo = await r.text().catch(() => '');
+      console.error(
+        `[whatsapp] envio recusado (${r.status}) para ${whatsappDigitos}:`,
+        motivo.slice(0, 300),
+      );
+    }
   } catch (e) {
     console.error('[whatsapp] falha ao enviar:', e);
   }
