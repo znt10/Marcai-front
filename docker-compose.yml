@@ -123,24 +123,89 @@ services:
       # de todo cliente de toda barbearia: um acervo de conversa alheia que o
       # produto não usa para nada.
       DATABASE_SAVE_DATA_INSTANCE: "true"
-      DATABASE_SAVE_DATA_NEW_MESSAGE: "false"
-      DATABASE_SAVE_MESSAGE_UPDATE: "false"
+      # Estes DOIS andam juntos, e isso foi medido: com `NEW_MESSAGE=false`, a
+      # `MessageUpdate` também fica vazia — o status precisa da linha da
+      # mensagem para pousar. Não existe "só o status".
+      #
+      # E o status é o ÚNICO lugar onde aparece que o WhatsApp **recusou** o
+      # envio. A Evolution devolve `201` porque aceitou a TAREFA; a rejeição
+      # chega depois, assíncrona, como `status: ERROR`. Com isto desligado, ela
+      # não tinha onde pousar — e em 10/08 custou horas de investigação com log
+      # limpo dos dois lados e mensagem nenhuma chegando.
+      #
+      # O que fica guardado é o texto que NÓS mandamos (confirmação, lembrete,
+      # convite). Mensagem de cliente não entra: o produto nunca recebe, e
+      # contatos, chats e histórico seguem desligados abaixo.
+      #
+      # O `zelador` poda o que passa de 7 dias.
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
       DATABASE_SAVE_DATA_CONTACTS: "false"
       DATABASE_SAVE_DATA_CHATS: "false"
       DATABASE_SAVE_DATA_LABELS: "false"
       DATABASE_SAVE_DATA_HISTORIC: "false"
 
-      # Sem Redis: um quarto contêiner para cachear o que uma instância única
-      # resolve em memória é peso sem retorno.
-      CACHE_REDIS_ENABLED: "false"
-      CACHE_LOCAL_ENABLED: "true"
+      # COM Redis, e a decisão anterior estava errada. Eu havia desligado com o
+      # argumento de que "um quarto contêiner para cachear o que uma instância
+      # única resolve em memória é peso sem retorno" — raciocínio sobre CACHE,
+      # quando o Redis aqui é infraestrutura de ENVIO.
+      #
+      # O sintoma: mensagem aceita com `201 / status: PENDING` e nunca
+      # transmitida, com a instância `open` e o soquete respondendo. No log da
+      # Evolution, a cada envio: `CACHE: { cached: undefined, messageTimestamp:
+      # undefined }` seguido de `Closing session`. Mensagem à mão pelo celular
+      # chegava; pela API, nunca.
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://redis:6379/6
+      CACHE_REDIS_PREFIX_KEY: evolution
+      CACHE_REDIS_SAVE_INSTANCES: "false"
+      CACHE_LOCAL_ENABLED: "false"
 
       DEL_INSTANCE: "false"
       LOG_LEVEL: ERROR,WARN,INFO
       LOG_BAILEYS: error
     depends_on:
       db: { condition: service_healthy }
+      redis: { condition: service_started }
+
+  # Duas tarefas que precisam de `psql`, e é por isso que não moram no
+  # `agendador`: aquele é imagem de `curl`, e cada serviço fica com a ferramenta
+  # que a tarefa pede em vez de um contêiner que faz tudo mal.
+  #
+  # 1. ALARMA envio recusado. O WhatsApp rejeita de forma assíncrona: a
+  #    Evolution já devolveu `201` ao app quando a recusa chega, então o app
+  #    nunca fica sabendo. `status = 'ERROR'` na `MessageUpdate` é o único
+  #    registro disso — e em 10/08 a ausência dele custou horas com o log limpo
+  #    dos dois lados e nenhuma mensagem chegando.
+  #
+  # 2. PODA o que passa de 7 dias. O rastreio exige guardar o texto que nós
+  #    mandamos (medido: sem a linha da mensagem, o status não é gravado), então
+  #    o histórico não pode crescer para sempre.
+  #
+  # De hora em hora, não a cada 10 min: recusa que já aconteceu não fica mais
+  # urgente sendo relida seis vezes por hora.
+  zelador:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: evolution
+    volumes:
+      - ./docker/zelador.sh:/zelador.sh:ro
+    entrypoint: ["/bin/sh", "/zelador.sh"]
+    depends_on:
+      db: { condition: service_healthy }
+
+  # Não é cache de conveniência: a Evolution usa o Redis no caminho de ENVIO.
+  # Sem ele, a mensagem é aceita (`201 / PENDING`) e nunca transmitida.
+  # `appendonly` para a fila sobreviver a reinício do contêiner.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - evolution_redis:/data
 
 volumes:
   pgdata:
   evolution_instances:
+  evolution_redis:

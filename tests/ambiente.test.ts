@@ -82,6 +82,34 @@ describe('variáveis de ambiente', () => {
     expect(compose).toMatch(/EVOLUTION_API_KEY:\s*\$\{EVOLUTION_API_KEY\}/);
   });
 
+  it('o zelador alarma envio recusado e poda o histórico', () => {
+    const compose = readFileSync(join(RAIZ, 'docker-compose.yml'), 'utf8');
+    const zelador = readFileSync(join(RAIZ, 'docker', 'zelador.sh'), 'utf8');
+
+    // O WhatsApp rejeita de forma ASSÍNCRONA: quando a recusa chega, a Evolution
+    // já devolveu 201 ao app. `status = 'ERROR'` é o único registro disso, e sem
+    // alguém lendo esse registro a mensagem que não chega é invisível.
+    expect(zelador).toMatch(/status = 'ERROR'/);
+    expect(zelador).toMatch(/RECUSADO/);
+
+    // A poda existe porque o rastreio de status EXIGE guardar o texto que nós
+    // mandamos — medido: sem a linha da mensagem, a `MessageUpdate` fica vazia.
+    // Sem poda, o histórico cresceria para sempre.
+    // As aspas viajam escapadas dentro da string de shell: `\"Message\"`.
+    expect(zelador).toMatch(/DELETE FROM \\"Message\\"/);
+    expect(zelador).toMatch(/DIAS_DE_HISTORICO=\d+/);
+    // `MessageUpdate` primeiro: ela referencia `Message`.
+    expect(zelador.indexOf('DELETE FROM \\"MessageUpdate\\"'))
+      .toBeLessThan(zelador.indexOf('DELETE FROM \\"Message\\"'));
+
+    // Os dois flags andam juntos — ligar só um deixa a tabela de status vazia.
+    expect(compose).toMatch(/DATABASE_SAVE_DATA_NEW_MESSAGE:\s*"true"/);
+    expect(compose).toMatch(/DATABASE_SAVE_MESSAGE_UPDATE:\s*"true"/);
+    // Conversa de cliente continua fora: o produto nunca recebe mensagem.
+    expect(compose).toMatch(/DATABASE_SAVE_DATA_CONTACTS:\s*"false"/);
+    expect(compose).toMatch(/DATABASE_SAVE_DATA_HISTORIC:\s*"false"/);
+  });
+
   it('a sessão da Evolution mora num volume nomeado', () => {
     const compose = readFileSync(join(RAIZ, 'docker-compose.yml'), 'utf8');
     // Sem volume, todo `docker compose down` obriga a escanear o QR de novo —
