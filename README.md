@@ -24,6 +24,18 @@ contêiner ela aponta para um `localhost:5433` que não existe lá.
 `http://admin.localhost:3000` — cria barbearias com o primeiro dono, lista o
 que está no ar, liga e desliga cada uma, e reemite o convite do dono.
 
+**Cinco campos, e os dois que faltam, faltam de propósito.** Sem **horário**: o
+admin não sabe o horário da barbearia, e pedir era pedir para ele inventar um
+valor — quem escreve a frase da home é o dono, na tela de serviços. Sem
+**WhatsApp do dono**: no cadastro é a mesma pessoa do contato da barbearia, então
+o número da barbearia vira o login do dono. Ele separa depois pela tela de
+equipe, se a casa ganhar um número próprio.
+
+**O link de convite vai por dois caminhos**: a tela mostra uma vez e o WhatsApp
+da barbearia guarda. Antes ia só para a tela — e o token só existe em hash no
+banco, então admin que fechasse a aba deixava o dono sem caminho de volta. Vale
+igual para o "novo convite" da lista.
+
 Antes da primeira vez, gerar a credencial:
 
 ```bash
@@ -145,6 +157,12 @@ tempo começa na pessoa**, então o barbeiro mexe no seu e o dono em todos.
 editável por barbeiro — é ela que o motor de horários usa, e é o que deixa o
 barbeiro rápido atender mais gente. **Desmarcar preserva o número praticado**:
 remarcar devolve o que era, não a sugerida.
+
+**A frase de horário nasce vazia**, porque o admin não a preenche. Enquanto
+ninguém escrever, a home não mostra horário nenhum — e a tela avisa isso em
+destaque. O campo abre com o que está valendo, não em branco; e o `GET` lê do
+banco, não do cache de tenant, senão o dono salvava e a tela continuava
+mostrando a frase antiga por até um minuto.
 
 **Serviço se desativa, nunca se apaga.** Agendamentos antigos guardam o nome do
 serviço copiado no momento da marcação, então o histórico não depende do

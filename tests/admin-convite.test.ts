@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { verify } from '@node-rs/argon2';
 import { prismaOwner, limparBanco } from './setup';
 import { POST as reemitir } from '@/app/api/admin/barbearias/[id]/convite/route';
@@ -19,6 +19,15 @@ async function barbeariaComDono() {
 }
 
 beforeEach(limparBanco);
+
+// O caso do convite por WhatsApp troca o `fetch` global e a URL da Evolution.
+// Sem devolver os dois, os casos seguintes herdariam o espião e passariam a
+// tentar rede — e o primeiro a quebrar seria um que não tem nada com isso.
+const urlOriginal = process.env.EVOLUTION_API_URL;
+afterEach(() => {
+  vi.restoreAllMocks();
+  process.env.EVOLUTION_API_URL = urlOriginal ?? '';
+});
 
 const paramsId = (id: string) => ({ params: Promise.resolve({ id }) });
 const paramsToken = (token: string) => ({ params: Promise.resolve({ token }) });
@@ -47,6 +56,25 @@ describe('POST /api/admin/barbearias/[id]/convite', () => {
     const depois = await prismaOwner.barbeiro.findUnique({ where: { id: dono.id } });
     expect(depois!.tokenVersion).toBe(dono.tokenVersion + 1);
     expect(depois!.senhaHash).toBeNull();
+  });
+
+  it('o link reemitido também vai no WhatsApp do dono', async () => {
+    const { b } = await barbeariaComDono();
+    process.env.EVOLUTION_API_URL = 'http://evolution.teste';
+    process.env.EVOLUTION_INSTANCE = 'brutus';
+    const espiao = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal('fetch', espiao);
+
+    const { linkConvite } = await (await reemitir(pedidoVazio(), paramsId(b.id))).json();
+
+    // Reemitir já apagou a senha do dono neste ponto. Se o link só existisse na
+    // tela do admin e ele fechasse a aba, o dono ficaria de fora sem volta — o
+    // token só existe em hash no banco.
+    const envios = espiao.mock.calls
+      .filter((c) => String(c[0]).includes('/message/sendText/'))
+      .map((c) => JSON.parse((c[1] as RequestInit).body as string));
+    expect(envios).toHaveLength(1);
+    expect(envios[0].text).toContain(linkConvite);
   });
 
   it('barbearia inexistente devolve 404', async () => {
