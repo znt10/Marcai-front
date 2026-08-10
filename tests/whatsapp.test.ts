@@ -59,4 +59,42 @@ describe('enviarTexto', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('fora do ar')));
     await expect(enviarTexto('11977771234', 'oi')).resolves.toBeUndefined();
   });
+
+  it('resposta recusada VAI para o log de erro', async () => {
+    // Aconteceu de verdade: a instância caiu, a Evolution passou a devolver 400
+    // com "sendMessage of undefined", e como ninguém conferia `r.ok` os convites
+    // sumiram sem UMA linha de log. O único sintoma era o cliente não receber
+    // nada — e "não tem erro no log" chegou a ser usado como prova de sucesso.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false, status: 400,
+      text: async () => '{"message":"Cannot read properties of undefined (reading \'sendMessage\')"}',
+    }));
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await enviarTexto('11977771234', 'oi');
+
+    expect(log).toHaveBeenCalledOnce();
+    const escrito = log.mock.calls[0].join(' ');
+    expect(escrito).toContain('400');
+    expect(escrito).toContain('11977771234');
+    // O motivo importa: é o que separa "instância desconectada" de "chave
+    // errada", e os consertos são completamente diferentes.
+    expect(escrito).toContain('sendMessage');
+  });
+
+  it('resposta ok não polui o log', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => '' }));
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await enviarTexto('11977771234', 'oi');
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it('sem a URL, cai no console.info e não faz rede', async () => {
+    process.env.EVOLUTION_API_URL = '';
+    const espiao = vi.fn();
+    vi.stubGlobal('fetch', espiao);
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    await enviarTexto('11977771234', 'oi');
+    expect(espiao).not.toHaveBeenCalled();
+  });
 });

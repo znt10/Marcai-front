@@ -62,6 +62,40 @@ fire-and-forget. É fatia pequena depois das respostas acima.
 
 ---
 
+## Ninguém percebe quando o WhatsApp cai
+
+**Aconteceu em 10/08/2026, e passou horas sem ninguém ver.** O contêiner da
+Evolution reiniciou, gravou a sessão como `close` e **não reconectou sozinho**:
+
+```
+Skipping auto-connect for instance "brutus" (status: close)
+TypeError: Cannot read properties of undefined (reading 'sendMessage')
+```
+
+Duas barbearias foram cadastradas nesse intervalo e os convites dos donos
+**tentaram sair e falharam**. Nada na tela do admin mudou: o link apareceu
+normalmente, a barbearia foi criada, e a mensagem simplesmente não existiu.
+
+O envio é fire-and-forget por decisão certa — falha de WhatsApp não pode desfazer
+um agendamento. O problema é que fire-and-forget virou *fire-and-forget-and-shut-up*:
+
+- **Corrigido em 10/08:** `enviarTexto` não conferia `r.ok`, então resposta
+  recusada não gerava nem uma linha de log. Agora gera, com status e motivo.
+- **Ainda aberto:** nada *monitora* a conexão. `npm run whatsapp:estado` existe
+  e ninguém o roda sozinho. Em produção, o número pode ficar dias desconectado e
+  o sintoma é clientes silenciosamente deixando de receber confirmação.
+
+Duas saídas, e provavelmente as duas:
+
+- **healthcheck no agendador.** Ele já bate na aplicação a cada 10 minutos;
+  conferir `connectionState` no mesmo tique é quase de graça, e um log alto
+  ("WHATSAPP DESCONECTADO") aparece em `docker compose logs`.
+- **aviso na tela do admin.** Um selo vermelho na lista de barbearias quando a
+  instância não está `open`. É onde a pessoa que pode agir está olhando.
+
+O que **não** resolve: reconectar automaticamente. Reconexão exige o QR, que
+exige uma pessoa com o celular. O sistema pode avisar, não consertar.
+
 ## A senha do seed não passa pela regra do próprio produto
 
 **Encontrado em 10/08/2026.** `SENHA_MINIMA` é **8** (`src/lib/config.ts`), e o
