@@ -916,7 +916,12 @@ class Barbearia(models.Model):
     protegida por GRANT (REVOKE INSERT/UPDATE/DELETE) e nao por politica.
     """
 
-    id = models.UUIDField(primary_key=True, db_column="id")
+    # TextField e nao UUIDField: o Prisma gera valor uuid numa coluna `String`,
+    # que no Postgres e TEXT — `id String @id @default(uuid())`, sem @db.Uuid.
+    # UUIDField faria o psycopg mandar parametro tipado `uuid` contra coluna
+    # `text`, e `text = uuid` nao resolve em comparacao (o cast so vale em
+    # atribuicao). INSERT passaria e o filtro do RLS quebraria.
+    id = models.TextField(primary_key=True, db_column="id")
     slug = models.TextField(unique=True, db_column="slug")
     nome = models.TextField(db_column="nome")
     endereco = models.TextField(db_column="endereco")
@@ -938,8 +943,10 @@ class Barbeiro(models.Model):
     precisar entram la.
     """
 
-    id = models.UUIDField(primary_key=True, db_column="id")
-    barbearia_id = models.UUIDField(db_column="barbeariaId")
+    # TextField pelo mesmo motivo do Barbearia.id acima. Aqui importa mais: e
+    # nesta coluna que o teste de isolamento da Task 6 filtra.
+    id = models.TextField(primary_key=True, db_column="id")
+    barbearia_id = models.TextField(db_column="barbeariaId")
     nome = models.TextField(db_column="nome")
     whatsapp = models.TextField(db_column="whatsapp")
     ativo = models.BooleanField(db_column="ativo")
@@ -961,20 +968,35 @@ from django.db import connections
 
 
 @pytest.fixture(autouse=True)
-def limpar_banco():
+def limpar_banco(request):
     """Mesmo TRUNCATE do tests/setup.ts do front, e pelo mesmo motivo: cada
     caso recria a barbearia com um uuid novo, e sobra de caso anterior faz o
     RLS filtrar tudo com sintoma de 'nao encontrado'.
 
+    Limpa na ENTRADA, como o `beforeEach(limparBanco)` do front, e nao na
+    saida: corrida que morre no meio — crash, Ctrl-C, --maxfail — nao chega ao
+    teardown, e a corrida seguinte falharia em dado que nao criou. Limpar na
+    entrada se cura sozinho.
+
+    O guarda cobre marker E fixture: o `_django_db_helper` do pytest-django
+    libera o banco tambem para quem pede `db`/`transactional_db` sem marker
+    nenhum, e ai um TRUNCATE pulado em silencio deixa sobra para o proximo.
+
     Roda como `owner` porque `brutus_app` nao tem direito de TRUNCATE.
     """
-    yield
+    if not (
+        request.node.get_closest_marker("django_db")
+        or {"db", "transactional_db"} & set(request.fixturenames)
+    ):
+        yield
+        return
     with connections["owner"].cursor() as cur:
         cur.execute(
             'TRUNCATE TABLE "Agendamento", "Cliente", "Bloqueio", '
             '"HorarioTrabalho", "BarbeiroServico", "Servico", "Barbeiro", '
             '"Barbearia" RESTART IDENTITY CASCADE'
         )
+    yield
 
 
 @pytest.fixture
@@ -1183,7 +1205,7 @@ def saude(request):
 
 - [ ] **Step 4: Limpar o cache entre casos**
 
-O TTL de 60s faz o caso seguinte enxergar a barbearia que o `TRUNCATE` apagou. Acrescente à fixture `limpar_banco` do `conftest.py`, **antes** do `yield`:
+O TTL de 60s faz o caso seguinte enxergar a barbearia que o `TRUNCATE` apagou. Acrescente à fixture `limpar_banco` do `conftest.py`, **logo depois do `TRUNCATE` e antes do `yield`** — o cache tem que morrer junto com as linhas que ele indexa:
 
 ```python
     from tenant.middleware import _limpar_cache_tenant
