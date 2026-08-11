@@ -5,6 +5,45 @@ entra numa etapa ganha spec em `docs/superpowers/specs/`.
 
 ---
 
+## Separar em back Django e front Next
+
+**Decidido em 10/08/2026**, para começar em 10 ou 11/08. É a mudança de maior
+alcance da lista e por isso está no topo: ela reposiciona tudo o que vem depois.
+
+Hoje é Next full-stack — route handlers em `src/app/api/**`, Prisma 7 com driver
+adapter, e o isolamento entre barbearias por Row Level Security dirigido por
+`comBarbearia()`.
+
+O que precisa de decisão **antes** de escrever código, em ordem de risco:
+
+**O isolamento de tenant.** `set_config('app.barbearia_id', …, true)` dentro de
+transação é a fronteira mais forte que este sistema tem, e ela vale exatamente
+enquanto *toda* consulta passar por lá. Em Django isso é middleware mais um
+wrapper de conexão — reconstruído, não traduzido. O teste `varredura estrutural`
+existe justo para isso e precisa de equivalente do outro lado.
+
+**O motor de horários** (`src/lib/slots.ts`) é função pura, sem banco. É o que
+porta mais fácil e o que menos pode divergir: é o núcleo do produto.
+
+**A restrição de exclusão** (`23P01`) é do banco, não do código — sobrevive à
+troca de graça, e continua sendo a única garantia real contra agendamento duplo.
+
+**Os 360 testes não portam.** Eles chamam os handlers diretamente, sem
+atravessar HTTP. Isso foi bom (rápidos, sem servidor) e é o preço agora: cada um
+precisa de par do lado Django.
+
+**Os serviços de infraestrutura ficam.** Evolution, `agendador` e `zelador` são
+contêineres do compose e não sabem quem os chama — muda o endereço, não eles.
+
+**O `proxy.ts` sai de cena.** Ele resolve tenant por subdomínio e protege
+`/admin` e `/api/painel/*` **posicionalmente** — rota nova sob aquele prefixo
+nasce protegida sem ninguém decidir. Essa propriedade é fácil de perder na
+migração, e perdê-la é silencioso.
+
+Referência de estilo que ele já pediu para eu seguir: o front do Unistock, em
+`D:\Estagio\sigevi-front` — foi de lá que saiu a camada de API centralizada
+(`src/lib/api/`) que hoje impede URL solta em componente.
+
 ## PWA do painel (só do dono e da equipe)
 
 **Pedido em 10/08/2026.** Um app instalável para quem trabalha na barbearia

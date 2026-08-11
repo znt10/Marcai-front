@@ -14,6 +14,12 @@ import { join } from 'node:path';
 
 const RAIZ = join(__dirname, '..');
 
+// Tarefa 1 (separação front/back): `db`, `redis`, `evolution`, `zelador` e
+// `agendador` mudaram de repositório — vivem agora em `back/`, ligados a este
+// por uma rede docker compartilhada (`brutus`). As varreduras abaixo que
+// liam essas decisões do compose/scripts daqui passam a ler de lá.
+const RAIZ_BACK = join(RAIZ, '..', 'back');
+
 /// Posta pelo Next e pelo runtime, nunca pela gente. Documentar seria mentir
 /// sobre quem a define.
 const DO_RUNTIME = new Set(['NODE_ENV']);
@@ -60,15 +66,18 @@ describe('variáveis de ambiente', () => {
   });
 
   it('a chave da Evolution alimenta os dois serviços do compose', () => {
-    const compose = readFileSync(join(RAIZ, 'docker-compose.yml'), 'utf8');
+    // `app` mora no compose daqui; `evolution` mora agora no do back. A
+    // variável precisa ser a MESMA nos dois — é o que a rede `brutus` liga.
+    const composeApp = readFileSync(join(RAIZ, 'docker-compose.yml'), 'utf8');
+    const composeBack = readFileSync(join(RAIZ_BACK, 'docker-compose.yml'), 'utf8');
     // O `app` manda e o `evolution` exige. Se um deixar de sair da mesma
     // variável, o sintoma é 401 silencioso em todo envio.
-    expect(compose).toMatch(/AUTHENTICATION_API_KEY:\s*\$\{EVOLUTION_API_KEY\}/);
-    expect(compose).toMatch(/EVOLUTION_API_KEY:\s*\$\{EVOLUTION_API_KEY\}/);
+    expect(composeBack).toMatch(/AUTHENTICATION_API_KEY:\s*\$\{EVOLUTION_API_KEY\}/);
+    expect(composeApp).toMatch(/EVOLUTION_API_KEY:\s*\$\{EVOLUTION_API_KEY\}/);
   });
 
   it('o agendador confere o WhatsApp no mesmo tique do lembrete', () => {
-    const compose = readFileSync(join(RAIZ, 'docker-compose.yml'), 'utf8');
+    const compose = readFileSync(join(RAIZ_BACK, 'docker-compose.yml'), 'utf8');
     // O vínculo do WhatsApp cai sozinho (`Instance - LOGOUT`, sem ninguém
     // pedir) e depois disso a Evolution responde 201 com `status: PENDING`
     // para TUDO, sem entregar nada. Aconteceu, e ficou quase duas horas assim:
@@ -83,8 +92,8 @@ describe('variáveis de ambiente', () => {
   });
 
   it('o zelador alarma envio recusado e poda o histórico', () => {
-    const compose = readFileSync(join(RAIZ, 'docker-compose.yml'), 'utf8');
-    const zelador = readFileSync(join(RAIZ, 'docker', 'zelador.sh'), 'utf8');
+    const compose = readFileSync(join(RAIZ_BACK, 'docker-compose.yml'), 'utf8');
+    const zelador = readFileSync(join(RAIZ_BACK, 'docker', 'zelador.sh'), 'utf8');
 
     // O WhatsApp rejeita de forma ASSÍNCRONA: quando a recusa chega, a Evolution
     // já devolveu 201 ao app. `status = 'ERROR'` é o único registro disso, e sem
@@ -111,7 +120,7 @@ describe('variáveis de ambiente', () => {
   });
 
   it('a sessão da Evolution mora num volume nomeado', () => {
-    const compose = readFileSync(join(RAIZ, 'docker-compose.yml'), 'utf8');
+    const compose = readFileSync(join(RAIZ_BACK, 'docker-compose.yml'), 'utf8');
     // Sem volume, todo `docker compose down` obriga a escanear o QR de novo —
     // em produção, é o telefone da barbearia caindo a cada deploy.
     expect(compose).toMatch(/evolution_instances:\/evolution\/instances/);
