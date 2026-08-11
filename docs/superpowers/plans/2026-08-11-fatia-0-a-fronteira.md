@@ -6,14 +6,19 @@
 
 **Architecture:** Dois repositórios (`back/` Django, `front/` Next) com composes próprios ligados por uma rede docker externa `brutus`, dividindo o mesmo Postgres. O Prisma continua dono do DDL; o Django lê com `managed = False`. O interruptor da travessia é uma lista vazia em `client.ts`.
 
-**Tech Stack:** Django 5.2 LTS, psycopg 3, pytest + pytest-django, Postgres 16, Docker Compose. Next 16 do lado do front.
+**Tech Stack:** Django 6.0, DRF, django-cors-headers, Celery + django-celery-beat, psycopg 3, pytest + pytest-django, Postgres 16, Docker Compose. Next 16 do lado do front.
 
 **Spec:** `docs/superpowers/specs/2026-08-11-separar-front-back-design.md`
 
+**Referência estrutural:** `C:\Users\jc970\Desktop\Unistock\Unistock_Back` — o layout, o `Dockerfile`, o `entrypoint.sh` e a escolha de bibliotecas saem de lá (spec §14). O que **não** sai de lá está na tabela das Global Constraints abaixo.
+
 ## Global Constraints
 
-- **Sem DRF nesta fatia.** Respostas com `JsonResponse`. A camada de serialização é decisão da fatia 1 (spec §12).
-- **`INSTALLED_APPS` mínimo: sem `django.contrib.admin`, sem `django.contrib.auth`, sem `django.contrib.sessions`.** O Django não pode criar tabela num banco de que o Prisma é dono (spec §8).
+- **PostgreSQL, nunca MySQL.** O `Unistock_Back` usa `mysqlclient`; aqui é `psycopg`. Todo o isolamento entre barbearias é PostgreSQL — `set_config`, `FORCE ROW LEVEL SECURITY`, políticas por papel, e a restrição `23P01`. Nenhum dos quatro existe em MySQL.
+- **Nada de `djangorestframework_simplejwt`.** Ele é Bearer token em header, que é o desenho proibido pela restrição do spec §3.
+- **DRF entra**, decidido pela referência (spec §14). O canário usa `@api_view`.
+- **`INSTALLED_APPS` mínimo: sem `django.contrib.admin`, sem `django.contrib.auth`, sem `django.contrib.sessions`, e sem `django_celery_beat`.** O Django não pode criar tabela num banco de que o Prisma é dono (spec §8). O `beat` roda com o agendador **de arquivo**, que é o padrão do Celery e não toca banco nenhum; o `django-celery-beat` (agenda em tabela) é da fatia 7, quando houver agenda que valha a pena editar sem deploy.
+- **O `worker` e o `beat` não sobem decorativos.** Eles entram com uma tarefa `ping` provada ponta a ponta (Task 12). Contêiner que sobe, loga limpo e não executa nada é o modo de falha que este produto já pagou caro — o `agendador` existia e nunca rodava, e a tela prometia lembrete que ninguém mandava.
 - **Todo model nasce `managed = False`, com `db_table` e `db_column` explícitos em todo campo.** `"Barbearia"`, `"barbeariaId"` — nomenclatura do Prisma (spec §8).
 - **O Django nunca roda DDL no banco `brutus` nem no `brutus_test`.** Quem cria e altera tabela é `prisma migrate`, do lado do front.
 - **A sessão nunca sai do cookie `httpOnly`.** Nada de `localStorage` ou `sessionStorage`, em fatia nenhuma (spec §3, restrição).
@@ -26,33 +31,43 @@
 
 ## Estrutura de arquivos
 
+Espelha o `Unistock_Back`: `manage.py` na raiz, `backend/backend/` para o
+projeto, `backend/<app>/` para as apps, `requirements.txt` num arquivo só.
+
 ```
-back/                          <- repositório novo
+back/                          <- repositório novo (ja criado na Task 1)
   .gitignore
   .env.example
-  docker-compose.yml           servicos: db, api, redis, evolution, zelador, agendador
+  docker-compose.yml           db, redis, evolution, zelador, agendador (Task 1)
+                               + api, worker, beat                     (Tasks 2 e 12)
   Dockerfile
+  entrypoint.sh                espera o banco, depois exec no comando
+  requirements.txt
+  pytest.ini
   docker/
-    init-db.sql                movido de front/docker/
-    zelador.sh                 movido de front/docker/
+    init-db.sql                movido de front/docker/  (Task 1)
+    zelador.sh                 movido de front/docker/  (Task 1)
+  docs/
+    testes-a-portar.md         asserçoes que sairam do ambiente.test.ts (Task 1)
   manage.py
-  pyproject.toml               deps + config do pytest
-  requirements/
-    base.txt
-    dev.txt
-  brutus/
-    __init__.py
-    settings.py                DATABASES com dois aliases: default (app) e owner
-    urls.py
-    wsgi.py
-  tenant/
-    __init__.py
-    config.py                  SUBDOMINIOS_RESERVADOS, SLUG_REGEX, TTL_CACHE_TENANT_S
-    slug.py                    extrair_slug, eh_host_admin  (funcao pura)
-    models.py                  Barbearia, Barbeiro          (managed=False)
-    middleware.py              TenantMiddleware, BarreiraAdminMiddleware, CorsMiddleware
-    rls.py                     com_barbearia()
-    views.py                   saude
+  backend/
+    backend/
+      __init__.py              carrega o app do Celery
+      settings.py              DATABASES com dois aliases: default (app) e owner
+      urls.py
+      celery.py
+      wsgi.py
+      asgi.py
+    tenant/
+      __init__.py
+      apps.py
+      config.py                SUBDOMINIOS_RESERVADOS, SLUG_REGEX, TTL_CACHE_TENANT_S
+      slug.py                  extrair_slug, eh_host_admin  (funcao pura)
+      models.py                Barbearia, Barbeiro          (managed=False)
+      middleware.py            TenantMiddleware, BarreiraAdminMiddleware, ClienteMiddleware
+      rls.py                   com_barbearia()
+      views.py                 saude
+      tasks.py                 ping                          (Task 12)
   tests/
     conftest.py                fixtures: banco, cenario, cliente
     test_slug.py
@@ -62,14 +77,22 @@ back/                          <- repositório novo
     test_barreira.py
     test_cors.py
     test_saude.py
+    test_celery.py             (Task 12)
 
 front/                         <- repositório atual
-  docker-compose.yml           passa a ter so o servico `app`
+  docker-compose.yml           passa a ter so o servico `app`   (Task 1)
   src/lib/api/client.ts        ganha baseDe() e MIGRADAS
   tests/client-base.test.ts    novo
 ```
 
 **Por que `tenant/` e não `core/`:** tudo nesta fatia existe para responder "de quem é este pedido?". Quando a fatia 1 trouxer os outros seis models, eles entram numa app própria — `tenant` continua sendo só a fronteira.
+
+**Por que `ClienteMiddleware` e não `CorsMiddleware`:** o CORS passa a ser configuração do `django-cors-headers` (spec §14). O middleware que sobra é só o que exige o `X-Brutus-Cliente` na escrita, e o nome passa a dizer o que ele faz.
+
+> **Atenção ao caminho.** Todas as Tasks 3 a 10 foram escritas antes desta
+> decisão e citam `back/tenant/...` e `back/brutus/...`. Leia sempre como
+> **`back/backend/tenant/...`** e **`back/backend/backend/...`**. Os testes
+> continuam em `back/tests/`.
 
 ---
 
@@ -264,15 +287,17 @@ vazio no primeiro 'up' do lado errado."
 ## Task 2: O Django que sobe
 
 **Files:**
-- Create: `back/pyproject.toml`, `back/requirements/base.txt`, `back/requirements/dev.txt`, `back/Dockerfile`, `back/manage.py`
-- Create: `back/brutus/{__init__,settings,urls,wsgi}.py`, `back/tenant/{__init__,views}.py`
-- Create: `back/tests/test_saude.py`
+- Create: `back/requirements.txt`, `back/pytest.ini`, `back/Dockerfile`, `back/entrypoint.sh`, `back/manage.py`, `back/.env.example`
+- Create: `back/backend/backend/{__init__,settings,urls,celery,wsgi,asgi}.py`
+- Create: `back/backend/tenant/{__init__,apps}.py`, `back/backend/tenant/views.py`
+- Create: `back/tests/{conftest,test_saude}.py`
 - Modify: `back/docker-compose.yml` (serviço `api`)
-- Create: `back/.env.example`
 
 **Interfaces:**
 - Consumes: a rede `brutus` e o serviço `db` da Task 1.
-- Produces: `GET /api/saude` → `200 {"ok": true}`; o alias de banco `default` (papel `brutus_app`) e `owner` (papel `brutus_owner`); `settings.DOMINIO_BASE`.
+- Produces: `GET /api/saude` → `200 {"ok": true}`; os aliases de banco `default` (papel `brutus_app`) e `owner` (papel `brutus_owner`); `settings.DOMINIO_BASE`; o app Celery em `backend.celery.app`, ainda sem tarefa.
+
+**A referência é `C:\Users\jc970\Desktop\Unistock\Unistock_Back`.** Abra-o e siga o layout dele. As adaptações obrigatórias estão marcadas abaixo — cada uma tem motivo, e nenhuma é preferência de estilo.
 
 - [ ] **Step 1: Escrever o teste que falha**
 
@@ -287,51 +312,64 @@ def test_saude_responde_ok(client):
 
 > Repare que a asserção é sobre **uma chave**, e não sobre o corpo inteiro. As
 > Tasks 5 e 10 acrescentam chaves a esta resposta, e um `== {"ok": True}` aqui
-> quebraria duas vezes por motivo nenhum. Teste que amarra mais do que
-> pretende vira trabalho de manutenção sem retorno.
+> quebraria duas vezes por motivo nenhum.
 
 - [ ] **Step 2: Rodar e ver falhar**
 
 Run: `cd back && pytest tests/test_saude.py -v`
-Expected: FAIL — `pytest: command not found`, ou erro de configuração do Django. Ambos contam: nada existe ainda.
+Expected: FAIL — `pytest: command not found` ou erro de configuração do Django. Ambos contam: nada existe ainda.
 
 - [ ] **Step 3: As dependências**
 
-`back/requirements/base.txt`:
+`back/requirements.txt` — o do Unistock, **sem** o que não serve. Fixe as versões:
 
 ```
-Django==5.2.*
+Django==6.0.3
+djangorestframework==3.17.1
+django-cors-headers==4.9.0
+drf-spectacular==0.29.0
 psycopg[binary]==3.2.*
-```
+python-decouple==3.8
+gunicorn==23.0.0
+celery==5.5.3
+redis==6.4.0
+requests==2.32.3
 
-`back/requirements/dev.txt`:
-
-```
--r base.txt
+# desenvolvimento
 pytest==8.*
 pytest-django==4.*
+pytest-env==1.*
 ```
 
-`back/pyproject.toml`:
+**Três exclusões deliberadas em relação ao `Unistock_Back/requirements.txt`:**
 
-```toml
-[project]
-name = "brutus-back"
-version = "0.1.0"
-requires-python = ">=3.12"
+| fora | por quê |
+|---|---|
+| `mysqlclient` | Este produto é PostgreSQL. `set_config`, `FORCE ROW LEVEL SECURITY`, políticas por papel e a restrição `23P01` — nenhum existe em MySQL. |
+| `djangorestframework_simplejwt` | Bearer token em header é o desenho proibido pela restrição do spec §3. |
+| `weasyprint` e satélites (`pydyf`, `fonttools`, `tinyhtml5`, `pyphen`, `cssselect2`, `zopfli`…) | Geração de PDF é do domínio de estoque. Não há PDF aqui. |
+| `django-celery-beat` | Traz tabelas próprias, e o Prisma é dono deste banco. O `beat` usa o agendador de arquivo. Entra na fatia 7. |
 
-[tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "brutus.settings"
-python_files = ["test_*.py"]
-testpaths = ["tests"]
-# --no-migrations porque o Django nao tem migration nenhuma e nao deve ter:
-# quem cria tabela neste banco e o Prisma (spec §8).
-addopts = "--no-migrations"
+`back/pytest.ini`:
+
+```ini
+[pytest]
+DJANGO_SETTINGS_MODULE = backend.settings
+python_files = test_*.py
+testpaths = tests
+pythonpath = backend
+; --no-migrations porque o Django nao tem migration nenhuma e nao deve ter:
+; quem cria tabela neste banco e o Prisma (Global Constraints).
+addopts = --no-migrations
+env =
+    PGDATABASE=brutus_test
+    PGHOST=localhost
+    PGPORT=5433
 ```
 
-- [ ] **Step 4: O esqueleto do Django**
+- [ ] **Step 4: O esqueleto, no layout do Unistock**
 
-`back/manage.py`:
+`back/manage.py` — igual ao do Unistock, com o settings apontando para `backend.settings`:
 
 ```python
 #!/usr/bin/env python
@@ -339,13 +377,14 @@ import os
 import sys
 
 if __name__ == "__main__":
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "brutus.settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.settings")
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend"))
     from django.core.management import execute_from_command_line
 
     execute_from_command_line(sys.argv)
 ```
 
-`back/brutus/settings.py`:
+`back/backend/backend/settings.py`:
 
 ```python
 import os
@@ -371,42 +410,83 @@ ALLOWED_HOSTS = [f".{DOMINIO_BASE}", DOMINIO_BASE]
 USE_X_FORWARDED_HOST = False
 
 # Sem contrib.admin, contrib.auth nem sessions: eles criariam tabela num banco
-# de que o Prisma e dono (spec §8).
-INSTALLED_APPS = ["tenant"]
+# de que o Prisma e dono (spec §8). Sem django_celery_beat pela mesma razao —
+# o beat usa o agendador de arquivo, e a agenda em tabela e da fatia 7.
+INSTALLED_APPS = [
+    "django.contrib.contenttypes",
+    "django.contrib.staticfiles",
+    "corsheaders",
+    "rest_framework",
+    "tenant",
+]
 
 MIDDLEWARE = []
 
-ROOT_URLCONF = "brutus.urls"
-WSGI_APPLICATION = "brutus.wsgi.application"
+ROOT_URLCONF = "backend.urls"
+WSGI_APPLICATION = "backend.wsgi.application"
 
 # Dois papeis, dois aliases — espelha exatamente o tests/setup.ts do front.
 # `default` e o papel da aplicacao e e sobre ele que o RLS age. `owner` ignora
 # o RLS e existe SO para montar cenario de teste.
+def _banco(usuario: str, senha_padrao: str) -> dict:
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ["PGDATABASE"],
+        "USER": usuario,
+        "PASSWORD": os.environ.get(f"PGPASSWORD_{usuario.split('_')[1].upper()}", senha_padrao),
+        "HOST": os.environ.get("PGHOST", "db"),
+        "PORT": os.environ.get("PGPORT", "5432"),
+    }
+
+
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ["PGDATABASE"],
-        "USER": "brutus_app",
-        "PASSWORD": os.environ.get("PGPASSWORD_APP", "app"),
-        "HOST": os.environ.get("PGHOST", "db"),
-        "PORT": os.environ.get("PGPORT", "5432"),
-    },
-    "owner": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ["PGDATABASE"],
-        "USER": "brutus_owner",
-        "PASSWORD": os.environ.get("PGPASSWORD_OWNER", "owner"),
-        "HOST": os.environ.get("PGHOST", "db"),
-        "PORT": os.environ.get("PGPORT", "5432"),
-    },
+    "default": _banco("brutus_app", "app"),
+    "owner": _banco("brutus_owner", "owner"),
 }
 
+# DRF sem autenticacao nem permissao por padrao: a sessao e a fatia 3, e um
+# default que ninguem leu e como uma porta que ninguem sabe se esta trancada.
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_PERMISSION_CLASSES": [],
+}
+
+CELERY_BROKER_URL = os.environ.get("REDIS_URL", "redis://redis:6379/1")
+CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+CELERY_TIMEZONE = "America/Sao_Paulo"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+STATIC_URL = "static/"
 USE_TZ = True
 TIME_ZONE = "America/Sao_Paulo"
 ```
 
-`back/brutus/urls.py`:
+`back/backend/backend/celery.py` — copiado do Unistock, inclusive o comentário, que continua valendo:
+
+```python
+import os
+
+from celery import Celery
+
+# Forca o valor certo (nao setdefault): uma variavel DJANGO_SETTINGS_MODULE
+# perdida no ambiente (ex. "backend.backend.settings") quebraria o worker/beat,
+# enquanto o wsgi.py da API ja forca. Mantem os dois consistentes.
+os.environ["DJANGO_SETTINGS_MODULE"] = "backend.settings"
+
+app = Celery("backend")
+app.config_from_object("django.conf:settings", namespace="CELERY")
+app.autodiscover_tasks()
+```
+
+`back/backend/backend/__init__.py`:
+
+```python
+from .celery import app as celery_app
+
+__all__ = ("celery_app",)
+```
+
+`back/backend/backend/urls.py`:
 
 ```python
 from django.urls import path
@@ -415,26 +495,28 @@ from tenant import views
 urlpatterns = [path("api/saude", views.saude, name="saude")]
 ```
 
-`back/brutus/wsgi.py`:
+`back/backend/backend/wsgi.py` e `asgi.py`: os do Unistock, com `DJANGO_SETTINGS_MODULE = "backend.settings"`.
+
+`back/backend/tenant/apps.py`:
 
 ```python
-import os
-from django.core.wsgi import get_wsgi_application
+from django.apps import AppConfig
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "brutus.settings")
-application = get_wsgi_application()
+
+class TenantConfig(AppConfig):
+    name = "tenant"
 ```
 
-`back/brutus/__init__.py` e `back/tenant/__init__.py`: vazios.
-
-`back/tenant/views.py`:
+`back/backend/tenant/views.py`:
 
 ```python
-from django.http import JsonResponse
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
 
+@api_view(["GET"])
 def saude(request):
-    return JsonResponse({"ok": True})
+    return Response({"ok": True})
 ```
 
 - [ ] **Step 5: O trilho do pytest**
@@ -455,56 +537,105 @@ def django_db_setup():
     pass
 ```
 
-E as variáveis do banco de teste no `pyproject.toml`, dentro de `[tool.pytest.ini_options]`:
-
-```toml
-env = ["PGDATABASE=brutus_test", "PGHOST=localhost", "PGPORT=5433"]
-```
-
-> Isto exige `pytest-env`. Acrescente `pytest-env==1.*` a `requirements/dev.txt`.
-
 - [ ] **Step 6: Rodar e ver passar**
 
 ```bash
 cd back
 python -m venv .venv && . .venv/Scripts/activate
-pip install -r requirements/dev.txt
+pip install -r requirements.txt
 pytest tests/test_saude.py -v
 ```
 
 Expected: PASS.
 
-- [ ] **Step 7: O Dockerfile e o serviço `api`**
+- [ ] **Step 7: O Dockerfile e o entrypoint**
 
-`back/Dockerfile`:
+`back/Dockerfile` — o do Unistock, **sem** o que morreu junto com o MySQL e o PDF:
 
 ```dockerfile
-FROM python:3.12-slim AS dev
+FROM python:3.12-slim
+
 WORKDIR /app
-COPY requirements/ requirements/
-RUN pip install --no-cache-dir -r requirements/dev.txt
+ENV PYTHONPATH=/app/backend
+ENV PYTHONUNBUFFERED=1
+
+# Do Unistock ficaram build-essential, gcc, pkg-config e libpq-dev.
+# SAIRAM: default-libmysqlclient-dev (nao ha MySQL aqui) e as bibliotecas do
+# weasyprint (libglib, libpango, libharfbuzz, libjpeg, libopenjp2) — nao ha PDF.
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gcc \
+    pkg-config \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --upgrade pip setuptools wheel
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY . .
+RUN chmod +x /app/entrypoint.sh
+
+EXPOSE 8000
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 ```
 
-No `back/docker-compose.yml`, acrescente:
+`back/entrypoint.sh` — **e aqui está a adaptação mais importante desta tarefa**:
+
+```sh
+#!/bin/sh
+set -e
+
+# O entrypoint do Unistock roda `python manage.py migrate` aqui. NAO FACA ISSO.
+#
+# O dono do DDL deste banco e o Prisma, do lado do front, ate a fatia 8. Um
+# `migrate` nesta linha criaria as tabelas do Django num banco que nao e dele,
+# e o estrago seria silencioso: a suite do front continuaria verde por um
+# tempo, e a divergencia so apareceria quando alguem estranhasse uma tabela
+# django_content_type ao lado de "Barbearia".
+#
+# O que este entrypoint faz e esperar o banco. So isso.
+until python -c "
+import os, socket, sys
+s = socket.socket()
+s.settimeout(1)
+try:
+    s.connect((os.environ.get('PGHOST', 'db'), int(os.environ.get('PGPORT', 5432))))
+except OSError:
+    sys.exit(1)
+"; do
+  echo "[entrypoint] esperando o banco..."
+  sleep 1
+done
+
+exec "$@"
+```
+
+- [ ] **Step 8: O serviço `api` no compose**
+
+No `back/docker-compose.yml`:
 
 ```yaml
   api:
-    build: { context: ., target: dev }
-    command: python manage.py runserver 0.0.0.0:8000
+    build: { context: ., target: null }
     environment:
       PGDATABASE: brutus
       PGHOST: db
       PGPORT: "5432"
       DOMINIO_BASE: localhost
       DJANGO_DEBUG: "1"
+      REDIS_URL: redis://redis:6379/1
     ports: ["8000:8000"]
     volumes: [".:/app"]
     depends_on:
       db: { condition: service_healthy }
     networks: [brutus]
 ```
+
+> `target: null` porque este Dockerfile é de estágio único, diferente do
+> `front/Dockerfile`, que tem `target: dev`. Se preferir, omita a chave
+> `target` inteira — é a mesma coisa e lê melhor.
 
 `back/.env.example`:
 
@@ -514,9 +645,10 @@ No `back/docker-compose.yml`, acrescente:
 # para um host que o front nunca gera, e o sintoma e 404 em tudo.
 DOMINIO_BASE="localhost"
 DJANGO_SECRET_KEY=""
+REDIS_URL="redis://redis:6379/1"
 ```
 
-- [ ] **Step 8: Provar pelo navegador, que é o que importa**
+- [ ] **Step 9: Provar pelo navegador, que é o que importa**
 
 ```bash
 cd back && docker compose up -d api
@@ -525,19 +657,49 @@ curl -s http://brutus.localhost:8000/api/saude
 
 Expected: `{"ok": true}`. Se der `DisallowedHost`, o `ALLOWED_HOSTS` não cobriu — confira que `DOMINIO_BASE` chegou ao contêiner.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Portar as varreduras que saíram do front na Task 1**
+
+A Task 1 removeu de `front/tests/ambiente.test.ts` três varreduras estruturais que passaram a falar de arquivos do back, e as depositou em `back/docs/testes-a-portar.md` com asserção e comentário verbatim. Elas renascem agora, em `back/tests/test_ambiente.py`.
+
+Leia aquele arquivo e porte cada uma. Os comentários carregam o incidente de 10/08 e o motivo de cada `expect` — **traga-os junto**, traduzidos para o estilo do arquivo Python, não jogue fora. As três são:
+
+1. o agendador confere o WhatsApp no mesmo tique do lembrete;
+2. o zelador alarma envio recusado e poda o histórico;
+3. a sessão da Evolution mora num volume nomeado.
+
+Mais a metade que sobrou da quarta: que o serviço `evolution` exige `AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}`.
+
+Todas leem `back/docker-compose.yml` e `back/docker/zelador.sh` — arquivos **deste** repositório. Nenhuma pode ler nada fora dele, pelo mesmo motivo que as tirou do front.
+
+Quando terminar, apague `back/docs/testes-a-portar.md`: ele era o bilhete, e o bilhete não sobrevive à entrega.
+
+- [ ] **Step 11: Rodar tudo**
+
+Run: `cd back && pytest -v`
+Expected: PASS — o `test_saude` e as quatro varreduras portadas.
+
+- [ ] **Step 12: Commit**
 
 ```bash
 cd back
 git add -A
-git commit -m "Sobe um Django que responde, e nada alem disso
+git commit -m "Sobe um Django no layout do Unistock, sem o que nao serve
 
-INSTALLED_APPS com uma app so, sem admin, sem auth e sem sessions: cada
-uma delas traria tabela, e o dono deste banco e o Prisma ate a fatia 8.
+manage.py na raiz, backend/backend para o projeto e backend/tenant para a
+app, entrypoint.sh e Dockerfile vindos de la.
 
-Dois aliases de banco espelhando o tests/setup.ts do front — 'default' e
-o papel da aplicacao, sujeito ao RLS, e 'owner' existe so para montar
-cenario de teste."
+Tres coisas ficaram para tras de proposito: mysqlclient, porque todo o
+isolamento entre barbearias aqui e PostgreSQL — set_config, FORCE ROW
+LEVEL SECURITY e a restricao 23P01 nao existem em MySQL; o simplejwt,
+que e Bearer em header e portanto o desenho que a spec proibe; e o
+weasyprint, que servia a relatorio de estoque.
+
+E uma linha do entrypoint do Unistock NAO veio: o `manage.py migrate`. O
+dono do DDL deste banco e o Prisma ate a fatia 8, e um migrate aqui
+criaria tabela do Django num banco alheio sem ninguem perceber.
+
+Traz de volta as varreduras que sairam do ambiente.test.ts na Task 1,
+agora lendo arquivos deste repositorio."
 ```
 
 ---
@@ -545,7 +707,7 @@ cenario de teste."
 ## Task 3: `slug.py`, o porte da função pura
 
 **Files:**
-- Create: `back/tenant/config.py`, `back/tenant/slug.py`
+- Create: `back/backend/tenant/config.py`, `back/backend/tenant/slug.py`
 - Create: `back/tests/test_slug.py`
 
 **Interfaces:**
@@ -611,7 +773,7 @@ Expected: FAIL — `ModuleNotFoundError: No module named 'tenant.slug'`.
 
 - [ ] **Step 3: Implementar**
 
-`back/tenant/config.py`:
+`back/backend/tenant/config.py`:
 
 ```python
 import re
@@ -634,7 +796,7 @@ SLUG_REGEX = re.compile(r"[a-z0-9][a-z0-9-]{1,30}[a-z0-9]")
 TTL_CACHE_TENANT_S = 60.0
 ```
 
-`back/tenant/slug.py`:
+`back/backend/tenant/slug.py`:
 
 ```python
 from .config import SLUG_REGEX, SUBDOMINIOS_RESERVADOS
@@ -681,7 +843,7 @@ Expected: PASS, 13 casos.
 
 ```bash
 cd back
-git add tenant/config.py tenant/slug.py tests/test_slug.py
+git add backend/tenant/config.py backend/tenant/slug.py tests/test_slug.py
 git commit -m "Porta o slug.ts, caso a caso
 
 Os casos de teste sao os mesmos de front/tests/tenant.test.ts, sem
@@ -698,7 +860,7 @@ antes do \\n final, entao 'brutus\\n' passaria."
 ## Task 4: O model `Barbearia` e o trilho de cenário
 
 **Files:**
-- Create: `back/tenant/models.py`
+- Create: `back/backend/tenant/models.py`
 - Modify: `back/tests/conftest.py`
 - Create: `back/tests/test_modelos.py`
 
@@ -742,7 +904,7 @@ Expected: FAIL — `No module named 'tenant.models'`.
 
 - [ ] **Step 3: Implementar os models**
 
-`back/tenant/models.py`:
+`back/backend/tenant/models.py`:
 
 ```python
 from django.db import models
@@ -859,7 +1021,7 @@ Expected: PASS. Se der `relation "Barbearia" does not exist`, o `brutus_test` n�
 
 ```bash
 cd back
-git add tenant/models.py tests/conftest.py tests/test_modelos.py
+git add backend/tenant/models.py tests/conftest.py tests/test_modelos.py
 git commit -m "Le as duas tabelas que a fronteira precisa, e so elas
 
 managed=False com db_table e db_column explicitos em todo campo: o
@@ -875,9 +1037,9 @@ o Django — quebra o lado Prisma, com sintoma longe da causa."
 ## Task 5: O middleware de tenant
 
 **Files:**
-- Create: `back/tenant/middleware.py`
+- Create: `back/backend/tenant/middleware.py`
 - Create: `back/tests/test_tenant.py`
-- Modify: `back/brutus/settings.py` (`MIDDLEWARE`)
+- Modify: `back/backend/backend/settings.py` (`MIDDLEWARE`)
 
 **Interfaces:**
 - Consumes: `extrair_slug`, `eh_host_admin` (Task 3); `Barbearia` (Task 4).
@@ -931,7 +1093,7 @@ Expected: FAIL — a resposta é `{"ok": true}`, sem a chave `barbearia`.
 
 - [ ] **Step 3: Implementar**
 
-`back/tenant/middleware.py`:
+`back/backend/tenant/middleware.py`:
 
 ```python
 import time
@@ -995,20 +1157,22 @@ class TenantMiddleware:
         return self.get_response(request)
 ```
 
-Em `settings.py`:
+Em `back/backend/backend/settings.py`:
 
 ```python
 MIDDLEWARE = ["tenant.middleware.TenantMiddleware"]
 ```
 
-E em `tenant/views.py`:
+E em `back/backend/tenant/views.py`:
 
 ```python
-from django.http import JsonResponse
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
 
+@api_view(["GET"])
 def saude(request):
-    return JsonResponse(
+    return Response(
         {
             "ok": True,
             "barbearia": request.barbearia.nome if request.barbearia else None,
@@ -1058,7 +1222,7 @@ Expected: PASS, tudo — os 5 casos novos **e** os anteriores. Rodar só
 
 ```bash
 cd back
-git add tenant/middleware.py tenant/views.py brutus/settings.py tests/
+git add backend/tenant/middleware.py backend/tenant/views.py backend/backend/settings.py tests/
 git commit -m "Resolve a barbearia pelo Host, e por mais nada
 
 Cabecalho de upstream nao entra na conta. Um back que lesse
@@ -1075,7 +1239,7 @@ id que o TRUNCATE apagou, e o RLS filtra tudo com cara de 'nao achei'."
 ## Task 6: `com_barbearia()`, o wrapper de RLS
 
 **Files:**
-- Create: `back/tenant/rls.py`
+- Create: `back/backend/tenant/rls.py`
 - Create: `back/tests/test_rls.py`
 
 **Interfaces:**
@@ -1137,7 +1301,7 @@ Expected: FAIL — `No module named 'tenant.rls'`.
 
 - [ ] **Step 3: Implementar**
 
-`back/tenant/rls.py`:
+`back/backend/tenant/rls.py`:
 
 ```python
 from contextlib import contextmanager
@@ -1177,7 +1341,7 @@ Expected: PASS, 5 casos. **Se `test_fora_do_wrapper_nao_enxerga_nada` falhar dev
 
 ```bash
 cd back
-git add tenant/rls.py tests/test_rls.py
+git add backend/tenant/rls.py tests/test_rls.py
 git commit -m "Refaz a fronteira mais forte do sistema, com o mesmo is_local
 
 set_config com o terceiro argumento true: a variavel morre com a
@@ -1220,7 +1384,7 @@ MODELS_DE_TENANT = {"Barbeiro", "Servico", "BarbeiroServico", "HorarioTrabalho",
 # - models.py  so declara
 ISENTOS = {"rls.py", "models.py", "__init__.py"}
 
-RAIZ = pathlib.Path(__file__).resolve().parent.parent / "tenant"
+RAIZ = pathlib.Path(__file__).resolve().parent.parent / "backend" / "tenant"
 
 
 def _consultas_de_tenant(caminho: pathlib.Path) -> list[str]:
@@ -1265,7 +1429,7 @@ Expected: PASS.
 
 - [ ] **Step 3: Provar que ele morde**
 
-Acrescente temporariamente a `back/tenant/views.py`:
+Acrescente temporariamente a `back/backend/tenant/views.py`:
 
 ```python
 from .models import Barbeiro
@@ -1297,8 +1461,8 @@ entrar."
 ## Task 8: A barreira posicional
 
 **Files:**
-- Modify: `back/tenant/middleware.py`
-- Modify: `back/brutus/settings.py`
+- Modify: `back/backend/tenant/middleware.py`
+- Modify: `back/backend/backend/settings.py`
 - Create: `back/tests/test_barreira.py`
 
 **Interfaces:**
@@ -1337,7 +1501,7 @@ Expected: FAIL — hoje qualquer caminho desconhecido já dá 404 por não ter r
 
 - [ ] **Step 3: Implementar**
 
-Acrescente a `back/tenant/middleware.py`:
+Acrescente a `back/backend/tenant/middleware.py`:
 
 ```python
 class BarreiraAdminMiddleware:
@@ -1365,7 +1529,7 @@ class BarreiraAdminMiddleware:
         return self.get_response(request)
 ```
 
-Em `settings.py` — **depois** do `TenantMiddleware`, que é quem define `request.eh_admin`:
+Em `back/backend/backend/settings.py` — **depois** do `TenantMiddleware`, que é quem define `request.eh_admin`:
 
 ```python
 MIDDLEWARE = [
@@ -1383,7 +1547,7 @@ Expected: PASS. Agora **remova** a rota temporária `/api/admin/barbearias` de `
 
 ```bash
 cd back
-git add tenant/middleware.py brutus/settings.py tests/test_barreira.py
+git add backend/tenant/middleware.py backend/backend/settings.py tests/test_barreira.py
 git commit -m "Ergue a barreira do admin antes da primeira rota de admin
 
 Posicional, como a do proxy.ts: a fatia 6 nao vai precisar lembrar de
@@ -1395,25 +1559,33 @@ que faz uma rota atravessar sem ficar descoberta em nenhum instante.
 
 ---
 
-## Task 9: CORS, cookie e o header anti-CSRF
+## Task 9: CORS pela biblioteca, e o header anti-CSRF
 
 **Files:**
-- Modify: `back/tenant/middleware.py`
-- Modify: `back/brutus/settings.py`
+- Modify: `back/backend/backend/settings.py`
+- Modify: `back/backend/tenant/config.py`
+- Create: `back/backend/tenant/middleware.py` (acrescenta `ClienteMiddleware`)
 - Create: `back/tests/test_cors.py`
 
 **Interfaces:**
-- Consumes: `extrair_slug`, `eh_host_admin` (Task 3).
-- Produces: `origem_permitida(origin, dominio_base) -> bool`; cabeçalhos CORS credenciados; 403 para escrita sem `X-Brutus-Cliente`.
+- Consumes: `SUBDOMINIOS_RESERVADOS` (Task 3); `settings.DOMINIO_BASE` (Task 2).
+- Produces: `tenant.config.regex_de_origem(dominio_base) -> str`; cabeçalhos CORS credenciados servidos pelo `django-cors-headers`; 403 para escrita sem `X-Brutus-Cliente`.
+
+**O CORS é da biblioteca, não nosso.** O `Unistock_Back` usa `django-cors-headers` (spec §14) e aqui é igual — preflight, `Vary`, casos de borda e manutenção saem de graça. O que continua sendo nosso é só a proteção de CSRF que o CORS credenciado abre.
+
+**A adaptação obrigatória:** o Unistock usa `CORS_ALLOWED_ORIGINS`, que é lista **estática**. Aqui a origem varia por barbearia (`brutus.localhost:3000`, `dontony.localhost:3000`, …), então tem que ser `CORS_ALLOWED_ORIGIN_REGEXES`.
 
 - [ ] **Step 1: Escrever o teste que falha**
 
 `back/tests/test_cors.py`:
 
 ```python
-import pytest
+import re
 
-from tenant.middleware import origem_permitida
+import pytest
+from django.conf import settings
+
+from tenant.config import regex_de_origem
 
 pytestmark = pytest.mark.django_db(databases=["default", "owner"])
 
@@ -1423,23 +1595,45 @@ pytestmark = pytest.mark.django_db(databases=["default", "owner"])
     [
         "http://brutus.localhost:3000",
         "http://dontony.localhost:3000",
+        # O admin e reservado para o slug, mas e uma origem legitima do front:
+        # e de la que o painel da plataforma chama a API.
         "http://admin.localhost:3000",
     ],
 )
 def test_origens_do_front_sao_aceitas(origem):
-    assert origem_permitida(origem, "localhost") is True
+    assert re.match(regex_de_origem("localhost"), origem)
 
 
 @pytest.mark.parametrize(
-    "origem",
+    "origem,porque",
     [
-        "http://malicioso.com",
-        "http://brutus.localhost.malicioso.com:3000",
-        "http://www.localhost:3000",
+        ("http://malicioso.com", "dominio alheio"),
+        ("http://brutus.localhost.malicioso.com:3000", "sufixo forjado"),
+        ("http://www.localhost:3000", "subdominio reservado"),
+        ("http://api.localhost:3000", "subdominio reservado"),
+        ("http://a.b.localhost:3000", "subdominio de subdominio"),
     ],
 )
-def test_origens_de_fora_sao_recusadas(origem):
-    assert origem_permitida(origem, "localhost") is False
+def test_origens_de_fora_sao_recusadas(origem, porque):
+    assert not re.match(regex_de_origem("localhost"), origem)
+
+
+def test_o_regex_deriva_da_lista_de_reservados():
+    # Um subdominio reservado novo em config.py tem que fechar a porta no CORS
+    # sozinho. Se estas duas coisas virarem listas separadas, a segunda para de
+    # acompanhar a primeira e ninguem percebe ate alguem registrar 'cdn'.
+    from tenant.config import SUBDOMINIOS_RESERVADOS
+
+    for reservado in SUBDOMINIOS_RESERVADOS - {"admin"}:
+        assert not re.match(regex_de_origem("localhost"), f"http://{reservado}.localhost:3000")
+
+
+def test_a_biblioteca_esta_ligada_e_credenciada():
+    assert "corsheaders.middleware.CorsMiddleware" in settings.MIDDLEWARE
+    # `*` e incompativel com credenciais — se isto virar True, o navegador
+    # passa a recusar toda resposta com cookie.
+    assert settings.CORS_ALLOW_CREDENTIALS is True
+    assert getattr(settings, "CORS_ALLOW_ALL_ORIGINS", False) is False
 
 
 def test_ecoa_a_origem_e_permite_credencial(client, cenario):
@@ -1447,7 +1641,6 @@ def test_ecoa_a_origem_e_permite_credencial(client, cenario):
         "/api/saude",
         headers={"host": "brutus.localhost", "origin": "http://brutus.localhost:3000"},
     )
-    # Ecoada, nunca `*`: `*` e incompativel com credenciais.
     assert r["Access-Control-Allow-Origin"] == "http://brutus.localhost:3000"
     assert r["Access-Control-Allow-Credentials"] == "true"
 
@@ -1483,40 +1676,66 @@ def test_get_nao_precisa_do_header(client, cenario):
 - [ ] **Step 2: Rodar e ver falhar**
 
 Run: `cd back && pytest tests/test_cors.py -v`
-Expected: FAIL — `cannot import name 'origem_permitida'`.
+Expected: FAIL — `cannot import name 'regex_de_origem'`.
 
-- [ ] **Step 3: Implementar**
+- [ ] **Step 3: O regex, derivado da lista que já existe**
 
-Acrescente a `back/tenant/middleware.py`:
+Acrescente a `back/backend/tenant/config.py`:
 
 ```python
-from urllib.parse import urlparse
+def regex_de_origem(dominio_base: str) -> str:
+    """Regex de origem para o django-cors-headers.
 
-from django.http import HttpResponse, HttpResponseForbidden
+    A biblioteca so aceita lista estatica ou lista de regex, e aqui a origem
+    varia por barbearia — entao e regex. O `slug.py` nao pode ser chamado de
+    dentro dela, e por isso a regra e reconstruida aqui.
 
+    O que NAO se pode fazer e reescrever a lista de reservados a mao: ela sai
+    de SUBDOMINIOS_RESERVADOS, para que um nome novo la feche a porta aqui
+    sozinho. Duas listas separadas param de acompanhar uma a outra em silencio.
 
-def origem_permitida(origin: str, dominio_base: str) -> bool:
-    """Uma origem so vale se o HOST dela for uma barbearia, o admin, ou o
-    dominio nu. Reusa o slug.py de proposito: allowlist escrita a parte
-    divergiria do roteamento na primeira mudanca.
+    `admin` sai da exclusao: ele e reservado como SLUG (nao e barbearia), mas e
+    uma origem legitima — o painel da plataforma chama a API a partir dele.
     """
-    host = urlparse(origin).hostname or ""
-    if host == dominio_base:
-        return True
-    if eh_host_admin(host, dominio_base):
-        return True
-    return extrair_slug(host, dominio_base) is not None
+    proibidos = "|".join(sorted(SUBDOMINIOS_RESERVADOS - {"admin"}))
+    base = re.escape(dominio_base)
+    # (?!…) recusa os reservados; [a-z0-9-]+ sem ponto recusa subdominio de
+    # subdominio; o $ ancorado recusa sufixo forjado (…localhost.malicioso.com).
+    return rf"^https?://(?!(?:{proibidos})\.)[a-z0-9-]+\.{base}(:\d+)?$"
+```
 
+- [ ] **Step 4: Ligar a biblioteca e escrever o middleware que sobra**
 
-class CorsMiddleware:
-    """CORS credenciado, mais a protecao de CSRF que ele exige.
+Em `back/backend/backend/settings.py`:
+
+```python
+from tenant.config import regex_de_origem
+
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGIN_REGEXES = [regex_de_origem(DOMINIO_BASE)]
+CORS_ALLOW_HEADERS = [*default_headers, "x-brutus-cliente"]
+```
+
+> `default_headers` vem de `from corsheaders.defaults import default_headers`.
+> Sem acrescentar o nosso, o preflight recusa o header — e o sintoma é a
+> escrita falhando com um erro de CORS que não menciona CSRF nenhum.
+
+`back/backend/tenant/middleware.py` ganha:
+
+```python
+class ClienteMiddleware:
+    """Exige `X-Brutus-Cliente` em todo verbo que escreve.
 
     Front e back dividem o mesmo host e diferem so na porta: e cross-ORIGIN
-    (CORS se aplica) e same-SITE (SameSite=Lax nao bloqueia). A segunda metade
-    e o problema — entre origens same-site o Lax nao protege nada. A protecao
-    e a allowlist estrita mais um header que obriga preflight na escrita: uma
-    origem hostil nao consegue fazer o navegador mandar o pedido com
-    credenciais se o preflight for recusado.
+    (o CORS se aplica, e disso cuida a biblioteca) e same-SITE (o SameSite=Lax
+    NAO bloqueia). A segunda metade e o buraco — entre origens same-site o Lax
+    nao protege nada.
+
+    Este header e a tampa: ele nao esta na lista de cabecalhos simples de CORS,
+    entao exigi-lo obriga preflight, e preflight recusado impede o navegador de
+    mandar o pedido com credenciais. O valor nao importa e nao e segredo — o
+    que protege e a EXIGENCIA dele, nao o conteudo.
     """
 
     VERBOS_QUE_ESCREVEM = {"POST", "PATCH", "PUT", "DELETE"}
@@ -1526,68 +1745,60 @@ class CorsMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        origem = request.headers.get("Origin", "")
-        permitida = bool(origem) and origem_permitida(origem, settings.DOMINIO_BASE)
-
-        if request.method == "OPTIONS":
-            resposta = HttpResponse(status=204)
-        elif request.method in self.VERBOS_QUE_ESCREVEM and self.HEADER not in request.META:
-            resposta = HttpResponseForbidden('{"erro": "pedido sem cliente"}',
-                                             content_type="application/json")
-        else:
-            resposta = self.get_response(request)
-
-        if permitida:
-            resposta["Access-Control-Allow-Origin"] = origem
-            resposta["Access-Control-Allow-Credentials"] = "true"
-            resposta["Access-Control-Allow-Headers"] = "content-type, x-brutus-cliente"
-            resposta["Access-Control-Allow-Methods"] = "GET, POST, PATCH, PUT, DELETE, OPTIONS"
-            # Sem isto, um cache intermediario serviria a resposta de uma
-            # barbearia com o cabecalho de origem de outra.
-            resposta["Vary"] = "Origin"
-
-        return resposta
+        if request.method in self.VERBOS_QUE_ESCREVEM and self.HEADER not in request.META:
+            return JsonResponse({"erro": "pedido sem cliente"}, status=403)
+        return self.get_response(request)
 ```
 
-Em `settings.py`, **antes** dos outros — o preflight `OPTIONS` precisa ser respondido sem passar pela resolução de tenant:
+`MIDDLEWARE` fica assim — a ordem importa e cada posição tem motivo:
 
 ```python
 MIDDLEWARE = [
-    "tenant.middleware.CorsMiddleware",
+    # Primeiro de todos: ele responde o preflight OPTIONS e sai, sem passar
+    # pela resolucao de tenant. Preflight nao carrega Host de barbearia.
+    "corsheaders.middleware.CorsMiddleware",
+    "tenant.middleware.ClienteMiddleware",
     "tenant.middleware.TenantMiddleware",
     "tenant.middleware.BarreiraAdminMiddleware",
 ]
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+> `ClienteMiddleware` **antes** do `TenantMiddleware` de propósito: um `POST`
+> sem o header é recusado sem nem consultar o banco. Recusa barata vem antes
+> de trabalho caro.
+
+- [ ] **Step 5: Rodar e ver passar**
 
 Run: `cd back && pytest tests/test_cors.py -v`
-Expected: PASS, 11 casos.
+Expected: PASS, 17 casos.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 cd back
-git add tenant/middleware.py brutus/settings.py tests/test_cors.py
-git commit -m "Abre o CORS credenciado e fecha o CSRF que ele abre
+git add backend/tenant/config.py backend/tenant/middleware.py backend/backend/settings.py tests/test_cors.py
+git commit -m "Deixa o CORS com a biblioteca e guarda so o que e nosso
 
-Mesmo host, portas diferentes: cross-origin e same-site ao mesmo tempo.
-A primeira metade pede CORS; a segunda tira do SameSite=Lax qualquer
-poder de protecao entre 3000 e 8000.
+django-cors-headers, como no Unistock. A adaptacao obrigatoria e que la a
+lista de origens e estatica e aqui a origem varia por barbearia — entao e
+CORS_ALLOWED_ORIGIN_REGEXES.
 
-Por isso o X-Brutus-Cliente na escrita: ele obriga preflight, e preflight
-recusado impede o navegador de mandar o pedido com credenciais.
+O regex deriva de SUBDOMINIOS_RESERVADOS em vez de repetir os nomes: um
+reservado novo em config.py fecha a porta no CORS sozinho. Duas listas
+param de acompanhar uma a outra em silencio, e o dia em que alguem
+registrar 'cdn' e o dia em que se descobre isso.
 
-A allowlist reusa o slug.py em vez de repetir a regra. Lista escrita a
-parte divergiria do roteamento na primeira mudanca."
+O que sobra de nosso e o X-Brutus-Cliente. Mesmo host e portas
+diferentes e cross-origin E same-site ao mesmo tempo: a primeira metade
+pede CORS, a segunda tira do SameSite=Lax qualquer poder entre 3000 e
+8000. O header obriga preflight, e e o preflight que protege."
 ```
 
 ---
-
 ## Task 10: O canário completo
 
 **Files:**
-- Modify: `back/tenant/views.py`
+- Modify: `back/backend/tenant/views.py`
 - Modify: `back/tests/test_saude.py`
 
 **Interfaces:**
@@ -1653,10 +1864,11 @@ Expected: FAIL — faltam as chaves `slug`, `barbeiros` e `recebeu_cookie`.
 
 - [ ] **Step 3: Implementar**
 
-`back/tenant/views.py`:
+`back/backend/tenant/views.py`:
 
 ```python
-from django.http import JsonResponse
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
 from .models import Barbeiro
 from .rls import com_barbearia
@@ -1691,12 +1903,17 @@ def saude(request):
 
     corpo["recebeu_cookie"] = "saude" in request.COOKIES
 
-    resposta = JsonResponse(corpo)
+    resposta = Response(corpo)
     # httponly como toda sessao deste produto. Sem `domain`: host-only e o que
     # faz ele atravessar 8000 -> 3000, ja que cookie ignora porta.
     resposta.set_cookie("saude", "1", httponly=True, samesite="Lax")
     return resposta
 ```
+
+> A view fica com `@api_view(["GET"])`. Um `POST` nela devolve **405**, e isso
+> é o esperado: o teste da Task 9 que manda `POST` com o header afirma
+> `!= 403`, e 405 satisfaz — o que ele verifica é que o `ClienteMiddleware`
+> deixou passar, não que a rota aceite escrita.
 
 > A view consulta `Barbeiro.objects` — e a varredura da Task 7 **vai falhar**, porque ela não distingue "dentro do `with`" de fora. Acrescente `views.py` a `ISENTOS`? **Não.** Ensine a varredura a enxergar o wrapper: no `_consultas_de_tenant`, ignore os nós cujo ancestral seja um `ast.With` cujo item chame `com_barbearia`. Faça isso agora, no Step 4.
 
@@ -1760,7 +1977,7 @@ Expected: a primeira traz `Set-Cookie: saude=1; HttpOnly`, `Access-Control-Allow
 
 ```bash
 cd back
-git add tenant/views.py tests/test_saude.py tests/test_varredura.py
+git add backend/tenant/views.py tests/test_saude.py tests/test_varredura.py
 git commit -m "Fecha o canario: host, RLS e cookie numa resposta so
 
 O cookie e de brinquedo porque nao ha login nesta fatia. O que se verifica
@@ -1919,9 +2136,171 @@ verdade, e comentario que mente e pior que comentario nenhum."
 
 ---
 
+## Task 12: `worker` e `beat`, com uma tarefa que prova que eles funcionam
+
+**Files:**
+- Create: `back/backend/tenant/tasks.py`
+- Create: `back/tests/test_celery.py`
+- Modify: `back/docker-compose.yml` (serviços `worker` e `beat`)
+- Modify: `back/backend/backend/settings.py` (`CELERY_BEAT_SCHEDULE`)
+
+**Interfaces:**
+- Consumes: `backend.celery.app` (Task 2); o serviço `redis` (Task 1).
+- Produces: a tarefa `tenant.tasks.ping`; os serviços `worker` e `beat`.
+
+**Por que esta tarefa existe, e por que ela é a última.** O `worker` e o `beat` não servem a nada na fatia 0 — o lembrete, o healthcheck do WhatsApp e a poda do zelador são fatia 7. Eles entram agora porque o layout do `Unistock_Back` os traz, e porque a fatia 7 herdar um pipeline **já provado** é a diferença entre depurar Celery e depurar o lembrete, ou os dois ao mesmo tempo.
+
+E entram com uma tarefa de verdade por um motivo que este produto já pagou: o `agendador` existia desde a Etapa 1, estava escrito, estava protegido, e **nunca rodou** — a tela prometia lembrete e ninguém mandava. Contêiner que sobe, loga limpo e não executa nada é o modo de falha mais caro daqui. Um `worker` decorativo é a mesma armadilha com nome novo.
+
+- [ ] **Step 1: Escrever o teste que falha**
+
+`back/tests/test_celery.py`:
+
+```python
+from backend.celery import app as celery_app
+from tenant.tasks import ping
+
+
+def test_ping_devolve_pong():
+    # Chamada direta: prova a funcao, nao o transporte.
+    assert ping() == "pong"
+
+
+def test_a_tarefa_esta_registrada_no_app():
+    # Sem isto, `ping` seria uma funcao comum que ninguem consegue enfileirar —
+    # e o sintoma no worker e silencio, nao erro.
+    assert "tenant.tasks.ping" in celery_app.tasks
+
+
+def test_o_beat_tem_o_ping_na_agenda():
+    from django.conf import settings
+
+    agenda = settings.CELERY_BEAT_SCHEDULE
+    assert "ping" in agenda
+    assert agenda["ping"]["task"] == "tenant.tasks.ping"
+```
+
+- [ ] **Step 2: Rodar e ver falhar**
+
+Run: `cd back && pytest tests/test_celery.py -v`
+Expected: FAIL — `No module named 'tenant.tasks'`.
+
+- [ ] **Step 3: Implementar**
+
+`back/backend/tenant/tasks.py`:
+
+```python
+from celery import shared_task
+
+
+@shared_task
+def ping() -> str:
+    """A tarefa que existe para provar que o worker executa.
+
+    Ela nao serve ao produto e nao deve crescer: quando a fatia 7 trouxer o
+    lembrete, o healthcheck do WhatsApp e a poda do zelador, esta some. O que
+    ela garante ate la e que `worker` e `beat` no compose nao sao enfeite —
+    que o broker responde, que a tarefa foi descoberta e que a agenda dispara.
+    """
+    return "pong"
+```
+
+Em `back/backend/backend/settings.py`:
+
+```python
+# Cadencia alta de proposito: e um sinal de vida, e um sinal de vida que
+# aparece uma vez por hora nao serve para descobrir que o beat morreu.
+CELERY_BEAT_SCHEDULE = {
+    "ping": {"task": "tenant.tasks.ping", "schedule": 60.0},
+}
+```
+
+- [ ] **Step 4: Rodar e ver passar**
+
+Run: `cd back && pytest tests/test_celery.py -v`
+Expected: PASS, 3 casos.
+
+- [ ] **Step 5: Os serviços no compose**
+
+No `back/docker-compose.yml`:
+
+```yaml
+  worker:
+    build: { context: . }
+    # `-Q celery` explicito: fila padrao com nome escrito e uma fila a menos
+    # para descobrir no dia em que houver duas.
+    command: celery -A backend worker -l info -Q celery
+    environment: &ambiente_django
+      PGDATABASE: brutus
+      PGHOST: db
+      PGPORT: "5432"
+      DOMINIO_BASE: localhost
+      REDIS_URL: redis://redis:6379/1
+    volumes: [".:/app"]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    networks: [brutus]
+
+  beat:
+    build: { context: . }
+    # O agendador de ARQUIVO (padrao do Celery). O django-celery-beat, que
+    # guarda a agenda em tabela, e da fatia 7: aqui ele criaria tabela num
+    # banco de que o Prisma e dono.
+    command: celery -A backend beat -l info --schedule=/tmp/celerybeat-schedule
+    environment: *ambiente_django
+    volumes: [".:/app"]
+    depends_on:
+      redis: { condition: service_started }
+    networks: [brutus]
+```
+
+> A âncora YAML (`&ambiente_django` / `*ambiente_django`) existe porque os dois
+> serviços têm exatamente o mesmo ambiente, e duas cópias divergem no dia em
+> que alguém edita uma. O `api` não entra na âncora: ele tem `ports` e
+> `DJANGO_DEBUG` que os outros dois não têm.
+
+- [ ] **Step 6: Provar que o laço fecha de verdade**
+
+Teste unitário prova a função. Isto prova o **transporte** — que é onde Celery quebra:
+
+```bash
+cd back && docker compose up -d worker beat
+sleep 70
+docker compose logs beat --tail 20 | grep -i "ping"
+docker compose logs worker --tail 30 | grep -i "succeeded"
+```
+
+Expected: o `beat` mostra ter enviado `tenant.tasks.ping`, e o `worker` mostra `Task tenant.tasks.ping[...] succeeded ... 'pong'`.
+
+**Se o `beat` enviar e o `worker` não executar, não siga.** É exatamente a falha que esta tarefa existe para pegar, e ela é invisível em qualquer teste que não atravesse o Redis.
+
+- [ ] **Step 7: Commit**
+
+```bash
+cd back
+git add backend/tenant/tasks.py backend/backend/settings.py tests/test_celery.py docker-compose.yml
+git commit -m "Sobe worker e beat com uma tarefa que prova que eles rodam
+
+O layout do Unistock traz os dois, e a fatia 7 vai precisar deles para o
+lembrete, o healthcheck do WhatsApp e a poda do zelador. Herdar um
+pipeline ja provado e a diferenca entre depurar Celery ou depurar o
+lembrete — em vez dos dois ao mesmo tempo.
+
+O ping existe porque contentor que sobe, loga limpo e nao executa nada e
+o modo de falha mais caro deste produto: o agendador estava escrito e
+protegido desde a Etapa 1, nunca rodou, e a tela prometia lembrete que
+ninguem mandava. Worker decorativo e a mesma armadilha com nome novo.
+
+O beat usa o agendador de arquivo. O django-celery-beat guarda agenda em
+tabela, e o dono deste banco e o Prisma ate a fatia 8."
+```
+
+---
+
 ## Fechamento da fatia
 
-Com as 11 tarefas verdes, isto é verdade e é verificável:
+Com as 12 tarefas verdes, isto é verdade e é verificável:
 
 ```bash
 cd back  && docker compose up -d && pytest -v
@@ -1936,6 +2315,7 @@ curl -s -H "Origin: http://brutus.localhost:3000" http://dontony.localhost:8000/
 - A varredura estrutural morde — foi vista mordendo.
 - A barreira do admin existe dos dois lados.
 - O cookie `httpOnly` atravessa 8000 → 3000 sem truque de domínio.
-- **Nenhuma das 34 rotas atravessou**, e os 30 arquivos de teste do front continuam verdes sem uma linha alterada.
+- O `worker` e o `beat` executam uma tarefa de verdade, provada atravessando o Redis.
+- **Nenhuma das 34 rotas atravessou**, e a suíte do front continua verde — e continua rodando sem o repositório do back no disco.
 
-A fatia 1 começa mapeando os outros seis models e escolhendo DRF ou não.
+A fatia 1 começa mapeando os outros seis models. A escolha de DRF já não é dela: foi decidida aqui, pela referência do `Unistock_Back` (spec §14).

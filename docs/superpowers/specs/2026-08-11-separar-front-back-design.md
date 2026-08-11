@@ -328,10 +328,45 @@ lista `MIGRADAS` vazia.
 - **O proxy único de produção.** A forma final põe os dois atrás de uma origem
   só, e aí `USE_X_FORWARDED_HOST` é ligado. É configuração, não código, e não
   bloqueia nada agora.
-- **DRF ou não.** A escolha da camada de serialização é da fatia 1, quando
-  houver rota com payload de verdade para justificá-la. O canário não precisa.
-- **PWA.** O `sigevi-front` já tem `next-pwa` configurado e isso serve ao item
-  do backlog, mas é outra etapa.
+- **PWA.** O `Unistock_Front` já tem PWA configurado e isso serve ao item do
+  backlog, mas é outra etapa.
+- **Qualquer tarefa Celery de verdade.** O `worker` e o `beat` entram nesta
+  fatia (§14), mas só com uma tarefa `ping`. O lembrete, o healthcheck do
+  WhatsApp e a poda do zelador são fatia 7.
+
+---
+
+## 14. O que o Unistock_Back decide por nós
+
+`C:\Users\jc970\Desktop\Unistock` tem três repositórios — `Unistock_Back`,
+`Unistock_Front` e um `Unistock_Umbrella` que os amarra por submódulo. É o
+mesmo desenho que esta spec escolheu, com uma camada de orquestração a mais
+que não conflita: o `Unistock_Back` também tem compose próprio.
+
+**O que vem de lá:**
+
+- **O layout.** `manage.py` na raiz, `backend/backend/` para o projeto e
+  `backend/<app>/` para as apps, mais `entrypoint.sh`, `Dockerfile` e
+  `requirements.txt` num arquivo só.
+- **`django-cors-headers`** no lugar de middleware escrito à mão. Com uma
+  adaptação obrigatória: o Unistock usa `CORS_ALLOWED_ORIGINS`, que é lista
+  estática, e aqui a origem varia por barbearia — tem que ser
+  `CORS_ALLOWED_ORIGIN_REGEXES`, derivado de `DOMINIO_BASE`.
+- **DRF + drf-spectacular.** Isto encerra a pergunta que esta seção deixava em
+  aberto: a camada de serialização é DRF, decidida pela referência e não pela
+  primeira rota.
+- **Celery + django-celery-beat + redis**, com os serviços `worker` e `beat`.
+
+**O que NÃO vem, e o motivo:**
+
+- **`mysqlclient`.** O Unistock é MySQL. Todo o isolamento entre barbearias
+  daqui é PostgreSQL: `set_config`, `FORCE ROW LEVEL SECURITY`, políticas por
+  papel, e a restrição de exclusão `23P01` que é a única garantia real contra
+  agendamento duplo. Nenhum dos quatro existe em MySQL.
+- **`djangorestframework_simplejwt` na forma padrão.** Ele é Bearer token em
+  header, que é o desenho que o §3 proíbe por restrição. Se ele entrar algum
+  dia, entra emitindo em cookie `httpOnly`.
+- **`weasyprint`** e o resto do que serve ao domínio de estoque.
 
 ---
 
