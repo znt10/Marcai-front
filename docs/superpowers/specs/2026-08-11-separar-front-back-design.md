@@ -94,6 +94,14 @@ O SIGEVI é single-tenant e pode pagar esse preço. No Brutus a propriedade
 central é *a barbearia A não enxerga a B*, e um token legível por qualquer
 script na página é uma troca ruim quando a alternativa custa zero.
 
+> **Restrição, não preferência: o token nunca é guardado em `localStorage`,
+> `sessionStorage` ou qualquer lugar que o JavaScript da página alcance.** A
+> sessão vive em cookie `httpOnly` e só. Isso vale para as fatias 3 (auth), 5
+> (painel) e 6 (admin), e vale para o PWA do backlog — service worker não muda
+> nada aqui, porque quem não pode ler o token é o script da página, e o
+> `httpOnly` continua sendo o que garante isso. Qualquer fatia que precise
+> contrariar esta linha muda **esta spec** antes de escrever código.
+
 **O `client.ts` continua sem axios.** Ganha `credentials: 'include'` e um
 `baseDe()` (§9). Não ganha interceptador, store nem dependência nova.
 
