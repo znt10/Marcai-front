@@ -35,6 +35,24 @@ precisa de par do lado Django.
 **Os serviços de infraestrutura ficam.** Evolution, `agendador` e `zelador` são
 contêineres do compose e não sabem quem os chama — muda o endereço, não eles.
 
+**Mas o `agendador` e o `zelador` viram tarefas de `beat` na fatia 7.** A fatia 0
+subiu `worker` e `beat` com um `ping` provado ponta a ponta justamente para que
+essa mudança herde um pipeline que já se sabe funcionando. A função dos dois
+continua necessária: o `agendador` dispara o lembrete, e o `zelador` alarma
+sobre a recusa assíncrona do WhatsApp e poda o histórico. O que muda é a forma
+— dois `while true` com `curl` e `psql` viram tarefas periódicas.
+
+Um detalhe a decidir junto: hoje o `zelador` fala com o banco do **Evolution**,
+que é separado de propósito — a instância de WhatsApp não tem por que enxergar
+dado de barbearia. Virar tarefa do Django faz o Django alcançar aquele banco, e
+isso enfraquece uma separação que foi deliberada.
+
+E uma armadilha concreta: o `ClienteMiddleware` recusa qualquer `POST` sem
+`X-Brutus-Cliente`. Hoje o `agendador` chama `app:3000` (o Next) com `curl`
+pelado e passa. No dia em que ele apontar para o Django, o header entra no mesmo
+commit ou o lembrete para de sair — em silêncio, que é exatamente como ele já
+ficou parado uma vez.
+
 **O `proxy.ts` sai de cena.** Ele resolve tenant por subdomínio e protege
 `/admin` e `/api/painel/*` **posicionalmente** — rota nova sob aquele prefixo
 nasce protegida sem ninguém decidir. Essa propriedade é fácil de perder na
