@@ -1738,8 +1738,15 @@ def regex_de_origem(dominio_base: str) -> str:
     proibidos = "|".join(sorted(SUBDOMINIOS_RESERVADOS - {"admin"}))
     base = re.escape(dominio_base)
     # (?!…) recusa os reservados; [a-z0-9-]+ sem ponto recusa subdominio de
-    # subdominio; o $ ancorado recusa sufixo forjado (…localhost.malicioso.com).
-    return rf"^https?://(?!(?:{proibidos})\.)[a-z0-9-]+\.{base}(:\d+)?$"
+    # subdominio; a ancora do fim recusa sufixo forjado (…localhost.malicioso.com).
+    #
+    # `\Z` e nao `$`: o `$` do Python casa TAMBEM imediatamente antes de um
+    # `\n` final, e o django-cors-headers chama `re.match`, nunca `fullmatch`
+    # (corsheaders/middleware.py). Entao "http://brutus.localhost:3000\n"
+    # passaria. E a mesma pegadinha que o SLUG_REGEX documenta aqui em cima,
+    # mas la deu para sair pelo fullmatch sem ancora — aqui nao da, porque
+    # quem chama e a biblioteca.
+    return rf"^https?://(?!(?:{proibidos})\.)[a-z0-9-]+\.{base}(:\d+)?\Z"
 ```
 
 - [ ] **Step 4: Ligar a biblioteca e escrever o middleware que sobra**
@@ -1808,7 +1815,7 @@ MIDDLEWARE = [
 - [ ] **Step 5: Rodar e ver passar**
 
 Run: `cd back && pytest tests/test_cors.py -v`
-Expected: PASS, 17 casos.
+Expected: PASS, 15 casos.
 
 - [ ] **Step 6: Commit**
 
