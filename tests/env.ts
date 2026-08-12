@@ -10,4 +10,9 @@
 process.env.DATABASE_URL_APP = process.env.DATABASE_URL_APP_TEST;
 process.env.DATABASE_URL_ADMIN = process.env.DATABASE_URL_ADMIN_TEST;
 
+// Le por baseDe() (src/lib/api/client.ts) para montar a origem das rotas
+// migradas. Fixo aqui porque os testes nao sobem o Django de verdade — so
+// precisam de um valor estavel para comparar.
+process.env.NEXT_PUBLIC_API_URL = 'http://brutus.localhost:8000';
+
 export {};
