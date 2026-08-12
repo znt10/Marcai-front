@@ -11,6 +11,7 @@ services:
       DATABASE_URL_APP: postgresql://brutus_app:app@db:5432/brutus
       DATABASE_URL_ADMIN: postgresql://brutus_admin:admin@db:5432/brutus
       NEXT_PUBLIC_DOMINIO_BASE: localhost
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
       WATCHPACK_POLLING: "true"
       # Nome de serviço, resolvível só DENTRO da rede do compose — é por isso
       # que não mora no .env, ao lado das DATABASE_URL_HOST que existem

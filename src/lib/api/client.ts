@@ -2,12 +2,26 @@
 /// elas vivem nos módulos por recurso ao lado deste arquivo, e a tela chama
 /// método (`painelApi.agenda(dia)`), não caminho.
 ///
-/// Sem axios de propósito. Aqui as rotas são do próprio Next, na mesma origem:
-/// não há gateway, header de autorização nem baseURL para configurar — o
-/// cookie viaja sozinho porque é `httpOnly` e same-origin. Uma dependência a
-/// mais só para embrulhar `fetch` não se paga.
+/// Sem axios de propósito, e isso não mudou com a separação: o cookie
+/// continua viajando sozinho porque é `httpOnly` e **host-only**, e cookie
+/// ignora porta — front na 3000 e Django na 8000 dividem o mesmo host. O que
+/// a separação acrescentou foi `credentials: 'include'`, o header que obriga
+/// preflight, e o `baseDe()`. Nenhuma dependência nova.
 
-const BASE = '/api';
+/// A lista de prefixos que o Django ja atende. **Este array e o painel de
+/// controle da travessia inteira**: cada fatia acrescenta os seus, e voltar
+/// atras e remover uma linha. E tambem o unico lugar onde alguem precisa
+/// olhar para responder "quem serve isto hoje?".
+export const MIGRADAS: readonly string[] = [];
+
+const API_EXTERNA = process.env.NEXT_PUBLIC_API_URL ?? '';
+
+/// Prefixo casa por segmento, nunca por comeco de string: migrar '/painel'
+/// nao pode arrastar '/painelzinho' junto.
+export function baseDe(caminho: string, migradas: readonly string[] = MIGRADAS): string {
+  const migrada = migradas.some((p) => caminho === p || caminho.startsWith(`${p}/`));
+  return migrada ? `${API_EXTERNA}/api` : '/api';
+}
 
 export class ErroApi extends Error {
   constructor(public status: number, mensagem: string) {
@@ -40,10 +54,20 @@ function montarBusca(busca?: Busca): string {
 
 export async function pedir<T>(caminho: string, p: Pedido = {}): Promise<T> {
   const temCorpo = p.corpo !== undefined;
+  const metodo = p.metodo ?? 'GET';
 
-  const r = await fetch(`${BASE}${caminho}${montarBusca(p.busca)}`, {
-    method: p.metodo ?? 'GET',
-    headers: temCorpo ? { 'content-type': 'application/json' } : undefined,
+  const r = await fetch(`${baseDe(caminho)}${caminho}${montarBusca(p.busca)}`, {
+    method: metodo,
+    // Same-origin enquanto a rota for do Next; obrigatorio quando ela for do
+    // Django, que esta noutra porta. Inofensivo nos dois casos.
+    credentials: 'include',
+    headers: {
+      ...(temCorpo ? { 'content-type': 'application/json' } : {}),
+      // Obriga preflight na escrita. Entre 3000 e 8000 e same-site, e ai o
+      // SameSite=Lax nao protege — quem protege e este header mais a
+      // allowlist do outro lado.
+      ...(metodo === 'GET' ? {} : { 'x-brutus-cliente': 'web' }),
+    },
     body: temCorpo ? JSON.stringify(p.corpo) : undefined,
     signal: p.signal,
   });
