@@ -4,6 +4,19 @@ Agendamento multi-tenant: cada barbearia tem o próprio subdomínio.
 
 ## Subir
 
+Duas pastas irmãs, duas responsabilidades: este repositório é o Next.js; o
+banco, a API Django, a Evolution (WhatsApp) e o agendador de lembretes moram
+em `../back` — suba aquele lado primeiro, pelo `../back/README.md` dele.
+
+Os dois `docker compose` (um em cada pasta) dividem uma rede externa, que
+precisa existir antes de qualquer um dos dois subir. Uma vez só, nunca mais:
+
+```bash
+docker network create brutus
+```
+
+Com o back no ar, aqui:
+
 ```bash
 cp .env.example .env
 docker compose up
@@ -17,7 +30,8 @@ npm run seed
 
 O seed roda do **host**, não de dentro do contêiner: ele lê `DATABASE_URL_HOST`,
 e o `dotenv -e .env` carrega essa variável nos dois lugares — dentro do
-contêiner ela aponta para um `localhost:5433` que não existe lá.
+contêiner ela aponta para um `localhost:5433` que não existe lá (esse
+`localhost:5433` é a porta do Postgres do back, publicada pelo compose dele).
 
 ## Admin da plataforma
 
@@ -203,24 +217,26 @@ dele, com o próximo livre que o painel não mostra em lugar nenhum. Quem filtra
 ## WhatsApp (conectar o número)
 
 Todo contato com gente de fora sai por aqui: confirmação, cancelamento, lembrete
-e convite de barbeiro. Quem manda é o serviço `evolution` do compose.
+e convite de barbeiro. Quem manda é o serviço `evolution`, que mora no compose
+do **back** (`../back`), não neste.
 
-Antes da primeira vez, gerar a chave e pôr em `EVOLUTION_API_KEY` no `.env`:
+Antes da primeira vez, gerar a chave:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"
 ```
 
-**Uma chave, dois consumidores:** o serviço `evolution` a exige como
-`AUTHENTICATION_API_KEY` e o `app` a manda como `EVOLUTION_API_KEY`. As duas
-saem da mesma variável no compose de propósito — chave errada é **401
-silencioso** (o envio é fire-and-forget), então o sintoma seria "a mensagem não
-chega", sem erro em log nenhum.
+**Uma chave, dois consumidores, dois arquivos `.env` agora:** o serviço
+`evolution` (back) a exige como `AUTHENTICATION_API_KEY` e o `app` (aqui) a
+manda como `EVOLUTION_API_KEY`. Cole o mesmo valor gerado acima em
+`EVOLUTION_API_KEY` neste `.env` **e** no `.env` do back — chave errada é
+**401 silencioso** (o envio é fire-and-forget), então o sintoma seria "a
+mensagem não chega", sem erro em log nenhum.
 
-Depois, parear o telefone:
+Depois, com o `evolution` do back no ar (`../back/README.md`), parear o
+telefone a partir daqui:
 
 ```bash
-docker compose up -d evolution
 npm run whatsapp:qr        # salva whatsapp-qr.png; escaneia em Aparelhos conectados
 npm run whatsapp:estado    # brutus: open — mensagem sai por aqui
 ```
@@ -228,9 +244,10 @@ npm run whatsapp:estado    # brutus: open — mensagem sai por aqui
 O QR expira em ~40 s; rodar de novo gera outro. Alternativa com painel:
 `http://localhost:8080/manager`, entrando com a mesma chave.
 
-**A sessão mora num volume** (`evolution_instances`). É o que evita escanear o
-QR a cada `docker compose down` — e, em produção, o telefone da barbearia cair a
-cada deploy. `docker volume rm` derruba o pareamento.
+**A sessão mora num volume** (`evolution_instances`, no compose do back). É o
+que evita escanear o QR a cada `docker compose down` daquele lado — e, em
+produção, o telefone da barbearia cair a cada deploy. `docker volume rm`
+derruba o pareamento.
 
 **Sem `EVOLUTION_API_URL` o envio cai no `console.info` do app.** É o modo de
 desenvolver sem número de verdade, e é o que torna o lembrete verificável:
@@ -240,11 +257,12 @@ desenvolver sem número de verdade, e é o que torna o lembrete verificável:
 ```
 
 **A URL tem duas formas**, como as do banco: o app fala com
-`http://evolution:8080` (nome de serviço, resolvível só dentro do compose) e os
-scripts `whatsapp:*`, que rodam do host, falam com `EVOLUTION_API_URL_HOST`.
+`http://evolution:8080` (nome do serviço do back, resolvível porque os dois
+composes dividem a rede externa `brutus`) e os scripts `whatsapp:*`, que rodam
+do host, falam com `EVOLUTION_API_URL_HOST`.
 
-**A Evolution usa o Postgres que já existe**, com papel e banco próprios
-(`docker/init-db.sql`) e **nenhum GRANT** em `brutus`. Todo
+**A Evolution usa o Postgres do back**, com papel e banco próprios e
+**nenhum GRANT** em `brutus` — detalhes em `../back/README.md`. Todo
 `DATABASE_SAVE_DATA_*` de conversa está **desligado**: o produto manda mensagem
 e consulta se um número existe — nunca lê conversa. Ligado, o banco guardaria
 mensagens, contatos e histórico de todo cliente de toda barbearia.
@@ -256,26 +274,24 @@ mensagem, que já leva nome e endereço. Número por barbearia seria uma coluna 
 ## Lembrete no WhatsApp
 
 A tela de confirmado promete ao cliente *"mandamos o lembrete 1h antes"*. Quem
-cumpre isso é o serviço **`agendador`** do compose: ele bate em
-`POST /api/cron/lembretes` a cada 10 minutos, com `CRON_SECRET` no
-`Authorization`.
+cumpre isso é o serviço **`agendador`**, que mora no compose do **back**
+(`../back`): ele bate em `POST /api/cron/lembretes` — a rota deste
+repositório — a cada 10 minutos, com `CRON_SECRET` no `Authorization`.
+Acompanhar os tiques é assunto do back; veja `../back/README.md`.
 
-```bash
-docker compose logs -f agendador
-# [agendador] 11:17:34 {"enviados":0}
-```
-
-**Precisa de `CRON_SECRET` no `.env`.** Vazio, a rota nega tudo — de propósito:
-sem segredo configurado ela ficaria sendo um disparador público de mensagens
-para a base inteira de clientes. Gerar com:
+**Precisa de `CRON_SECRET` no `.env`, o mesmo valor nos dois lados** (quem
+manda o header é o `agendador`, no `.env` do back; quem confere é esta rota,
+no `.env` daqui). Vazio, a rota nega tudo — de propósito: sem segredo
+configurado ela ficaria sendo um disparador público de mensagens para a base
+inteira de clientes. Gerar com:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 ```
 
-Sem o segredo o agendador sobe e toma 401 a cada tique, e isso aparece no log.
-É barulhento por escolha: falha em silêncio aqui é lembrete que nunca chega e
-ninguém descobre.
+Sem o segredo o agendador sobe e toma 401 a cada tique, e isso aparece no log
+dele, no back. É barulhento por escolha: falha em silêncio aqui é lembrete que
+nunca chega e ninguém descobre.
 
 **O tique tem que ser menor que a janela.** São 10 min contra 60
 (`LEMBRETE_TIQUE_MIN` e `LEMBRETE_ANTECEDENCIA_MIN`, lado a lado no
@@ -328,8 +344,10 @@ dentro dele vira grito ilegível. Frase é `Sub`.
 
 ## Testar
 
+O banco de teste mora no compose do **back** (`../back`) — precisa dele no ar
+antes da primeira rodada; veja `../back/README.md`.
+
 ```bash
-docker compose up -d db
 npm test
 ```
 
