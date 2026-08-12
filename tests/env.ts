@@ -10,4 +10,10 @@
 process.env.DATABASE_URL_APP = process.env.DATABASE_URL_APP_TEST;
 process.env.DATABASE_URL_ADMIN = process.env.DATABASE_URL_ADMIN_TEST;
 
+// Le por baseDe() (src/lib/api/client.ts) para montar a origem das rotas
+// migradas — so' a PORTA do Django agora, nunca a origem inteira: o host vem
+// do `location` da pagina em tempo de chamada, e cada teste que precisa de
+// um host simula o dele (ver tests/client-base.test.ts).
+process.env.NEXT_PUBLIC_API_URL = '8000';
+
 export {};
