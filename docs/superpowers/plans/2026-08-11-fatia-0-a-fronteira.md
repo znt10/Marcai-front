@@ -20,6 +20,7 @@
 - **`INSTALLED_APPS` mínimo: sem `django.contrib.admin`, sem `django.contrib.auth`, sem `django.contrib.sessions`, e sem `django_celery_beat`.** O Django não pode criar tabela num banco de que o Prisma é dono (spec §8). O `beat` roda com o agendador **de arquivo**, que é o padrão do Celery e não toca banco nenhum; o `django-celery-beat` (agenda em tabela) é da fatia 7, quando houver agenda que valha a pena editar sem deploy.
 - **O `worker` e o `beat` não sobem decorativos.** Eles entram com uma tarefa `ping` provada ponta a ponta (Task 12). Contêiner que sobe, loga limpo e não executa nada é o modo de falha que este produto já pagou caro — o `agendador` existia e nunca rodava, e a tela prometia lembrete que ninguém mandava.
 - **Todo model nasce `managed = False`, com `db_table` e `db_column` explícitos em todo campo.** `"Barbearia"`, `"barbeariaId"` — nomenclatura do Prisma (spec §8).
+- **O `com_barbearia()` sempre abre transação própria (`atomic(durable=True)`).** `atomic()` aninhado vira SAVEPOINT, e o Postgres mantém o `SET LOCAL` depois do `RELEASE SAVEPOINT` — sair do bloco de dentro não devolve o tenant de fora. O aninhamento tem que falhar alto, nunca trocar de barbearia em silêncio. Descoberto na Task 6.
 - **Todo teste que faz pedido HTTP depois de escrever pelo `owner` usa `transaction=True` no marcador.** Sem ele o pytest-django embrulha **todos** os aliases num `atomic` aberto, o `TRUNCATE` do `owner` segura `AccessExclusiveLock` na `Barbearia`, e a leitura do `default` dentro do pedido espera por `AccessShareLock`. Não há ciclo, então o Postgres não chama de deadlock: a suíte simplesmente trava para sempre. Descoberto na Task 5.
 - **Id é `str`, nunca `uuid.UUID`.** A coluna é `TEXT`: o Prisma escreve `id String @id @default(uuid())`, sem `@db.Uuid` — o *valor* é um uuid, a coluna não é. O psycopg declara parâmetro `UUID` como tipo `uuid`, e `text = uuid` não resolve em comparação (o cast só vale em atribuição). Por isso `INSERT` passa e `filter()` quebra, longe da causa. Todo id que entra numa query vai como `str(uuid.uuid4())`.
 - **O Django nunca roda DDL no banco `brutus` nem no `brutus_test`.** Quem cria e altera tabela é `prisma migrate`, do lado do front.
@@ -1346,8 +1347,21 @@ def com_barbearia(barbearia_id):
     consultas. Sem ele, em autocommit, cada statement e a sua propria
     transacao e a variavel morre antes da primeira consulta — o sintoma sai
     como 'nao encontrado' em tudo.
+
+    O `durable=True` fecha um vazamento que o lado TypeScript nao tinha.
+    `atomic()` aninhado nao abre transacao nova: vira SAVEPOINT. E o Postgres
+    MANTEM o SET LOCAL depois do RELEASE SAVEPOINT — entao sair do bloco de
+    dentro nao devolve o tenant de fora, e o resto do bloco externo passa a
+    ler pela barbearia errada, sem erro nenhum. O `$transaction` do Prisma era
+    imune porque sempre abria transacao propria em outra conexao da pool.
+    Com `durable=True` o aninhamento vira RuntimeError alto no ponto da
+    chamada, em vez de troca silenciosa de tenant.
+
+    Ressalva que anda junto: o Django ISENTA os atomics que o TestCase abre
+    dessa checagem. O durable protege producao; quem protege o teste e a regra
+    do transaction=True no marcador. Nenhuma das duas basta sozinha.
     """
-    with transaction.atomic():
+    with transaction.atomic(durable=True):
         with connection.cursor() as cur:
             cur.execute(
                 "SELECT set_config('app.barbearia_id', %s, true)",
