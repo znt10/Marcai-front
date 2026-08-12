@@ -20,6 +20,7 @@
 - **`INSTALLED_APPS` mínimo: sem `django.contrib.admin`, sem `django.contrib.auth`, sem `django.contrib.sessions`, e sem `django_celery_beat`.** O Django não pode criar tabela num banco de que o Prisma é dono (spec §8). O `beat` roda com o agendador **de arquivo**, que é o padrão do Celery e não toca banco nenhum; o `django-celery-beat` (agenda em tabela) é da fatia 7, quando houver agenda que valha a pena editar sem deploy.
 - **O `worker` e o `beat` não sobem decorativos.** Eles entram com uma tarefa `ping` provada ponta a ponta (Task 12). Contêiner que sobe, loga limpo e não executa nada é o modo de falha que este produto já pagou caro — o `agendador` existia e nunca rodava, e a tela prometia lembrete que ninguém mandava.
 - **Todo model nasce `managed = False`, com `db_table` e `db_column` explícitos em todo campo.** `"Barbearia"`, `"barbeariaId"` — nomenclatura do Prisma (spec §8).
+- **Id é `str`, nunca `uuid.UUID`.** A coluna é `TEXT`: o Prisma escreve `id String @id @default(uuid())`, sem `@db.Uuid` — o *valor* é um uuid, a coluna não é. O psycopg declara parâmetro `UUID` como tipo `uuid`, e `text = uuid` não resolve em comparação (o cast só vale em atribuição). Por isso `INSERT` passa e `filter()` quebra, longe da causa. Todo id que entra numa query vai como `str(uuid.uuid4())`.
 - **O Django nunca roda DDL no banco `brutus` nem no `brutus_test`.** Quem cria e altera tabela é `prisma migrate`, do lado do front.
 - **A sessão nunca sai do cookie `httpOnly`.** Nada de `localStorage` ou `sessionStorage`, em fatia nenhuma (spec §3, restrição).
 - **`USE_X_FORWARDED_HOST = False`** em desenvolvimento. O tenant sai do `Host` real (spec §5).
@@ -1009,7 +1010,7 @@ def cenario():
     dados = {}
     for slug, nome in (("brutus", "Brutus"), ("dontony", "Dom Tony")):
         b = Barbearia.objects.using("owner").create(
-            id=uuid.uuid4(),
+            id=str(uuid.uuid4()),
             slug=slug,
             nome=nome,
             endereco="Rua Aurora, 88",
@@ -1019,7 +1020,7 @@ def cenario():
             criado_em="2026-08-11T12:00:00Z",
         )
         Barbeiro.objects.using("owner").create(
-            id=uuid.uuid4(),
+            id=str(uuid.uuid4()),
             barbearia_id=b.id,
             nome=f"Barbeiro da {nome}",
             whatsapp="11911112222",
@@ -1312,7 +1313,7 @@ def test_a_variavel_morre_com_a_transacao(cenario):
 
 
 def test_barbearia_inexistente_nao_enxerga_nada(cenario):
-    with com_barbearia(uuid.uuid4()):
+    with com_barbearia(str(uuid.uuid4())):
         assert Barbeiro.objects.count() == 0
 ```
 
@@ -1853,7 +1854,7 @@ def test_conta_sob_o_rls_e_o_numero_muda_por_barbearia(client, cenario):
     import uuid
 
     Barbeiro.objects.using("owner").create(
-        id=uuid.uuid4(),
+        id=str(uuid.uuid4()),
         barbearia_id=cenario["dontony"].id,
         nome="Segundo da Dom Tony",
         whatsapp="11955556666",
