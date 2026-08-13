@@ -59,18 +59,21 @@ describe('variáveis de ambiente', () => {
     }
   });
 
-  it('a chave da Evolution alimenta os dois serviços do compose', () => {
+  it('a chave da Evolution alimenta o app', () => {
     const compose = readFileSync(join(RAIZ, 'docker-compose.yml'), 'utf8');
-    // O `app` manda e o `evolution` exige. Se um deixar de sair da mesma
-    // variável, o sintoma é 401 silencioso em todo envio.
-    expect(compose).toMatch(/AUTHENTICATION_API_KEY:\s*\$\{EVOLUTION_API_KEY\}/);
+    // Era um teste bilateral — uma variável, dois consumidores, um `it` só —
+    // até a Tarefa 1 mudar o `evolution` para o repositório do back. Sem os
+    // dois lados no mesmo disco, a propriedade "as duas pontas saem da mesma
+    // variável" deixou de ser verificável por um teste único: agora cada
+    // ponta a afirma pelo NOME da variável, cada uma na sua borda. É a mesma
+    // forma que a barreira do admin já usa — a mesma regra, aplicada
+    // independentemente nos dois lados. A metade do `evolution`
+    // (`AUTHENTICATION_API_KEY`) está documentada em
+    // `back/docs/testes-a-portar.md`, para renascer em pytest na Tarefa 2.
+    //
+    // Chave errada aqui é 401 silencioso no `evolution` (o envio é
+    // fire-and-forget) — o sintoma seria "a mensagem não chega" sem erro em
+    // log nenhum.
     expect(compose).toMatch(/EVOLUTION_API_KEY:\s*\$\{EVOLUTION_API_KEY\}/);
-  });
-
-  it('a sessão da Evolution mora num volume nomeado', () => {
-    const compose = readFileSync(join(RAIZ, 'docker-compose.yml'), 'utf8');
-    // Sem volume, todo `docker compose down` obriga a escanear o QR de novo —
-    // em produção, é o telefone da barbearia caindo a cada deploy.
-    expect(compose).toMatch(/evolution_instances:\/evolution\/instances/);
   });
 });
