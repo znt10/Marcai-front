@@ -1,20 +1,4 @@
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
-    ports: ["5433:5432"]
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   app:
     build: { context: ., target: dev }
     # `prisma generate` também aqui, não só no Dockerfile: o cliente gerado
@@ -27,6 +11,10 @@ services:
       DATABASE_URL_APP: postgresql://brutus_app:app@db:5432/brutus
       DATABASE_URL_ADMIN: postgresql://brutus_admin:admin@db:5432/brutus
       NEXT_PUBLIC_DOMINIO_BASE: localhost
+      # So' a porta do Django — ver o comentario de NEXT_PUBLIC_API_URL no
+      # .env.example. baseDe() (src/lib/api/client.ts) monta o host a partir
+      # de `location` em tempo de chamada, nunca de uma origem fixa.
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-8000}
       WATCHPACK_POLLING: "true"
       # Nome de serviço, resolvível só DENTRO da rede do compose — é por isso
       # que não mora no .env, ao lado das DATABASE_URL_HOST que existem
@@ -47,87 +35,9 @@ services:
       - .:/app
       - /app/node_modules
       - /app/.next
-    depends_on:
-      db: { condition: service_healthy }
-
-  # O que faz o lembrete existir. A rota `/api/cron/lembretes` estava escrita e
-  # protegida desde a Etapa 1, e nada a chamava — a tela prometia ao cliente
-  # "mandamos o lembrete 1h antes" e ninguém mandava.
-  #
-  # Processo separado, e não um cron dentro do Next, por duas razões: ele
-  # sobrevive a reinício da aplicação, e `docker compose logs agendador`
-  # responde "está rodando?" sem instrumentar nada.
-  #
-  # O tique é de 10 min (LEMBRETE_TIQUE_MIN) contra uma janela de 60: a
-  # mensagem sai entre 50 e 60 minutos antes. Tique MAIOR que a janela perderia
-  # agendamento — quem entra nela entre dois tiques nunca seria visto.
-  agendador:
-    image: curlimages/curl:8.11.1
     restart: unless-stopped
-    environment:
-      # `$$` escapa a interpolação do compose: quem expande é o shell de
-      # dentro, então o segredo não fica escrito no comando do contêiner.
-      CRON_SECRET: ${CRON_SECRET}
-    # Bate assim que sobe, e só então dorme: `docker compose up` dá o retorno
-    # na hora em vez de dez minutos depois. Erro de curl não mata o laço —
-    # app ainda subindo é normal.
-    #
-    # Vetor, e não `command: >`: em escalar dobrado do YAML, linha MAIS
-    # indentada conserva a quebra em vez de virar espaço, e o comando chega
-    # partido ao shell (`sh: -H: not found`).
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - 'while true; do echo "[agendador] $$(date -u +%H:%M:%S) $$(curl -sS -X POST -H "Authorization: Bearer $$CRON_SECRET" http://app:3000/api/cron/lembretes || echo falhou)"; sleep 600; done'
-    depends_on:
-      app: { condition: service_started }
+    networks: [brutus]
 
-  # O telefone do produto. Confirmação, cancelamento, lembrete e convite de
-  # barbeiro saem por aqui — sem este serviço, tudo isso cai no console.info do
-  # app e o sistema funciona inteiro sem falar com ninguém.
-  #
-  # Versão PINADA: `latest` num serviço que guarda sessão de WhatsApp é convite
-  # para uma atualização derrubar a conexão numa terça à tarde.
-  evolution:
-    image: evoapicloud/evolution-api:v2.3.7
-    restart: unless-stopped
-    ports: ["8080:8080"]
-    volumes:
-      # A parte que mais importa: aqui mora a credencial da sessão que o QR
-      # gera. Sem o volume, todo `docker compose down` obriga a escanear o QR
-      # de novo — em produção, é o telefone da barbearia caindo a cada deploy.
-      - evolution_instances:/evolution/instances
-    environment:
-      SERVER_URL: http://localhost:8080
-      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
-
-      # O Postgres que já existe, com papel e banco próprios (docker/init-db.sql).
-      DATABASE_PROVIDER: postgresql
-      DATABASE_CONNECTION_URI: postgresql://evolution:evolution@db:5432/evolution?schema=public
-      DATABASE_CONNECTION_CLIENT_NAME: brutus
-      # Só a instância é persistida. Todo o resto FICA DESLIGADO de propósito:
-      # nós mandamos mensagem e consultamos se um número existe — nunca lemos
-      # conversa. Ligado, isto guardaria mensagens, contatos, chats e histórico
-      # de todo cliente de toda barbearia: um acervo de conversa alheia que o
-      # produto não usa para nada.
-      DATABASE_SAVE_DATA_INSTANCE: "true"
-      DATABASE_SAVE_DATA_NEW_MESSAGE: "false"
-      DATABASE_SAVE_MESSAGE_UPDATE: "false"
-      DATABASE_SAVE_DATA_CONTACTS: "false"
-      DATABASE_SAVE_DATA_CHATS: "false"
-      DATABASE_SAVE_DATA_LABELS: "false"
-      DATABASE_SAVE_DATA_HISTORIC: "false"
-
-      # Sem Redis: um quarto contêiner para cachear o que uma instância única
-      # resolve em memória é peso sem retorno.
-      CACHE_REDIS_ENABLED: "false"
-      CACHE_LOCAL_ENABLED: "true"
-
-      DEL_INSTANCE: "false"
-      LOG_LEVEL: ERROR,WARN,INFO
-      LOG_BAILEYS: error
-    depends_on:
-      db: { condition: service_healthy }
-
-volumes:
-  pgdata:
-  evolution_instances:
+networks:
+  brutus:
+    external: true
