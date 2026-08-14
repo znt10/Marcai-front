@@ -16,7 +16,18 @@
 /// controle da travessia inteira**: cada fatia acrescenta os seus, e voltar
 /// atras e remover uma linha. E tambem o unico lugar onde alguem precisa
 /// olhar para responder "quem serve isto hoje?".
-export const MIGRADAS: readonly string[] = [];
+/// `/auth` entra INTEIRO — login, logout, eu e convite de uma vez. Nao ha como
+/// fatiar: o casamento e por prefixo de segmento, e separar as quatro exigiria
+/// quatro entradas. Tambem nao seria desejavel: com o login no Django e o
+/// `/auth/eu` no Next, um SESSAO_JWT_SECRET divergente entre os dois `.env`
+/// passaria despercebido ate a tela que menos se espera.
+export const MIGRADAS: readonly string[] = [
+  '/barbeiros',
+  '/auth',
+  '/servicos',
+  '/horarios',
+  '/dias-com-vaga',
+];
 
 /// So a PORTA do Django (ou "porta:host" nao, so a porta — o host vem do
 /// `location` em tempo de chamada, nunca daqui). Antes disto era a origem
@@ -53,8 +64,17 @@ function origemDoTenant(): string {
 
 /// Prefixo casa por segmento, nunca por comeco de string: migrar '/painel'
 /// nao pode arrastar '/painelzinho' junto.
+///
+/// A barra final e' removida de cada entrada ANTES de comparar. Sem isso, uma
+/// entrada escrita '/barbeiros/' nao casa com o caminho '/barbeiros' e a rota
+/// cai em '/api' — o Next. Enquanto a rota existe dos dois lados, ninguem ve;
+/// depois que ela sai do Next, vira 404 mudo longe da causa. Normalizar aqui,
+/// e nao pedir disciplina de quem edita a lista, e' o que fecha isso.
 export function baseDe(caminho: string, migradas: readonly string[] = MIGRADAS): string {
-  const migrada = migradas.some((p) => caminho === p || caminho.startsWith(`${p}/`));
+  const migrada = migradas.some((entrada) => {
+    const p = entrada.replace(/\/$/, '');
+    return caminho === p || caminho.startsWith(`${p}/`);
+  });
   return migrada ? `${origemDoTenant()}/api` : '/api';
 }
 

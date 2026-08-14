@@ -1,5 +1,6 @@
 services:
   app:
+    container_name: Marcai-front-app
     build: { context: ., target: dev }
     # `prisma generate` também aqui, não só no Dockerfile: o cliente gerado
     # mora em node_modules, que é um volume anônimo — o que a imagem gerou no

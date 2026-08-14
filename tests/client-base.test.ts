@@ -60,6 +60,59 @@ describe('baseDe', () => {
     expect(baseDe('/agenda/hoje', ['/agenda'])).toBe('http://brutus.localhost:8000/api');
   });
 
+  it('ignora barra final na entrada do MIGRADAS', () => {
+    // Item 1 do card da fatia 1. Uma entrada escrita '/barbeiros/' nao casaria
+    // com o caminho '/barbeiros', e a rota cairia em '/api' — o Next. Enquanto
+    // a rota ainda existe nos dois lados isso e' invisivel; no dia em que ela
+    // sair do Next vira 404 mudo, longe da linha que causou.
+    comHost('brutus.localhost');
+    expect(baseDe('/barbeiros', ['/barbeiros/'])).toBe('http://brutus.localhost:8000/api');
+    expect(baseDe('/barbeiros/9', ['/barbeiros/'])).toBe('http://brutus.localhost:8000/api');
+    // E a normalizacao nao pode afrouxar o casamento por segmento.
+    expect(baseDe('/barbeirosxyz', ['/barbeiros/'])).toBe('/api');
+  });
+
+  it('a lista de verdade tem /barbeiros e /auth e nao arrasta vizinho', () => {
+    // Blindagem do interruptor: se alguem acrescentar uma entrada com barra,
+    // este teste cai junto com o de cima.
+    comHost('brutus.localhost');
+    expect(baseDe('/barbeiros')).toBe('http://brutus.localhost:8000/api');
+    expect(baseDe('/servicos')).toBe('http://brutus.localhost:8000/api');
+    expect(baseDe('/horarios')).toBe('http://brutus.localhost:8000/api');
+    expect(baseDe('/dias-com-vaga')).toBe('http://brutus.localhost:8000/api');
+    // Ainda no Next: e o que sobra do fluxo publico depois desta fatia.
+    expect(baseDe('/agendamentos')).toBe('/api');
+  });
+
+  it('/servicos NAO arrasta o /painel/servicos junto', () => {
+    // As duas rotas se chamam igual e fazem coisas diferentes: a publica
+    // lista o que da para agendar, a do painel edita o cadastro. A do painel
+    // mora sob /painel, entao o prefixo nao a alcanca — mas convem que um
+    // teste diga isso, porque migrar a errada abriria o cadastro ao publico.
+    comHost('brutus.localhost');
+    expect(baseDe('/painel/servicos')).toBe('/api');
+  });
+
+  it('/auth leva as quatro rotas de sessao para o Django', () => {
+    // As quatro atravessam juntas porque o casamento e por prefixo. Se alguma
+    // ficasse para tras, o cookie seria emitido de um lado e lido do outro —
+    // o que so funciona enquanto os dois `.env` concordarem no segredo, e
+    // falha calado no dia em que nao concordarem.
+    comHost('brutus.localhost');
+    for (const rota of ['/auth/login', '/auth/logout', '/auth/eu', '/auth/convite/abc']) {
+      expect(baseDe(rota)).toBe('http://brutus.localhost:8000/api');
+    }
+  });
+
+  it('/auth NAO arrasta o /admin/auth do painel da plataforma', () => {
+    // O admin tem o proprio login, o proprio cookie e o proprio segredo. Ele
+    // mora sob /admin, entao o prefixo /auth nao o alcanca — mas convem que
+    // um teste diga isso, porque as duas rotas se chamam quase igual.
+    comHost('admin.localhost');
+    expect(baseDe('/admin/auth/login')).toBe('/api');
+    expect(baseDe('/admin/auth/logout')).toBe('/api');
+  });
+
   it('sem window, avisa alto em vez de inventar um tenant', () => {
     // Nenhum chamador de hoje roda fora do navegador — todo consumidor de
     // `pedir` e' Client Component. Mas se algum dia um Server Component ou
