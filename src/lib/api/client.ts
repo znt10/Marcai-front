@@ -44,6 +44,16 @@ export const MIGRADAS: readonly string[] = [
   '/painel/conflitos',
   '/painel/agendamentos',
   '/painel/barbearia',
+  // Fecha a travessia — bloco C: as 3 rotas publicas que o cliente usa sem
+  // sessao. '/agendamentos' e '/painel/agendamentos' se CHAMAM parecido mas
+  // sao prefixos DIFERENTES (o casamento e por segmento, nao por comeco de
+  // string) — nenhuma entrada arrasta a outra.
+  '/agendamentos',
+  // Bloco B: as 4 rotas de gestao de barbearias pelo admin da plataforma.
+  // UMA entrada cobre as quatro (o front sempre fala com esse prefixo a
+  // partir de `admin.<dominio>`), igual ao '/auth' de cima nao dar pra
+  // fatiar.
+  '/admin',
 ];
 
 /// So a PORTA do Django (ou "porta:host" nao, so a porta — o host vem do
