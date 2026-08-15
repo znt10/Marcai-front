@@ -27,6 +27,23 @@ export const MIGRADAS: readonly string[] = [
   '/servicos',
   '/horarios',
   '/dias-com-vaga',
+  // Fatia 4 — as 17 rotas do painel, uma entrada por sub-prefixo (nunca
+  // '/painel' inteiro de uma vez): cada linha e' reversivel sozinha, o que
+  // preserva a mesma garantia que fez as fatias 1-3 nascerem incrementais.
+  // '/painel/servicos' e a publica '/servicos' se CHAMAM igual e fazem
+  // coisas diferentes (catalogo do dono vs. o que da para agendar) — o
+  // prefixo distingue as duas, mas vale registrar que sao rotas irmas, nao
+  // a mesma.
+  '/painel/servicos',
+  '/painel/barbeiro-servicos',
+  '/painel/expediente',
+  '/painel/bloqueios',
+  '/painel/equipe',
+  '/painel/agenda',
+  '/painel/dia',
+  '/painel/conflitos',
+  '/painel/agendamentos',
+  '/painel/barbearia',
 ];
 
 /// So a PORTA do Django (ou "porta:host" nao, so a porta — o host vem do
