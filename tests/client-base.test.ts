@@ -80,8 +80,6 @@ describe('baseDe', () => {
     expect(baseDe('/servicos')).toBe('http://brutus.localhost:8000/api');
     expect(baseDe('/horarios')).toBe('http://brutus.localhost:8000/api');
     expect(baseDe('/dias-com-vaga')).toBe('http://brutus.localhost:8000/api');
-    // Ainda no Next: e o que sobra do fluxo publico depois desta fatia.
-    expect(baseDe('/agendamentos')).toBe('/api');
   });
 
   it('/servicos publico e /painel/servicos sao prefixos INDEPENDENTES', () => {
@@ -125,11 +123,45 @@ describe('baseDe', () => {
 
   it('/auth NAO arrasta o /admin/auth do painel da plataforma', () => {
     // O admin tem o proprio login, o proprio cookie e o proprio segredo. Ele
-    // mora sob /admin, entao o prefixo /auth nao o alcanca — mas convem que
-    // um teste diga isso, porque as duas rotas se chamam quase igual.
+    // mora sob /admin, entao o prefixo /auth (sozinho, sem /admin na lista)
+    // nao o alcanca — as duas rotas se chamam quase igual, e e' por isso que
+    // convem um teste dizendo isso por si, isolado do estado real da lista.
     comHost('admin.localhost');
-    expect(baseDe('/admin/auth/login')).toBe('/api');
-    expect(baseDe('/admin/auth/logout')).toBe('/api');
+    expect(baseDe('/admin/auth/login', ['/auth'])).toBe('/api');
+    expect(baseDe('/admin/auth/logout', ['/auth'])).toBe('/api');
+  });
+
+  it('fecha a travessia: /agendamentos publico esta migrado', () => {
+    // '/agendamentos' e '/painel/agendamentos' se CHAMAM parecido mas sao
+    // prefixos INDEPENDENTES — cada um casa por si, igual ao par
+    // /servicos-/painel/servicos acima.
+    comHost('brutus.localhost');
+    for (const rota of ['/agendamentos', '/agendamentos/abc123', '/agendamentos/abc123/cancelar']) {
+      expect(baseDe(rota)).toBe('http://brutus.localhost:8000/api');
+    }
+    expect(baseDe('/painel/agendamentos')).toBe('http://brutus.localhost:8000/api');
+  });
+
+  it('fecha a travessia: /admin esta migrado, as 5 rotas de uma vez', () => {
+    // O front sempre fala com este prefixo a partir de admin.<dominio> — uma
+    // entrada so cobre login, logout e as quatro de barbearias.
+    comHost('admin.localhost');
+    for (const rota of [
+      '/admin/auth/login', '/admin/auth/logout',
+      '/admin/barbearias', '/admin/barbearias/abc',
+      '/admin/barbearias/abc/convite',
+    ]) {
+      expect(baseDe(rota)).toBe('http://admin.localhost:8000/api');
+    }
+  });
+
+  it('depois da travessia, o Next nao serve mais rota de API nenhuma', () => {
+    // cron/lembretes e' a unica excecao que nunca precisou de MIGRADAS: quem
+    // chama e' o agendador (docker-compose), direto no Django, sem passar
+    // pelo navegador — este teste documenta que nenhuma OUTRA rota ficou
+    // para tras.
+    comHost('brutus.localhost');
+    expect(baseDe('/qualquer-coisa-nao-listada')).toBe('/api');
   });
 
   it('sem window, avisa alto em vez de inventar um tenant', () => {
