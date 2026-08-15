@@ -84,13 +84,32 @@ describe('baseDe', () => {
     expect(baseDe('/agendamentos')).toBe('/api');
   });
 
-  it('/servicos NAO arrasta o /painel/servicos junto', () => {
+  it('/servicos publico e /painel/servicos sao prefixos INDEPENDENTES', () => {
     // As duas rotas se chamam igual e fazem coisas diferentes: a publica
-    // lista o que da para agendar, a do painel edita o cadastro. A do painel
-    // mora sob /painel, entao o prefixo nao a alcanca — mas convem que um
-    // teste diga isso, porque migrar a errada abriria o cadastro ao publico.
+    // lista o que da para agendar, a do painel edita o cadastro. Migrar uma
+    // nao arrasta a outra — cada linha do MIGRADAS casa por si.
     comHost('brutus.localhost');
-    expect(baseDe('/painel/servicos')).toBe('/api');
+    expect(baseDe('/servicos')).toBe('http://brutus.localhost:8000/api');
+    expect(baseDe('/painel/servicos')).toBe('http://brutus.localhost:8000/api');
+  });
+
+  it('fatia 4: as dez entradas de /painel/* estao migradas, e so essas', () => {
+    comHost('brutus.localhost');
+    for (const rota of [
+      '/painel/servicos', '/painel/servicos/abc',
+      '/painel/barbeiro-servicos',
+      '/painel/expediente',
+      '/painel/bloqueios', '/painel/bloqueios/abc',
+      '/painel/equipe', '/painel/equipe/abc', '/painel/equipe/abc/desativar',
+      '/painel/equipe/abc/reativar', '/painel/equipe/abc/convite',
+      '/painel/agenda',
+      '/painel/dia',
+      '/painel/conflitos',
+      '/painel/agendamentos', '/painel/agendamentos/abc/cancelar',
+      '/painel/barbearia',
+    ]) {
+      expect(baseDe(rota)).toBe('http://brutus.localhost:8000/api');
+    }
   });
 
   it('/auth leva as quatro rotas de sessao para o Django', () => {
