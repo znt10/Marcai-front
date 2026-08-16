@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Box, Chip, Row, Lbl, Sub, Avatar } from '@/components/wf';
 import { formatar } from '@/lib/telefone';
+import { formatarPreco } from '@/lib/dinheiro';
 import {
   publicoApi, ignorarAborto, mensagemDoErro, ErroApi,
   type Barbeiro, type Servico, type Slot, type DiaComSlots as Dia,
@@ -132,6 +133,7 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
             {servicos.map(s => (
               <Chip key={s.id} ativo={servicoId === s.id} onClick={() => setServicoId(s.id)}>
                 {s.nome} · {s.duracaoMin}min
+                {s.precoCentavos !== null && ` · ${formatarPreco(s.precoCentavos)}`}
               </Chip>
             ))}
           </Row>

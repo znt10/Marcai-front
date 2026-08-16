@@ -21,7 +21,7 @@ export default async function Pagina({ params }: { params: Promise<{ codigo: str
   const minutosAte = (ag.inicio.getTime() - Date.now()) / 60_000;
 
   return (
-    <Frame>
+    <Frame>
       <Confirmado
         codigo={ag.codigo}
         clienteNome={ag.cliente.nome}
@@ -33,6 +33,7 @@ export default async function Pagina({ params }: { params: Promise<{ codigo: str
         podeCancelar={ag.status === 'CONFIRMADO' && minutosAte > PRAZO_CANCELAMENTO_MIN}
         endereco={b.endereco}
         whatsappBarbearia={formatar(b.whatsappContato)}
+        precoCentavos={ag.precoCentavos}
       />
     </Frame>
   );

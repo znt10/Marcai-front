@@ -2,11 +2,15 @@
 import { useState } from 'react';
 import { Box, Lbl, Sub, Sep } from '@/components/wf';
 import { publicoApi, mensagemDoErro } from '@/lib/api';
+import { formatarPreco } from '@/lib/dinheiro';
 
 type Props = {
   codigo: string; clienteNome: string; barbeiroNome: string; servicoNome: string;
   inicioIso: string; fimIso: string; status: string; podeCancelar: boolean;
   endereco: string; whatsappBarbearia: string;
+  /// Snapshot do momento de marcar — nulo quando o barbeiro não tinha
+  /// preço definido pra aquele serviço naquela hora.
+  precoCentavos: number | null;
 };
 
 export function Confirmado(p: Props) {
@@ -90,6 +94,7 @@ export function Confirmado(p: Props) {
         <div className="px-5 py-5 md:px-7 md:py-6 flex flex-col gap-1">
           <div className="text-[15px] md:text-lg">
             {p.servicoNome.toLowerCase()} com {p.barbeiroNome}
+            {p.precoCentavos !== null && ` · ${formatarPreco(p.precoCentavos)}`}
           </div>
           <Sub>{p.endereco}</Sub>
         </div>
