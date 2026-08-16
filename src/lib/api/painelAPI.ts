@@ -145,6 +145,9 @@ export type VinculoDeServico = {
   faz: boolean;
   /// Sem vínculo, vem a sugerida do serviço — que é o que entra ao marcar.
   duracaoMin: number;
+  /// Nulo até o barbeiro decidir — diferente da duração, preço não tem
+  /// sugestão nenhuma pra herdar do catálogo. Quem cobra é o barbeiro.
+  precoCentavos: number | null;
 };
 
 /// Catálogo é decisão da casa (só o dono); vínculo e duração começam na pessoa
@@ -173,7 +176,10 @@ export const servicosApi = {
       busca: { barbeiroId }, signal, loginEm: LOGIN_DO_PAINEL,
     }).then((d) => d.vinculos),
 
-  vincular: (p: { barbeiroId?: string; servicoId: string; faz: boolean; duracaoMin?: number }) =>
+  vincular: (p: {
+    barbeiroId?: string; servicoId: string; faz: boolean;
+    duracaoMin?: number; precoCentavos?: number | null;
+  }) =>
     pedir<{ ok: true }>('/painel/barbeiro-servicos', {
       metodo: 'PUT', corpo: p, loginEm: LOGIN_DO_PAINEL,
     }),
