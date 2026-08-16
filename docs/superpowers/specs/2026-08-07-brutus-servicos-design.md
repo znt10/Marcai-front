@@ -136,8 +136,11 @@ A frase da barbearia fica num campo no fim, visível só para o dono.
 
 ## 9. Fora do escopo
 
-- **Preço.** `Servico` continua sem valor, como decidido na Etapa 2. Nada nas
-  telas mostra dinheiro, e a coluna é aditiva quando alguém pedir.
+- ~~**Preço.** `Servico` continua sem valor...~~ Deixou de ser verdade em
+  16/08: `precoCentavos` entrou em `BarbeiroServico` (não em `Servico` —
+  cada barbeiro cobra o próprio preço, sem herdar sugestão do catálogo),
+  nulável, com snapshot em `Agendamento` no momento de marcar. Ver a
+  migração `20260816120000_preco_por_barbeiro`.
 - **Ordem por arrastar.** `ordem` é editável como número; arrastar é biblioteca
   nova para um problema de quatro linhas.
 - **Foto do serviço.** Não existe armazenamento de arquivo no projeto.
