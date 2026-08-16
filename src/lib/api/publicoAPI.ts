@@ -6,7 +6,13 @@ import { pedir } from './client';
 /// `fetch` devolve `any`, então nem o teste nem o `tsc` pegam.
 
 export type Barbeiro = { id: string; nome: string; fotoUrl: string | null };
-export type Servico = { id: string; nome: string; duracaoMin: number };
+export type Servico = {
+  id: string; nome: string; duracaoMin: number;
+  /// Nulo quando ninguém que faz o serviço definiu preço ainda. Com
+  /// `barbeiroId="qualquer"`, é o MENOR preço entre quem faz — mesma
+  /// decisão de produto que já vale pra `duracaoMin`.
+  precoCentavos: number | null;
+};
 export type Slot = {
   hora: string; inicio: string; fim: string;
   barbeiroId: string; barbeiroNome: string;
