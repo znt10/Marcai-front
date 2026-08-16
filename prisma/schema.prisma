@@ -101,6 +101,11 @@ model BarbeiroServico {
   barbeiroId  String
   servicoId   String
   duracaoMin  Int
+  /// Nulo até o barbeiro decidir — não há preço sugerido no catálogo pra
+  /// herdar (ao contrário de duracaoMin/duracaoSugeridaMin): quem cobra é o
+  /// barbeiro, não a barbearia, e um recém-chegado cobra diferente de um
+  /// sênior. Marcar não exige preço nenhum.
+  precoCentavos Int?
   ativo       Boolean @default(true)
 
   barbearia Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Restrict)
@@ -174,6 +179,11 @@ model Agendamento {
   inicio            DateTime
   fim               DateTime
   duracaoMin        Int
+  /// Snapshot do preço praticado no momento de marcar — mesma razão de
+  /// servicoNome/duracaoMin: o barbeiro pode reprecificar depois, e isso não
+  /// pode reescrever quanto um agendamento passado custou. Nulo quando o
+  /// barbeiro não tinha preço definido pra aquele serviço na hora de marcar.
+  precoCentavos     Int?
   status            StatusAgendamento @default(CONFIRMADO)
   criadoEm          DateTime          @default(now())
   canceladoEm       DateTime?
