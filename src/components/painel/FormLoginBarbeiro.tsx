@@ -29,8 +29,14 @@ export function FormLoginBarbeiro() {
     <>
       <Lbl>entrar</Lbl>
       <Box variante={whatsapp ? 'normal' : 'dash'}>
-        <input className="w-full outline-none bg-transparent" placeholder="seu celular"
-               inputMode="numeric" autoComplete="username"
+        {/* "celular ou e-mail", e `inputMode` livre, porque desde a fatia 3
+            nem todo mundo entra pelo numero: o barbeiro entra pelo celular, o
+            dono pelo e-mail que o admin cadastrou. Dizer so "seu celular"
+            mandava o dono digitar o dado errado, e o teclado numerico deixava
+            o e-mail quase impossivel de escrever no telefone — que e onde
+            estas telas sao usadas. */}
+        <input className="w-full outline-none bg-transparent"
+               placeholder="seu celular ou e-mail" autoComplete="username"
                value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
       </Box>
       <Box variante={senha ? 'normal' : 'dash'}>
