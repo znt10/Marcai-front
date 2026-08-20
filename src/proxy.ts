@@ -1,7 +1,16 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { extrairSlug, ehHostAdmin } from '@/lib/slug';
-import { lerSessao, COOKIE_ADMIN } from '@/lib/admin-sessao';
-import { lerSessao as lerSessaoBarbeiro, COOKIE_SESSAO } from '@/lib/auth';
+
+/// Os dois cookies, por NOME. Antes vinham de `@/lib/admin-sessao` e
+/// `@/lib/auth`, junto com as funções que conferiam a assinatura deles — os
+/// dois módulos morreram na fatia 4 com o resto do que lia banco e segredo.
+/// Os valores são os mesmos de `tenant/config.py` no back (`sessao` e
+/// `sessao_admin`) — os dois lados têm de concordar no NOME do cookie mesmo
+/// depois de o front parar de conseguir lê-lo. Errar aqui não quebra nada
+/// visivelmente: o proxy simplesmente nunca acha o cookie e manda todo mundo
+/// para o login, inclusive quem acabou de entrar.
+const COOKIE_ADMIN = 'sessao_admin';
+const COOKIE_SESSAO = 'sessao';
 
 /// Next 16 aposentou `middleware.ts`: o arquivo se chama `proxy.ts` e a
 /// função exportada, `proxy`. A API (NextRequest/NextResponse, matcher)
@@ -14,11 +23,20 @@ export async function proxy(req: NextRequest) {
   const caminho = req.nextUrl.pathname;
 
   // ---- O host do admin ----
-  // A sessão é conferida AQUI, antes de qualquer rota rodar. `jose` funciona
-  // no runtime Edge, que é onde este arquivo executa — foi por isso que ela
-  // foi escolhida no lugar de jsonwebtoken.
+  // Confere a PRESENÇA do cookie, não mais a assinatura dele.
+  //
+  // O front deixou de ter o segredo: `SESSAO_JWT_SECRET` e `ADMIN_JWT_SECRET`
+  // saíram do `.env` daqui na fatia 4, e sem segredo não há o que verificar.
+  // Quem verifica de verdade é o Django, a cada pedido, com acesso ao
+  // `tokenVersion` e ao `ativo` que a assinatura sozinha nunca respondeu.
+  //
+  // O que se perde é só o momento da recusa: um cookie inválido passa por aqui
+  // e morre no 401 do Django. O que NÃO se perde é a proteção posicional — as
+  // áreas continuam guardadas por CAMINHO, e uma rota nova sob /admin ou
+  // /painel nasce protegida sem que ninguém decida nada. Era isso que o
+  // backlog avisava ser fácil de perder calado.
   if (ehHostAdmin(host, DOMINIO_BASE)) {
-    const autenticado = await lerSessao(req.cookies.get(COOKIE_ADMIN)?.value);
+    const autenticado = Boolean(req.cookies.get(COOKIE_ADMIN)?.value);
     const ehLogin = caminho === '/admin/login' || caminho === '/api/admin/auth/login';
 
     if (!autenticado && !ehLogin) {
@@ -39,13 +57,14 @@ export async function proxy(req: NextRequest) {
   }
 
   // ---- O painel: peneira grossa ----
-  // Aqui só dá para conferir assinatura e validade — `jose` roda em Edge, o
-  // Prisma não. O `bid`, o `tokenVersion` e o `ativo` são conferidos na rota
-  // (painel §3), porque resolver slug -> barbeariaId é consulta ao banco.
+  // Mesma mudança do bloco do admin: presença, não assinatura. A peneira fina
+  // (`bid`, `tokenVersion`, `ativo`) sempre morou do outro lado, e agora a
+  // grossa é só "tem cookie?" — o suficiente para mandar quem não tem para o
+  // login em vez de desenhar um painel vazio.
   const ehPainel = caminho.startsWith('/painel') || caminho.startsWith('/api/painel');
   const ehLoginPainel = caminho === '/painel/login' || caminho === '/api/auth/login';
   if (ehPainel && !ehLoginPainel) {
-    if (!(await lerSessaoBarbeiro(req.cookies.get(COOKIE_SESSAO)?.value))) {
+    if (!req.cookies.get(COOKIE_SESSAO)?.value) {
       return caminho.startsWith('/api/')
         ? NextResponse.json({ erro: 'não autorizado' }, { status: 401 })
         : NextResponse.redirect(new URL('/painel/login', req.url));

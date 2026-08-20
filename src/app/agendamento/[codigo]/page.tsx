@@ -1,38 +1,39 @@
-import { notFound } from 'next/navigation';
-import { barbeariaAtual, comBarbearia } from '@/lib/tenant';
-import { PRAZO_CANCELAMENTO_MIN } from '@/lib/config';
-import { formatar } from '@/lib/telefone';
+import { agendamentoPorCodigo } from '@/lib/tenant';
 import { Frame } from '@/components/wf';
 import { Confirmado } from '@/components/Confirmado';
 
 export default async function Pagina({ params }: { params: Promise<{ codigo: string }> }) {
   const { codigo } = await params;
-  const b = await barbeariaAtual();
 
-  // O RLS garante que um código de outra barbearia não aparece aqui.
-  const ag = await comBarbearia(b.id, (tx) =>
-    tx.agendamento.findFirst({
-      where: { codigo },
-      include: { barbeiro: { select: { nome: true } }, cliente: { select: { nome: true } } },
-    }),
-  );
-  if (!ag) notFound();
-
-  const minutosAte = (ag.inicio.getTime() - Date.now()) / 60_000;
+  // Era uma consulta ao Prisma dentro de `comBarbearia(...)`; virou a rota que
+  // já existia para isto. O escopo de tenant continua sendo garantido pelo
+  // RLS — só que do outro lado: o Host viaja no pedido e o Django resolve a
+  // barbearia, então um código de OUTRA barbearia continua não aparecendo.
+  //
+  // `endereco` e `whatsappBarbearia` vêm no mesmo payload (a view do Django os
+  // mistura a partir de `request.barbearia`), então esta página deixou de
+  // precisar de `barbeariaAtual()` — uma ida a menos.
+  //
+  // `podeCancelar` deixou de ser calculado aqui. Ele dependia de comparar
+  // `Date.now()` com o início do agendamento, e o relógio que vale para essa
+  // decisão é o do servidor que vai receber o cancelamento — não o do
+  // processo que desenha a tela.
+  const ag = await agendamentoPorCodigo(codigo);
 
   return (
-    <Frame>
+    <Frame>
       <Confirmado
         codigo={ag.codigo}
-        clienteNome={ag.cliente.nome}
-        barbeiroNome={ag.barbeiro.nome}
+        clienteNome={ag.clienteNome}
+        barbeiroNome={ag.barbeiroNome}
         servicoNome={ag.servicoNome}
-        inicioIso={ag.inicio.toISOString()}
-        fimIso={ag.fim.toISOString()}
+        inicioIso={ag.inicio}
+        fimIso={ag.fim}
         status={ag.status}
-        podeCancelar={ag.status === 'CONFIRMADO' && minutosAte > PRAZO_CANCELAMENTO_MIN}
-        endereco={b.endereco}
-        whatsappBarbearia={formatar(b.whatsappContato)}
+        podeCancelar={ag.podeCancelar}
+        endereco={ag.endereco}
+        whatsappBarbearia={ag.whatsappBarbearia}
+        precoCentavos={ag.precoCentavos}
       />
     </Frame>
   );

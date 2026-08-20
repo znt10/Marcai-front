@@ -5,6 +5,7 @@ import {
   servicosApi, publicoApi, barbeariaApi, mensagemDoErro,
   type ServicoDoCatalogo, type VinculoDeServico, type Eu, type Barbeiro,
 } from '@/lib/api';
+import { formatarPreco } from '@/lib/dinheiro';
 
 export function Servicos({ eu }: { eu: Eu }) {
   const [catalogo, setCatalogo] = useState<ServicoDoCatalogo[] | null>(null);
@@ -95,6 +96,26 @@ export function Servicos({ eu }: { eu: Eu }) {
                            }));
                          }} />
                   <Sub>min</Sub>
+                  {/* Preço é decisão do PRÓPRIO barbeiro (ou do dono editando
+                      pelo seletor acima), sem sugestão nenhuma do catálogo —
+                      diferente da duração. Reais na tela, centavos no banco:
+                      quem digita não pensa em centavos. */}
+                  <Sub>R$</Sub>
+                  <input type="number" min={0} step={0.01} inputMode="decimal"
+                         placeholder="—"
+                         className="w-16 bg-transparent outline-none text-right"
+                         defaultValue={v.precoCentavos !== null ? (v.precoCentavos / 100).toFixed(2) : ''}
+                         onBlur={(e) => {
+                           if (e.target.value.trim() === '') return;
+                           const reais = Number(e.target.value);
+                           if (!Number.isFinite(reais) || reais <= 0) return;
+                           const centavos = Math.round(reais * 100);
+                           if (centavos === v.precoCentavos) return;
+                           void agir(() => servicosApi.vincular({
+                             barbeiroId: alvo, servicoId: v.servicoId, faz: true,
+                             precoCentavos: centavos,
+                           }));
+                         }} />
                 </>
               )}
               <Chip onClick={() => agir(() => servicosApi.vincular({
