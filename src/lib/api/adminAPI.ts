@@ -15,7 +15,7 @@ export type BarbeariaDaLista = {
 /// dele, porque no cadastro é a mesma pessoa.
 export type NovaBarbearia = {
   slug: string; nome: string; endereco: string;
-  whatsappContato: string; donoNome: string;
+  whatsappContato: string; donoNome: string; donoEmail: string;
 };
 
 export const adminApi = {

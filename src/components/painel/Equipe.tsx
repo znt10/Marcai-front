@@ -104,7 +104,12 @@ export function Equipe({ recarregarEm, euId }: { recarregarEm?: number; euId?: s
           {link}
         </Box>
       )}
-      <Sub>trocar o celular ou o papel derruba a sessão daquela pessoa</Sub>
+      {/* "de quem entra por ele": o dono entra pelo e-mail desde a fatia 3, e
+          para ele o celular é contato, não credencial — trocá-lo não derruba
+          nada. O aviso antigo valia para todo mundo porque o sistema também
+          tratava todo mundo igual, e trocava o login do dono por baixo. */}
+      <Sub>trocar o papel derruba a sessão daquela pessoa, e o celular também
+        — de quem entra por ele</Sub>
     </>
   );
 }
