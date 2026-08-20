@@ -6,12 +6,21 @@ services:
     # mora em node_modules, que é um volume anônimo — o que a imagem gerou no
     # build fica escondido atrás dele. Gerar na subida garante que o cliente
     # acompanhe o schema.prisma montado do host.
-    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev"
+    # Sem `prisma generate` e sem `migrate deploy`: o schema deixou de ser deste
+    # lado na fatia 1 (o Django virou dono) e o Prisma saiu do repo na fatia 4.
+    # O `migrate deploy` daqui chegou a competir com o `migrate` do entrypoint
+    # do back pelo MESMO banco.
+    command: npm run dev
     environment:
-      DATABASE_URL:     postgresql://brutus_owner:owner@db:5432/brutus
-      DATABASE_URL_APP: postgresql://brutus_app:app@db:5432/brutus
-      DATABASE_URL_ADMIN: postgresql://brutus_admin:admin@db:5432/brutus
       NEXT_PUBLIC_DOMINIO_BASE: localhost
+      # Onde o Django atende para o SERVIDOR do Next (server components), que
+      # roda dentro da rede e nao enxerga `<slug>.localhost`. O NAVEGADOR
+      # continua chegando por NEXT_PUBLIC_API_URL abaixo, montado a partir do
+      # `location` da pagina — sao dois caminhos, de proposito.
+      #
+      # Nome de servico, resolvivel so DENTRO da rede do compose: mesma razao
+      # de EVOLUTION_API_URL nao morar no .env.
+      API_URL_INTERNA: http://api:8000
       # So' a porta do Django — ver o comentario de NEXT_PUBLIC_API_URL no
       # .env.example. baseDe() (src/lib/api/client.ts) monta o host a partir
       # de `location` em tempo de chamada, nunca de uma origem fixa.
@@ -28,9 +37,6 @@ services:
       # "a mensagem não chega" sem erro em log nenhum.
       EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
       # Vêm do .env do host: credencial não fica escrita no compose.
-      ADMIN_USUARIO: ${ADMIN_USUARIO}
-      ADMIN_SENHA_HASH_B64: ${ADMIN_SENHA_HASH_B64}
-      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
     ports: ["3000:3000"]
     volumes:
       - .:/app
