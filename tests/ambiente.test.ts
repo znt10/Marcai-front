@@ -68,30 +68,48 @@ describe('variáveis de ambiente', () => {
       'ADMIN_JWT_SECRET', 'SESSAO_JWT_SECRET', 'CRON_SECRET',
       'ADMIN_USUARIO', 'ADMIN_SENHA_HASH_B64', 'DATABASE_URL',
     ]) {
+      // Crase, e nao aspas simples. Em `'^\s*'` o JS le `\s` como escape
+      // desconhecido e devolve a LETRA s: o padrao virava `^s*NOME`, que exige
+      // a linha comecar com o nome coladinho na margem. No .env.example ele
+      // ainda casava por sorte (variavel mora na coluna 0); no COMPOSE, onde
+      // toda variavel e indentada, nao casava nunca — e um `.not.toMatch` que
+      // nunca casa passa sempre.
+      //
+      // Ou seja: a metade deste teste que vigiava o compose era decorativa
+      // desde que foi escrita. Um SESSAO_JWT_SECRET de volta ao compose do
+      // front passaria batido, que e exatamente o caso que ele existe para
+      // impedir.
       expect(exemplo, nome + ' nao pode voltar ao .env.example').not.toMatch(
-        new RegExp('^\s*' + nome, 'm'),
+        new RegExp(`^\\s*${nome}`, 'm'),
       );
       expect(compose, nome + ' nao pode voltar ao compose').not.toMatch(
-        new RegExp('^\s*' + nome + '\s*:', 'm'),
+        new RegExp(`^\\s*${nome}\\s*:`, 'm'),
       );
     }
   });
 
-  it('a chave da Evolution alimenta o app', () => {
-    const compose = readFileSync(join(RAIZ, 'docker-compose.yml'), 'utf8');
-    // Era um teste bilateral — uma variável, dois consumidores, um `it` só —
-    // até a Tarefa 1 mudar o `evolution` para o repositório do back. Sem os
-    // dois lados no mesmo disco, a propriedade "as duas pontas saem da mesma
-    // variável" deixou de ser verificável por um teste único: agora cada
-    // ponta a afirma pelo NOME da variável, cada uma na sua borda. É a mesma
-    // forma que a barreira do admin já usa — a mesma regra, aplicada
-    // independentemente nos dois lados. A metade do `evolution`
-    // (`AUTHENTICATION_API_KEY`) está documentada em
-    // `back/docs/testes-a-portar.md`, para renascer em pytest na Tarefa 2.
+  it('o contêiner do front nao recebe mais nada da Evolution', () => {
+    // O INVERSO do que este teste exigia ate a fatia 4.
     //
-    // Chave errada aqui é 401 silencioso no `evolution` (o envio é
-    // fire-and-forget) — o sintoma seria "a mensagem não chega" sem erro em
-    // log nenhum.
-    expect(compose).toMatch(/EVOLUTION_API_KEY:\s*\$\{EVOLUTION_API_KEY\}/);
+    // Ele cobrava `EVOLUTION_API_KEY` no compose, e o motivo era real: era o
+    // `app` que enviava, e chave errada dava 401 silencioso num envio
+    // fire-and-forget — "a mensagem nao chega", sem erro em log nenhum.
+    //
+    // A fatia 4 levou `lib/whatsapp.ts` embora junto com o resto. Quem envia
+    // hoje e o Django, e nada em `src/` fala com a Evolution: as tres
+    // variaveis continuavam sendo injetadas num contêiner que nao as lia. Uma
+    // delas e credencial, e credencial que viaja sem destino e a que ninguem
+    // lembra de trocar.
+    //
+    // Os scripts `whatsapp:qr` e `whatsapp:estado` seguem usando as tres — do
+    // HOST, via `dotenv -e .env`. Por isso a afirmacao e sobre o COMPOSE, e o
+    // .env.example continua declarando-as.
+    const compose = readFileSync(join(RAIZ, 'docker-compose.yml'), 'utf8');
+
+    for (const nome of ['EVOLUTION_API_KEY', 'EVOLUTION_API_URL', 'EVOLUTION_INSTANCE']) {
+      expect(compose, nome + ' nao pode voltar ao compose do front').not.toMatch(
+        new RegExp(`^\\s*${nome}\\s*:`, 'm'),
+      );
+    }
   });
 });

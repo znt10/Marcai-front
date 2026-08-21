@@ -26,17 +26,15 @@ services:
       # de `location` em tempo de chamada, nunca de uma origem fixa.
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-8000}
       WATCHPACK_POLLING: "true"
-      # Nome de serviço, resolvível só DENTRO da rede do compose — é por isso
-      # que não mora no .env, ao lado das DATABASE_URL_HOST que existem
-      # justamente porque host e contêiner veem endereços diferentes.
-      EVOLUTION_API_URL: http://evolution:8080
-      EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE:-brutus}
-      # A MESMA chave que o serviço `evolution` exige como
-      # AUTHENTICATION_API_KEY. Uma variável, dois consumidores: chave errada
-      # é 401 silencioso (o envio é fire-and-forget), então o sintoma seria
-      # "a mensagem não chega" sem erro em log nenhum.
-      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
-      # Vêm do .env do host: credencial não fica escrita no compose.
+      # As três EVOLUTION_* saíram daqui na fatia 4, junto com `lib/whatsapp.ts`:
+      # quem manda mensagem hoje é o Django, e nada em `src/` fala com a
+      # Evolution. Elas continuavam sendo injetadas num contêiner que não as
+      # lia — e a chave, em particular, é credencial viajando sem destino, que
+      # é a que ninguém lembra de trocar.
+      #
+      # Os scripts `whatsapp:qr` e `whatsapp:estado` AINDA usam as três, mas
+      # rodam no HOST (`dotenv -e .env`), lendo o .env direto. Por isso elas
+      # ficam no .env.example e não aqui.
     ports: ["3000:3000"]
     volumes:
       - .:/app
