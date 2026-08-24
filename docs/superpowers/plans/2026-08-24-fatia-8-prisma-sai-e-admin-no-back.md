@@ -172,6 +172,32 @@ PGDATABASE_EVOLUTION="evolution"
 PGPASSWORD_EVOLUTION="evolution"
 ```
 
+- [ ] **Step 4b: Preencher o `.env` local ANTES de mexer no compose**
+
+**Ordem obrigatória.** O Step 5 acrescenta `ADMIN_JWT_SECRET` com `:?` ao compose. A partir daquele momento **todo** comando `docker compose` deste repo falha na interpolação enquanto a variável não estiver no `.env` — inclusive os `docker compose run --rm api pytest` dos Steps 6 e 7.
+
+O `.env` do back existe mas não tem as três: ele foi criado a partir de um `.env.example` que ainda não as declarava. O `ADMIN_JWT_SECRET` tem de ser **o mesmo valor** que já está no `.env` do front, porque o Django emite o cookie e o `proxy.ts` do front o lê.
+
+```bash
+grep -E '^ADMIN_(JWT_SECRET|USUARIO)=' ../Marcai-front/.env >> .env
+```
+
+Isso traz `ADMIN_JWT_SECRET` e `ADMIN_USUARIO` já preenchidos do outro lado. Falta o hash, que vem na Task 2 (`manage.py admin_hash`) — por ora acrescentar a linha vazia, que é estado válido (sem ela o login apenas nega):
+
+```bash
+echo 'ADMIN_SENHA_HASH_B64=""' >> .env
+```
+
+Conferir que as três chegaram:
+
+```bash
+grep -cE '^ADMIN_(USUARIO|SENHA_HASH_B64|JWT_SECRET)=' .env
+```
+
+Expected: `3`.
+
+**O `.env` é gitignored e não entra em commit nenhum.** Conferir com `git check-ignore -v .env` se houver dúvida.
+
 - [ ] **Step 5: Passar as três do admin ao serviço `api` no compose**
 
 Em `docker-compose.yml`, no `environment:` do serviço `api`, logo abaixo da linha `SESSAO_JWT_SECRET: ${SESSAO_JWT_SECRET:?...}`:
@@ -200,12 +226,11 @@ Run: `docker compose run --rm api pytest -q`
 
 Expected: PASS.
 
-- [ ] **Step 8: Preencher o `.env` local e provar o login de ponta a ponta**
+- [ ] **Step 8: Provar que a variável chega ao processo dentro do contêiner**
 
-O `.env` do back já existe e já tem `ADMIN_JWT_SECRET`? Não — ele foi criado antes desta fatia, a partir de um `.env.example` que não as tinha. Acrescentar as três, usando **o mesmo `ADMIN_JWT_SECRET` que já está no `.env` do front** (é o mesmo valor dos dois lados):
+O Step 4b provou que ela está no arquivo; este prova que o compose a entrega ao Django, que é a metade que faltava e a causa do §2.
 
 ```bash
-grep -E '^ADMIN_(JWT_SECRET|USUARIO)=' ../Marcai-front/.env >> .env
 docker compose run --rm api python manage.py shell -c \
   "import os; print('ADMIN_JWT_SECRET' in os.environ)"
 ```
