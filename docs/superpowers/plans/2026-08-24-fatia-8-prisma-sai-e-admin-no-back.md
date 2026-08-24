@@ -1080,11 +1080,17 @@ export default defineConfig({
 
 **`fileParallelism: false` fica.** O comentário dele ("banco de teste compartilhado") deixa de valer, mas mudá-lo para `true` é uma alteração de comportamento que esta fatia não precisa fazer — trocar o comentário, não o valor.
 
-- [ ] **Step 7c: Confirmar que os 11 sobreviventes rodam sem o setup**
+- [ ] **Step 7c: Confirmar que os sobreviventes rodam sem o setup**
 
 Run: `npm run test`
 
-Expected: PASS, 11 arquivos. Se algum reclamar de `setup.ts` ausente, é sobrevivente que dependia dele — restaurar um `setup.ts` enxuto (sem Prisma, sem `_limparCacheTenant`) em vez de reverter o passo.
+Expected: **12 arquivos, todos passando.**
+
+**Contexto que muda a leitura deste passo — a suíte do front JÁ ESTÁ VERMELHA antes desta fatia.** Medido na branch: `Test Files 18 failed | 12 passed (30)`, `Tests 262 failed | 114 passed (376)`. A causa é `tests/setup.ts:30`, que dá `TRUNCATE TABLE "Agendamento", "Cliente", …` — nomes camelCase da era Prisma. O Django assumiu o DDL e criou as tabelas com o nome padrão dele (`tenant_agendamento`, `tenant_barbearia`, …), sem `db_table`. As tabelas antigas não existem, e todo teste que toca banco morre em `relation "Agendamento" does not exist`.
+
+Então este passo **conserta** a suíte, não a preserva: os 18 arquivos vermelhos são exatamente os que o Step 7b apaga. Se sobrar vermelho depois dele, aí sim é regressão desta fatia.
+
+Os arquivos que passam hoje (12) são os sobreviventes — a mesma lista do Step 7b, mais o `barbearia-atual.test.ts` que você acabou de criar.
 
 - [ ] **Step 8: Reescrever `src/lib/tenant.ts`**
 
@@ -1238,7 +1244,9 @@ export default async function Pagina({ params }: { params: Promise<{ codigo: str
 
 Run: `npm run test`
 
-Expected: PASS. Os testes que exercitam os handlers mortos continuam passando — eles só morrem na Task 6.
+Expected: **12 arquivos, todos passando** — o mesmo estado do Step 7c, agora com `tenant.ts` reescrito e a página de agendamento ajustada.
+
+Se algum dos 12 ficar vermelho aqui, a causa é o seu Step 8/10, não herança: o Step 7c já provou que os 12 passam.
 
 - [ ] **Step 12: Provar as três páginas no navegador**
 
