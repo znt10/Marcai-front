@@ -886,6 +886,8 @@ O front para de tocar o banco. A partir daqui `DATABASE_URL` não tem mais leito
 - Modify: `src/app/agendamento/[codigo]/page.tsx`
 - Modify: `tests/client-base.test.ts`
 - Create: `tests/barbearia-atual.test.ts`
+- Modify: `vitest.config.ts` (perde `setupFiles`)
+- Delete: os 20 arquivos de `tests/` que exercitam código morto (19 `*.test.ts` + `tests/setup.ts`), mais `tests/env.ts` e `tests/cenarios.ts` — ver Step 7b
 
 **Interfaces:**
 - Consumes: `GET /api/barbearia` da Task 4 → `{nome, endereco, horarioResumo, whatsappContato}`.
@@ -1007,6 +1009,57 @@ describe('barbeariaAtual', () => {
 Run: `npm run test -- barbearia-atual`
 
 Expected: FAIL — `tenant.ts` ainda importa `@prisma/client`.
+
+- [ ] **Step 7b: Apagar os testes moribundos e desligar o setup do vitest**
+
+**Este passo é obrigatório ANTES do Step 8, e a razão é concreta:**
+`vitest.config.ts` declara `setupFiles: ['./tests/setup.ts']`, então
+`tests/setup.ts` roda para **todo** arquivo de teste — inclusive os que
+sobrevivem. E ele importa `@prisma/client` e `_limparCacheTenant` de
+`@/lib/tenant`. O Step 8 apaga essa função. Sem este passo, a suíte inteira
+quebra no Step 11, que manda esperar PASS.
+
+Conferir a conta antes de apagar:
+
+```bash
+grep -rl "@/lib/db\|@/lib/agenda\|@/lib/sessao-painel\|@/lib/whatsapp\|@/lib/admin-senha\|@/lib/equipe-rota\|app/api/\|@prisma" tests | sort
+```
+
+Expected: **20** arquivos — 19 `*.test.ts` mais `tests/setup.ts`. Se divergir, o repo mudou depois deste plano; reconciliar antes de apagar.
+
+```bash
+git rm $(grep -rl "@/lib/db\|@/lib/agenda\|@/lib/sessao-painel\|@/lib/whatsapp\|@/lib/admin-senha\|@/lib/equipe-rota\|app/api/\|@prisma" tests)
+git rm tests/env.ts tests/cenarios.ts
+```
+
+`env.ts` e `cenarios.ts` não casam o grep mas vão junto: **nenhum
+sobrevivente os importa** — o `client-base.test.ts` só os cita num comentário.
+`env.ts` define `NEXT_PUBLIC_API_URL='8000'`, do qual `client-base` depende
+apenas via o fallback `|| '8000'` de `PORTA_API`, que dá o mesmo valor.
+
+Em `vitest.config.ts`, remover a linha `setupFiles`:
+
+```ts
+export default defineConfig({
+  test: {
+    environment: 'node',
+    // `setupFiles` saiu na fatia 8: `tests/setup.ts` existia para dar dois
+    // PrismaClient (owner/app) e um TRUNCATE aos testes de rota. As rotas
+    // sairam, o Prisma saiu, e os testes que restam sao de logica pura —
+    // nenhum toca banco.
+    fileParallelism: false,
+  },
+  resolve: { alias: { '@': path.resolve(__dirname, './src') } },
+});
+```
+
+**`fileParallelism: false` fica.** O comentário dele ("banco de teste compartilhado") deixa de valer, mas mudá-lo para `true` é uma alteração de comportamento que esta fatia não precisa fazer — trocar o comentário, não o valor.
+
+- [ ] **Step 7c: Confirmar que os 11 sobreviventes rodam sem o setup**
+
+Run: `npm run test`
+
+Expected: PASS, 11 arquivos. Se algum reclamar de `setup.ts` ausente, é sobrevivente que dependia dele — restaurar um `setup.ts` enxuto (sem Prisma, sem `_limparCacheTenant`) em vez de reverter o passo.
 
 - [ ] **Step 8: Reescrever `src/lib/tenant.ts`**
 
@@ -1197,21 +1250,20 @@ A partir daqui `MIGRADAS` deixa de ser reversível: voltar uma linha passa a apo
 - Delete: `src/app/api/` (a árvore inteira, 34 `route.ts`)
 - Delete: `src/lib/db.ts`, `src/lib/agenda.ts`, `src/lib/equipe-rota.ts`, `src/lib/sessao-painel.ts`, `src/lib/whatsapp.ts`, `src/lib/admin-senha.ts`
 - Delete: `scripts/hash-senha.ts`, `scripts/whatsapp-qr.ts`, `scripts/whatsapp-estado.ts`
-- Delete: os 20 arquivos de `tests/` que exercitam o acima
 - Modify: `src/lib/admin-sessao.ts` (perde `emitirSessao`)
 - Modify: `src/lib/api/client.ts` (comentário no topo de `MIGRADAS`)
 - Modify: `package.json` (scripts)
 - Modify: `.env.example`
 
-- [ ] **Step 1: Listar os testes que morrem, e confirmar a conta**
+- [ ] **Step 1: Confirmar que os testes já saíram na Task 5**
+
+Os 20 arquivos de teste (19 `*.test.ts` mais `tests/setup.ts`), o `tests/env.ts` e o `tests/cenarios.ts` foram apagados no Step 7b da Task 5 — eles tinham de sair **antes** da reescrita de `tenant.ts`, porque `setup.ts` roda para toda a suíte e importava `_limparCacheTenant`. Esta tarefa apaga só fonte e scripts.
 
 ```bash
-grep -rl "@/lib/db\|@/lib/agenda\|@/lib/sessao-painel\|@/lib/whatsapp\|@/lib/admin-senha\|@/lib/equipe-rota\|app/api/\|@prisma" tests | sort
+ls tests/
 ```
 
-Expected: **20** arquivos. Se a conta divergir, o repo mudou depois deste plano — reconciliar antes de apagar.
-
-Os 11 que ficam: `admin-proxy`, `admin-tenant`, `ambiente`, `client-base`, `datas`, `dinheiro`, `restricoes`, `servicos`, `slots`, `telefone`, `tenant` — mais o `barbearia-atual` da Task 5.
+Expected: 12 arquivos — os 11 sobreviventes (`admin-proxy`, `admin-tenant`, `ambiente`, `client-base`, `datas`, `dinheiro`, `restricoes`, `servicos`, `slots`, `telefone`, `tenant`) mais o `barbearia-atual.test.ts` criado na Task 5. Se ainda houver teste de rota aqui, a Task 5 ficou incompleta — voltar e terminá-la antes de seguir.
 
 - [ ] **Step 1b: Confirmar que ninguém chama `/api/cron/lembretes` de fora**
 
@@ -1232,8 +1284,9 @@ git rm -r src/app/api
 git rm src/lib/db.ts src/lib/agenda.ts src/lib/equipe-rota.ts \
        src/lib/sessao-painel.ts src/lib/whatsapp.ts src/lib/admin-senha.ts
 git rm scripts/hash-senha.ts scripts/whatsapp-qr.ts scripts/whatsapp-estado.ts
-git rm $(grep -rl "@/lib/db\|@/lib/agenda\|@/lib/sessao-painel\|@/lib/whatsapp\|@/lib/admin-senha\|@/lib/equipe-rota\|app/api/\|@prisma" tests)
 ```
+
+Os testes já saíram na Task 5 (Step 7b) — não repetir aqui.
 
 - [ ] **Step 3: Enxugar `src/lib/admin-sessao.ts`**
 
