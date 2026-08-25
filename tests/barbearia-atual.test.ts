@@ -18,7 +18,7 @@ describe('barbeariaAtual', () => {
   });
 
   it('monta a origem do Django a partir do host da requisicao', async () => {
-    const fetchFalso = vi.fn(async () => new Response(
+    const fetchFalso = vi.fn(async (_url: string) => new Response(
       JSON.stringify({ nome: 'BRUTUS', endereco: 'Rua Aurora, 88',
                        horarioResumo: 'seg a sáb, 9h–20h', whatsappContato: '11988887777' }),
       { status: 200, headers: { 'content-type': 'application/json' } },
@@ -36,7 +36,7 @@ describe('barbeariaAtual', () => {
   });
 
   it('vira notFound quando o Django responde 404', async () => {
-    const fetchFalso = vi.fn(async () => new Response('', { status: 404 }));
+    const fetchFalso = vi.fn(async (_url: string) => new Response('', { status: 404 }));
     vi.stubGlobal('fetch', fetchFalso);
     headersMock.mockReturnValue(new Headers({ host: 'naoexiste.localhost:3000' }));
 
@@ -56,7 +56,7 @@ describe('barbeariaAtual', () => {
     // erros têm causas e remédios diferentes. Uma única chamada: `cache()`
     // do React memoiza, então invocar de novo no mesmo teste reusaria a
     // mesma promise em vez de provar algo novo.
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 500 })));
+    vi.stubGlobal('fetch', vi.fn(async (_url: string) => new Response('', { status: 500 })));
     headersMock.mockReturnValue(new Headers({ host: 'brutus.localhost:3000' }));
 
     const { barbeariaAtual } = await import('@/lib/tenant');
