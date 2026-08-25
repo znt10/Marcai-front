@@ -27,13 +27,23 @@ export { extrairSlug } from './slug';
 const PORTA_API = process.env.NEXT_PUBLIC_API_URL || '8000';
 
 /// A origem do Django PARA ESTE TENANT, montada a partir do `host` da
-/// requisicao.
+/// requisicao. Exportada porque `src/app/agendamento/[codigo]/page.tsx`
+/// precisa da MESMA montagem — duas copias divergentes disto e' exatamente
+/// o defeito que `baseDe()` (lib/api/client.ts) existe para evitar do lado
+/// do navegador.
 ///
 /// NAO passa por `pedir()` de `lib/api/client.ts`, e isso e deliberado:
 /// aquele monta a origem a partir de `window.location` e LANCA sem `window`.
 /// Server Component nao tem `window`. O host aqui vem do header da propria
 /// requisicao, que e a fonte equivalente do lado do servidor.
-async function origemDoTenant(): Promise<string> {
+///
+/// Em dev, `brutus.localhost`/`dontony.localhost` so resolvem porque o
+/// servico `api` do compose do back declara esses nomes como ALIAS de rede
+/// (ver `../Marcai-back/docker-compose.yml`) — sem isso o host so existiria
+/// no navegador, nunca de dentro do contêiner do front. Uma linha por
+/// tenant: uma barbearia nova criada pelo admin em dev nao ganha apelido
+/// sozinha.
+export async function origemDoTenant(): Promise<string> {
   const host = (await headers()).get('host');
   if (!host) notFound();
   // `host` traz a porta do FRONT (3000); o Django atende noutra. Trocar so a
@@ -52,6 +62,10 @@ export const barbeariaAtual = cache(async (): Promise<Barbearia> => {
     // de uma requisicao, que era o unico problema que o TTL antigo atacava.
     cache: 'no-store',
   });
-  if (!r.ok) notFound();
+  // So 404 e barbearia inexistente. Um 5xx (Django fora do ar, por exemplo)
+  // NAO e a mesma coisa — tratar os dois igual faria uma queda do Django
+  // aparecer pra todo tenant como "essa barbearia nao existe".
+  if (r.status === 404) notFound();
+  if (!r.ok) throw new Error(`GET /api/barbearia devolveu ${r.status}`);
   return r.json();
 });

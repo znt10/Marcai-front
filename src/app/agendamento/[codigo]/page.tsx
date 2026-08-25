@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { headers } from 'next/headers';
+import { origemDoTenant } from '@/lib/tenant';
 import { Frame } from '@/components/wf';
 import { Confirmado } from '@/components/Confirmado';
 
@@ -25,19 +25,20 @@ type Detalhe = {
 export default async function Pagina({ params }: { params: Promise<{ codigo: string }> }) {
   const { codigo } = await params;
 
-  // Mesma montagem de origem que `barbeariaAtual()` faz, e pelo mesmo motivo:
-  // Server Component nao tem `window`, entao `pedir()` esta fora de questao.
-  const host = (await headers()).get('host');
-  if (!host) notFound();
-  const porta = process.env.NEXT_PUBLIC_API_URL || '8000';
-  const origem = `http://${host.split(':')[0]}:${porta}`;
+  // MESMA montagem de origem que `barbeariaAtual()` — importada de `@/lib/tenant`
+  // em vez de repetida aqui: duas copias divergentes seriam o mesmo defeito
+  // que `baseDe()` existe para evitar do lado do navegador.
+  const origem = await origemDoTenant();
 
   // O RLS continua garantindo que um codigo de outra barbearia nao aparece —
   // so que agora quem entra no tenant e o Django, pelo Host desta requisicao.
   const r = await fetch(`${origem}/api/agendamentos/${encodeURIComponent(codigo)}`, {
     cache: 'no-store',
   });
-  if (!r.ok) notFound();
+  // So 404 e agendamento inexistente (ou de outro tenant, via RLS). Um 5xx
+  // NAO e a mesma coisa — ver o comentario equivalente em barbeariaAtual().
+  if (r.status === 404) notFound();
+  if (!r.ok) throw new Error(`GET /api/agendamentos/${codigo} devolveu ${r.status}`);
   const ag: Detalhe = await r.json();
 
   return (

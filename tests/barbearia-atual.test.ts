@@ -36,11 +36,31 @@ describe('barbeariaAtual', () => {
   });
 
   it('vira notFound quando o Django responde 404', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
+    const fetchFalso = vi.fn(async () => new Response('', { status: 404 }));
+    vi.stubGlobal('fetch', fetchFalso);
     headersMock.mockReturnValue(new Headers({ host: 'naoexiste.localhost:3000' }));
 
     const { barbeariaAtual } = await import('@/lib/tenant');
 
     await expect(barbeariaAtual()).rejects.toThrow('NEXT_NOT_FOUND');
+    // A propriedade que este arquivo existe para provar: a origem e' POR
+    // HOST, nao um valor fixo. Um `origemDoTenant` que devolvesse sempre
+    // 'http://brutus.localhost:8000' passaria no teste de cima sozinho —
+    // aqui, um host DIFERENTE tem que produzir uma origem DIFERENTE.
+    expect(fetchFalso.mock.calls[0][0]).toBe('http://naoexiste.localhost:8000/api/barbearia');
+  });
+
+  it('um 5xx do Django NAO e tratado como barbearia inexistente', async () => {
+    // Diferença deliberada do 404 acima: uma queda do Django não pode
+    // aparecer para o cliente como "essa barbearia não existe" — os dois
+    // erros têm causas e remédios diferentes. Uma única chamada: `cache()`
+    // do React memoiza, então invocar de novo no mesmo teste reusaria a
+    // mesma promise em vez de provar algo novo.
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 500 })));
+    headersMock.mockReturnValue(new Headers({ host: 'brutus.localhost:3000' }));
+
+    const { barbeariaAtual } = await import('@/lib/tenant');
+
+    await expect(barbeariaAtual()).rejects.toThrow('500');
   });
 });
