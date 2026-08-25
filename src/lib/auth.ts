@@ -1,10 +1,12 @@
-import { SignJWT, jwtVerify } from 'jose';
-import { SESSAO_BARBEIRO_HORAS } from './config';
+import { jwtVerify } from 'jose';
 
 /// Só `jose` aqui. Este módulo é importado pelo `proxy.ts`, que roda no
-/// runtime Edge: Prisma e argon2 (binário nativo) não rodam lá. As três
-/// conferências que precisam do banco — `bid`, `tokenVersion` e `ativo` —
-/// moram em `sessao-painel.ts`, que o proxy não importa.
+/// runtime Edge: Prisma e argon2 (binário nativo) não rodam lá.
+///
+/// Desde a fatia 8 este modulo so' LE. A emissao mora no Django
+/// (`LoginView`), que e' quem atende `/api/auth/login`. O segredo continua
+/// aqui porque o `proxy.ts` guarda as PAGINAS `/painel/*` no Edge, antes de
+/// qualquer rota rodar — e isso continua sendo do Next.
 
 export const COOKIE_SESSAO = 'sessao';
 
@@ -21,15 +23,6 @@ export type Sessao = {
 /// É DIFERENTE do ADMIN_JWT_SECRET de propósito. Cookie de admin apresentado
 /// aqui falha na assinatura sem que ninguém escreva uma checagem para isso.
 const segredo = () => new TextEncoder().encode(process.env.SESSAO_JWT_SECRET);
-
-export function emitirSessao(s: Sessao): Promise<string> {
-  return new SignJWT({ bid: s.bid, papel: s.papel, tv: s.tv })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setSubject(s.sub)
-    .setIssuedAt()
-    .setExpirationTime(`${SESSAO_BARBEIRO_HORAS}h`)
-    .sign(segredo());
-}
 
 export async function lerSessao(jwt: string | undefined): Promise<Sessao | null> {
   if (!jwt) return null;
