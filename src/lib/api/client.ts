@@ -54,6 +54,11 @@ export const MIGRADAS: readonly string[] = [
   // partir de `admin.<dominio>`), igual ao '/auth' de cima nao dar pra
   // fatiar.
   '/admin',
+  // Fatia 8 — a vitrine publica do tenant. Nasceu no Django; nunca houve
+  // handler do Next para ela. IRMA de '/painel/barbearia', que ja esta acima:
+  // os dois prefixos sao independentes (o casamento e por segmento), mas se
+  // chamam parecido o bastante para confundir quem lê a lista com pressa.
+  '/barbearia',
 ];
 
 /// So a PORTA do Django (ou "porta:host" nao, so a porta — o host vem do

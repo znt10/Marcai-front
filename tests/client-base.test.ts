@@ -171,4 +171,22 @@ describe('baseDe', () => {
     // adivinhar uma barbearia a partir de um host que ele nao tem.
     expect(() => baseDe('/painel/agenda', ['/painel'])).toThrow();
   });
+
+  it('fatia 8: /barbearia publico e /painel/barbearia sao INDEPENDENTES', () => {
+    // O mesmo par que /servicos e /painel/servicos formam: se chamam igual e
+    // fazem coisas diferentes (a vitrine que qualquer um ve vs. o cadastro
+    // que a equipe edita). O casamento e por segmento, entao cada entrada
+    // casa por si — mas o nome parecido e' exatamente o que faz alguem
+    // supor que uma cobre a outra.
+    comHost('brutus.localhost');
+    expect(baseDe('/barbearia')).toBe('http://brutus.localhost:8000/api');
+    expect(baseDe('/painel/barbearia')).toBe('http://brutus.localhost:8000/api');
+  });
+
+  it('fatia 8: /barbearia nao e pego por /barbearias', () => {
+    // '/admin/barbearias' (plural, sob /admin) e '/barbearia' (singular) sao
+    // rotas distintas. Nenhuma das duas pode arrastar a outra.
+    comHost('brutus.localhost');
+    expect(baseDe('/barbearias', ['/barbearia'])).toBe('/api');
+  });
 });

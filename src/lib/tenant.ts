@@ -1,84 +1,57 @@
 import { cache } from 'react';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
-import type { Barbearia, Prisma } from '@prisma/client';
-import { prisma, prismaAdmin } from './db';
-import { TTL_CACHE_TENANT_MS } from './config';
 
-/// Executa `fn` com o RLS apontando para `barbeariaId`.
+/// A vitrine do tenant, servida pelo Django desde a fatia 8. Este modulo era
+/// o ultimo do front a tocar o banco; o Prisma saiu com ele.
 ///
-/// O 3º argumento `true` de set_config é is_local: a variável morre com a
-/// TRANSAÇÃO. Com `false` ela viveria na SESSÃO — e como a conexão volta
-/// para a pool, o próximo pedido herdaria este tenant. Vazamento cruzado
-/// intermitente, dependente de temporização. Nunca trocar para `false`.
-export function comBarbearia<T>(
-  barbeariaId: string,
-  fn: (tx: Prisma.TransactionClient) => Promise<T>,
-): Promise<T> {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.barbearia_id', ${barbeariaId}, true)`;
-    return fn(tx);
-  });
-}
+/// `comBarbearia`/`comBarbeariaAdmin` — os dois wrappers de RLS que viviam
+/// aqui — nao foram portados: quem seta `app.barbearia_id` agora e o Django
+/// (`tenant/rls.py`). O RLS continua existindo, ele e do BANCO, nao do
+/// framework.
 
-/// Igual a comBarbearia(), sobre o cliente do admin da plataforma.
-///
-/// O 3º argumento `true` do set_config é is_local pelo mesmo motivo de lá: a
-/// variável morre com a TRANSAÇÃO. Aqui o risco é ainda mais concreto — o
-/// painel percorre TODAS as barbearias num laço, então uma variável que
-/// sobrevivesse à transação faria a barbearia seguinte ser contada com o
-/// tenant da anterior.
-export function comBarbeariaAdmin<T>(
-  barbeariaId: string,
-  fn: (tx: Prisma.TransactionClient) => Promise<T>,
-): Promise<T> {
-  return prismaAdmin.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.barbearia_id', ${barbeariaId}, true)`;
-    return fn(tx);
-  });
-}
+export type Barbearia = {
+  nome: string;
+  endereco: string;
+  /// Nulo ate o dono escrever a frase. A home ja trata (`b.horarioResumo ? ...`).
+  horarioResumo: string | null;
+  whatsappContato: string;
+};
 
-/// Traduz o `host` da requisição no slug da barbearia. Implementada em
-/// `./slug` para que o proxy possa importá-la sem arrastar o Prisma junto;
-/// reexportada aqui porque é daqui que o resto do sistema (e o teste) a lê.
+/// Reexportada daqui porque e daqui que o resto do sistema a le. A
+/// implementacao mora em `./slug` para que o `proxy.ts` a importe sem
+/// arrastar mais nada junto — era o Prisma antes, e a separacao continua
+/// valendo por higiene do bundle Edge.
 export { extrairSlug } from './slug';
 
-const cacheSlug = new Map<string, { valor: Barbearia | null; expiraEm: number }>();
+const PORTA_API = process.env.NEXT_PUBLIC_API_URL || '8000';
 
-/// Só para teste: cada caso recria a barbearia com um uuid novo, e um slug
-/// cacheado do caso anterior apontaria para um id que o TRUNCATE já apagou —
-/// o RLS então filtraria tudo e o sintoma sairia como "barbeiro não faz esse
-/// serviço", bem longe da causa.
-export function _limparCacheTenant() { cacheSlug.clear(); }
-
-async function buscarPorSlug(slug: string): Promise<Barbearia | null> {
-  const guardado = cacheSlug.get(slug);
-  if (guardado && guardado.expiraEm > Date.now()) return guardado.valor;
-
-  // Barbearia está FORA do RLS de propósito: é lida antes de existir tenant.
-  const valor = await prisma.barbearia.findFirst({ where: { slug, ativo: true } });
-  cacheSlug.set(slug, { valor, expiraEm: Date.now() + TTL_CACHE_TENANT_MS });
-  return valor;
-}
-
-async function resolver(slug: string | null): Promise<Barbearia> {
-  if (!slug) notFound();
-  const barbearia = await buscarPorSlug(slug);
-  if (!barbearia) notFound();
-  return barbearia;
-}
-
-/// Para SERVER COMPONENTS, que não recebem a Request em mãos e leem o header
-/// do contexto assíncrono do Next. Envolvida em cache() do React: várias
-/// chamadas na mesma requisição batem no banco uma vez só.
-export const barbeariaAtual = cache(async (): Promise<Barbearia> =>
-  resolver((await headers()).get('x-barbearia-slug')));
-
-/// Para ROUTE HANDLERS, que recebem a Request. Ler o header dela em vez do
-/// contexto ambiente deixa o fluxo de dados explícito — e é o que torna as
-/// rotas chamáveis direto no teste, sem simular o runtime do Next.
+/// A origem do Django PARA ESTE TENANT, montada a partir do `host` da
+/// requisicao.
 ///
-/// O header vem do proxy, que o apaga antes de escrever o próprio: o valor
-/// aqui nunca é o que o cliente mandou.
-export const barbeariaDaRequisicao = (req: Request): Promise<Barbearia> =>
-  resolver(req.headers.get('x-barbearia-slug'));
+/// NAO passa por `pedir()` de `lib/api/client.ts`, e isso e deliberado:
+/// aquele monta a origem a partir de `window.location` e LANCA sem `window`.
+/// Server Component nao tem `window`. O host aqui vem do header da propria
+/// requisicao, que e a fonte equivalente do lado do servidor.
+async function origemDoTenant(): Promise<string> {
+  const host = (await headers()).get('host');
+  if (!host) notFound();
+  // `host` traz a porta do FRONT (3000); o Django atende noutra. Trocar so a
+  // porta e o que preserva o tenant — o host E o tenant aqui.
+  const semPorta = host.split(':')[0];
+  return `http://${semPorta}:${PORTA_API}`;
+}
+
+/// Envolvida em `cache()` do React: varias chamadas na MESMA requisicao batem
+/// no Django uma vez so. Era o mesmo desenho quando a consulta era ao Prisma;
+/// o que mudou foi so o outro lado do fio.
+export const barbeariaAtual = cache(async (): Promise<Barbearia> => {
+  const r = await fetch(`${await origemDoTenant()}/api/barbearia`, {
+    // Sem cache entre requisicoes: o dono edita a frase do horario no painel e
+    // precisa ver o resultado. O `cache()` acima ja resolve a repeticao dentro
+    // de uma requisicao, que era o unico problema que o TTL antigo atacava.
+    cache: 'no-store',
+  });
+  if (!r.ok) notFound();
+  return r.json();
+});
