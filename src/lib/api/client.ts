@@ -12,10 +12,13 @@
 /// **um** literal inlinado no bundle para **todo mundo**: um valor fixo só
 /// poderia acertar uma barbearia. Nenhuma dependência nova.
 
-/// A lista de prefixos que o Django ja atende. **Este array e o painel de
-/// controle da travessia inteira**: cada fatia acrescenta os seus, e voltar
-/// atras e remover uma linha. E tambem o unico lugar onde alguem precisa
-/// olhar para responder "quem serve isto hoje?".
+/// A lista de prefixos que o Django atende.
+///
+/// ATE A FATIA 7 isto era um interruptor: cada prefixo existia dos DOIS
+/// lados, e remover uma linha devolvia a rota ao Next. **A fatia 8 apagou o
+/// lado do Next.** Remover uma linha daqui hoje aponta para um handler que
+/// nao existe mais — 404 mudo, longe da causa. Voltar atras e' `git revert`
+/// da fatia inteira, nao edicao desta lista.
 /// `/auth` entra INTEIRO — login, logout, eu e convite de uma vez. Nao ha como
 /// fatiar: o casamento e por prefixo de segmento, e separar as quatro exigiria
 /// quatro entradas. Tambem nao seria desejavel: com o login no Django e o
