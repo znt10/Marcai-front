@@ -28,9 +28,7 @@ export const SUBDOMINIOS_RESERVADOS = [
 export const TTL_CACHE_TENANT_MS = 60_000;
 export const SLUG_REGEX = /^[a-z0-9]([a-z0-9-]{1,30}[a-z0-9])$/;
 
-// Admin da plataforma (admin §4). Sessão curta: o painel é usado em rajadas
-// de minutos para cadastrar uma barbearia, não durante um turno inteiro.
-export const ADMIN_SESSAO_HORAS = 2;
+// Admin da plataforma (admin §4).
 // A trava do login do admin é por IP, e não por conta como a do barbeiro:
 // a conta é UMA, então travá-la deixaria qualquer um trancar o dono do site
 // fora do próprio painel com cinco requisições.
@@ -41,12 +39,10 @@ export const ADMIN_TRAVA_TETO_MS = 60_000;
 export const ADMIN_TRAVA_TENTATIVAS = 5;
 export const ADMIN_TRAVA_BLOQUEIO_MS = 10 * 60_000;
 
-// Convite e senha (admin §6.1, cliente §9.5)
+// Convite (admin §6.1)
 export const CONVITE_VALIDADE_HORAS = 48;
-export const SENHA_MINIMA = 8;
 
-// Sessão do barbeiro (cliente §9.5, painel §3)
-export const SESSAO_BARBEIRO_HORAS = 12;      // um turno
+// Trava do login do barbeiro (cliente §9.5, painel §3)
 export const BARBEIRO_TRAVA_TENTATIVAS = 5;
 export const BARBEIRO_TRAVA_MIN = 15;
 
