@@ -1296,7 +1296,18 @@ Os 20 arquivos de teste (19 `*.test.ts` mais `tests/setup.ts`), o `tests/env.ts`
 ls tests/
 ```
 
-Expected: 12 arquivos — os 11 sobreviventes (`admin-proxy`, `admin-tenant`, `ambiente`, `client-base`, `datas`, `dinheiro`, `restricoes`, `servicos`, `slots`, `telefone`, `tenant`) mais o `barbearia-atual.test.ts` criado na Task 5. Se ainda houver teste de rota aqui, a Task 5 ficou incompleta — voltar e terminá-la antes de seguir.
+Expected: **10 arquivos**, exatamente estes:
+
+```
+admin-proxy.test.ts   ambiente.test.ts     barbearia-atual.test.ts
+client-base.test.ts   datas.test.ts        dinheiro.test.ts
+servicos.test.ts      slots.test.ts        telefone.test.ts
+tenant.test.ts
+```
+
+**Dez, e não os doze que este plano previa.** A Task 5 apagou mais dois do que o grep original casava: `admin-tenant.test.ts` e `restricoes.test.ts`. Os dois importavam `{ prismaOwner, limparBanco } from './setup'` — import indireto do Prisma, que o padrão do grep não pegava — e `admin-tenant` testava `comBarbeariaAdmin`, que a Task 5 deletou. A correção está certa; a previsão deste plano é que estava errada.
+
+Se ainda houver teste de rota aqui, a Task 5 ficou incompleta — voltar e terminá-la antes de seguir.
 
 - [ ] **Step 1b: Confirmar que ninguém chama `/api/cron/lembretes` de fora**
 
