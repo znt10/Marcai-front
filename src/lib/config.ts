@@ -11,7 +11,13 @@ export const GRANULARIDADE_MIN = 30;
 
 export const ANTECEDENCIA_MINIMA_MIN = 0;
 export const PRAZO_CANCELAMENTO_MIN = 60;
-export const DIAS_NA_HOME = 2;
+// Quantos dias a home enfileira embaixo de "3. Próximos horários livres".
+// Em 1, a tela mostra só HOJE: quem quer outro dia vai pelo calendário, que
+// e' o link logo abaixo. Vale saber o efeito de virar 1 — num fim de tarde
+// com a agenda cheia a secao fica vazia, e o calendario passa a ser o unico
+// caminho. Era 2 (hoje + amanha) e o valor estava escrito a mao dentro de
+// FormAgendamento, com esta constante orfa.
+export const DIAS_NA_HOME = 1;
 export const JANELA_MAXIMA_DIAS = 60;
 // O lembrete e a cadência do agendador que o dispara, lado a lado porque um
 // depende do outro: TIQUE precisa ser MENOR que a antecedência, senão quem
@@ -45,6 +51,12 @@ export const CONVITE_VALIDADE_HORAS = 48;
 // Trava do login do barbeiro (cliente §9.5, painel §3)
 export const BARBEIRO_TRAVA_TENTATIVAS = 5;
 export const BARBEIRO_TRAVA_MIN = 15;
+
+// De quanto em quanto tempo as telas do painel (agenda e quadro do dia)
+// buscam de novo, sem recarregar a pagina. O Django roda em gunicorn
+// sincrono, sem Channels: nao ha como o servidor AVISAR o navegador, entao a
+// tela pergunta. 30s e' invisivel para quem olha e barato para o servidor.
+export const PAINEL_ATUALIZACAO_MS = 30_000;
 
 // Padrão da tela de marcar na mão (painel §7)
 export const PAINEL_ANTECEDENCIA_PADRAO_MIN = 30;
