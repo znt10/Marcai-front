@@ -254,9 +254,12 @@ o modo de desenvolver sem número de verdade; mesmo formato de antes, agora em
 [whatsapp] sem EVOLUTION_API_URL: 11977771234 Lembrete: corte hoje às 08:57…
 ```
 
-**A URL tem duas formas**, ambas do lado do back agora: dentro do compose o
-nome do serviço é `http://evolution:8080` (resolvível porque os dois composes
-dividem a rede externa `brutus`); fora de contêiner é `EVOLUTION_API_URL_HOST`.
+**A URL mora só do lado do back agora**, `EVOLUTION_API_URL` no compose de lá:
+dentro do compose o nome do serviço é `http://evolution:8080` (resolvível
+porque os dois composes dividem a rede externa `brutus`); ela nunca precisa
+ser lida fora de contêiner porque só o `api` (Django) fala com a Evolution —
+não sobrou nenhum comando de linha deste repositório que precisasse alcançá-la
+do host.
 
 **A Evolution usa o Postgres do back**, com papel e banco próprios e
 **nenhum GRANT** em `brutus` — detalhes em `../back/README.md`. Todo

@@ -43,7 +43,7 @@ const PORTA_API = process.env.NEXT_PUBLIC_API_URL || '8000';
 /// no navegador, nunca de dentro do contêiner do front. Uma linha por
 /// tenant: uma barbearia nova criada pelo admin em dev nao ganha apelido
 /// sozinha.
-export async function origemDoTenant(): Promise<string> {
+export async function origemDoTenantNoServidor(): Promise<string> {
   const host = (await headers()).get('host');
   if (!host) notFound();
   // `host` traz a porta do FRONT (3000); o Django atende noutra. Trocar so a
@@ -56,7 +56,7 @@ export async function origemDoTenant(): Promise<string> {
 /// no Django uma vez so. Era o mesmo desenho quando a consulta era ao Prisma;
 /// o que mudou foi so o outro lado do fio.
 export const barbeariaAtual = cache(async (): Promise<Barbearia> => {
-  const r = await fetch(`${await origemDoTenant()}/api/barbearia`, {
+  const r = await fetch(`${await origemDoTenantNoServidor()}/api/barbearia`, {
     // Sem cache entre requisicoes: o dono edita a frase do horario no painel e
     // precisa ver o resultado. O `cache()` acima ja resolve a repeticao dentro
     // de uma requisicao, que era o unico problema que o TTL antigo atacava.
