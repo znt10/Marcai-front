@@ -5,6 +5,8 @@ import {
   quadroApi, ignorarAborto, mensagemDoErro,
   type ColunaDoDia, type ItemDoQuadro,
 } from '@/lib/api';
+import { useAtualizacaoPeriodica } from '@/lib/useAtualizacaoPeriodica';
+import { PAINEL_ATUALIZACAO_MS } from '@/lib/config';
 
 /// `sv-SE` porque é o locale que formata como YYYY-MM-DD — o formato que a
 /// rota espera — sem passar por UTC e cair no dia anterior.
@@ -30,12 +32,18 @@ export function QuadroDoDia() {
   const [colunas, setColunas] = useState<ColunaDoDia[] | null>(null);
   const [erro, setErro] = useState('');
 
-  const carregar = useCallback(async (d: string, signal?: AbortSignal) => {
-    setColunas(null);
+  /// `silencioso`: a atualizacao automatica nao pode apagar o quadro. Sem
+  /// isso, a cada 30s as colunas iriam a `null` (o "carregando") e voltariam
+  /// — e uma falha de rede passageira trocaria um quadro bom por uma tela de
+  /// erro. Numa falha silenciosa fica o que ja' esta' ali; o proximo toque
+  /// tenta de novo.
+  const carregar = useCallback(async (d: string, signal?: AbortSignal, silencioso = false) => {
+    if (!silencioso) setColunas(null);
     try {
       setColunas(await quadroApi.ver(d, signal));
       setErro('');
     } catch (e) {
+      if (silencioso) return;
       ignorarAborto(e);
       setColunas([]);
       setErro(mensagemDoErro(e));
@@ -47,6 +55,13 @@ export function QuadroDoDia() {
     void carregar(dia, ctrl.signal);
     return () => ctrl.abort();
   }, [dia, carregar]);
+
+  /// O quadro e' a tela que fica aberta em cima do balcao: e' onde atualizar
+  /// sozinho vale mais.
+  useAtualizacaoPeriodica(
+    () => { void carregar(dia, undefined, true); },
+    PAINEL_ATUALIZACAO_MS,
+  );
 
   return (
     <>
