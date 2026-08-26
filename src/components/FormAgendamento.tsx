@@ -7,6 +7,7 @@ import {
   publicoApi, ignorarAborto, mensagemDoErro, ErroApi,
   type Barbeiro, type Servico, type Slot, type DiaComSlots as Dia,
 } from '@/lib/api';
+import { DIAS_NA_HOME } from '@/lib/config';
 
 /// 'YYYY-MM-DD' de um instante ISO, no fuso do navegador. Não usa
 /// `@/lib/datas` de propósito: aquele módulo é o ponto único de conversão do
@@ -70,7 +71,7 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
     // dias da home — busca-se o dia dele, não os próximos.
     const janela = inicioPendente
       ? { de: diaLocalDe(inicioPendente), dias: 1 }
-      : { dias: 2 };
+      : { dias: DIAS_NA_HOME };
     const ctrl = new AbortController();
     publicoApi.horarios({ barbeiroId, servicoId, ...janela }, ctrl.signal)
       .then(setDias).catch(ignorarAborto);
@@ -102,7 +103,8 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
       if (e instanceof ErroApi && e.status === 409) {
         // Recarrega a lista mantendo nome e telefone preenchidos.
         setSlot(null);
-        void publicoApi.horarios({ barbeiroId, servicoId, dias: 2 }).then(setDias);
+        void publicoApi.horarios({ barbeiroId, servicoId, dias: DIAS_NA_HOME })
+          .then(setDias);
       }
     }
   }
@@ -141,7 +143,10 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
       </section>
 
       <section className="flex flex-col gap-2.5 md:col-start-2 md:row-start-1 md:row-span-3">
-        <Lbl>3. Próximos horários livres</Lbl>
+        {/* O rótulo acompanha DIAS_NA_HOME: com 1 dia, "próximos" seria
+            promessa que a lista não cumpre — quem quer outro dia vai pelo
+            calendário, logo abaixo. */}
+        <Lbl>{DIAS_NA_HOME === 1 ? '3. Horários livres hoje' : '3. Próximos horários livres'}</Lbl>
         {!servicoId && <Sub>Escolhe o serviço pra ver os horários.</Sub>}
         {dias.map(d => (
           <div key={d.data} className="flex flex-col gap-2">

@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Box, Lbl, Sub, Sep } from '@/components/wf';
 import { painelApi, ignorarAborto, type Eu, type ItemDaAgenda } from '@/lib/api';
+import { useAtualizacaoPeriodica } from '@/lib/useAtualizacaoPeriodica';
+import { PAINEL_ATUALIZACAO_MS } from '@/lib/config';
 
 /// `sv-SE` porque é o locale que formata como YYYY-MM-DD — o formato que a
 /// rota espera — sem passar por UTC e cair no dia anterior.
@@ -26,11 +28,20 @@ export function AgendaDoDia() {
   /// É também o que faz o StrictMode do desenvolvimento parar de duplicar
   /// requisição — ele monta, desmonta e remonta de propósito justamente para
   /// expor efeito sem limpeza.
-  const carregar = useCallback(async (d: string, signal?: AbortSignal) => {
-    setItens(null);
+  ///
+  /// `silencioso` é o que separa a carga que a pessoa pediu da que acontece
+  /// sozinha. Sem ele, a atualização automática zeraria `itens` a cada 30s e
+  /// a lista sumiria e voltaria na cara de quem está olhando.
+  ///
+  /// E o erro também é tratado diferente: numa falha silenciosa, ficar com o
+  /// que já está na tela é melhor do que apagar tudo por causa de um sinal
+  /// ruim de celular — o próximo toque tenta de novo.
+  const carregar = useCallback(async (d: string, signal?: AbortSignal, silencioso = false) => {
+    if (!silencioso) setItens(null);
     try {
       setItens((await painelApi.agenda(d, undefined, signal)).itens);
     } catch (e) {
+      if (silencioso) return;
       ignorarAborto(e);
     }
   }, []);
@@ -46,6 +57,14 @@ export function AgendaDoDia() {
     void carregar(dia, ctrl.signal);
     return () => ctrl.abort();
   }, [dia, carregar]);
+
+  /// Um agendamento novo aparece sozinho, sem recarregar a página. Sem
+  /// `signal`: esta busca não pertence a nenhum efeito que possa ser
+  /// cancelado no meio — ela nasce e morre no mesmo toque.
+  useAtualizacaoPeriodica(
+    () => { void carregar(dia, undefined, true); },
+    PAINEL_ATUALIZACAO_MS,
+  );
 
   async function cancelar(item: ItemDaAgenda) {
     if (!confirm(`Cancelar o horário de ${item.clienteNome} às ${hora(item.inicio)}?`)) return;
