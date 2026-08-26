@@ -19,8 +19,20 @@
   --color-lbl:        #8d7f75;
   --color-apagado:    #6c5e54;
 
-  /* Latão: botão que conclui, escolhido, erro. */
-  --color-acento:     #c98a45;
+  /* Âmbar: o que CONCLUI — confirmar, escolhido, erro. Veio direto da
+     logomarca, e é o mesmo tom nas duas versões dela (marca escura sobre
+     âmbar, marca âmbar sobre escuro).
+
+     Era #c98a45 aqui, que é o LATÃO logo abaixo: o app tinha colapsado os
+     dois tokens da paleta num só, e com isso o produto inteiro concluía num
+     tom que a paleta reserva para sombra. */
+  --color-acento:     #febc1a;
+
+  /* O mesmo âmbar sem gritar. Não é um acento mais fraco à disposição de
+     quem quiser: existe para UMA coisa, a sombra sólida de letreiro. Mantê-lo
+     separado é o que impede a sombra de competir com o botão que ela
+     emoldura. */
+  --color-latao:      #c98a45;
 
   /* Verde esmalte — SÓ "tem vaga". É o segundo sinal da interface: no
      calendário, dia livre e dia lotado deixam de se distinguir só por
@@ -35,7 +47,7 @@
 
   /* O gesto mais característico do wireframe, traduzido: sombra sólida sem
      blur é o que uma barbearia tem na fachada — letreiro pintado. */
-  --shadow-sel:       3px 3px 0 var(--color-acento);
+  --shadow-sel:       3px 3px 0 var(--color-latao);
 
   --font-letreiro: var(--fonte-letreiro), ui-sans-serif, system-ui, sans-serif;
   --font-corpo:    var(--fonte-corpo), ui-sans-serif, system-ui, sans-serif;
