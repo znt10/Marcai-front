@@ -44,7 +44,7 @@ describe('barbeariaAtual', () => {
 
     await expect(barbeariaAtual()).rejects.toThrow('NEXT_NOT_FOUND');
     // A propriedade que este arquivo existe para provar: a origem e' POR
-    // HOST, nao um valor fixo. Um `origemDoTenant` que devolvesse sempre
+    // HOST, nao um valor fixo. Um `origemDoTenantNoServidor` que devolvesse sempre
     // 'http://brutus.localhost:8000' passaria no teste de cima sozinho —
     // aqui, um host DIFERENTE tem que produzir uma origem DIFERENTE.
     expect(fetchFalso.mock.calls[0][0]).toBe('http://naoexiste.localhost:8000/api/barbearia');

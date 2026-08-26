@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { origemDoTenant } from '@/lib/tenant';
+import { origemDoTenantNoServidor } from '@/lib/tenant';
 import { Frame } from '@/components/wf';
 import { Confirmado } from '@/components/Confirmado';
 
@@ -28,7 +28,7 @@ export default async function Pagina({ params }: { params: Promise<{ codigo: str
   // MESMA montagem de origem que `barbeariaAtual()` — importada de `@/lib/tenant`
   // em vez de repetida aqui: duas copias divergentes seriam o mesmo defeito
   // que `baseDe()` existe para evitar do lado do navegador.
-  const origem = await origemDoTenant();
+  const origem = await origemDoTenantNoServidor();
 
   // O RLS continua garantindo que um codigo de outra barbearia nao aparece —
   // so que agora quem entra no tenant e o Django, pelo Host desta requisicao.
