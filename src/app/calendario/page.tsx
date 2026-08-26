@@ -11,13 +11,13 @@ export default async function Calendario({
     return (
       <Frame>
         <Sub>Escolhe o barbeiro e o serviço antes.</Sub>
-        <a href="/" className="text-[11px] md:text-xs text-lbl">‹ voltar</a>
+        <a href="/agendar" className="text-[11px] md:text-xs text-lbl">‹ voltar</a>
       </Frame>
     );
   }
   return (
     <Frame>
-      <a href="/" className="text-[11px] md:text-xs text-lbl">‹ voltar</a>
+      <a href="/agendar" className="text-[11px] md:text-xs text-lbl">‹ voltar</a>
       <h1>Escolher outro dia</h1>
       <MiniCalendario barbeiroId={barbeiroId} servicoId={servicoId} />
     </Frame>
