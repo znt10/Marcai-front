@@ -57,7 +57,7 @@ export function Confirmado(p: Props) {
       <>
         <h1>Horário cancelado.</h1>
         <Sub>Esse agendamento não está mais valendo.</Sub>
-        <a href="/"><Box variante="fill">marcar outro horário</Box></a>
+        <a href="/agendar"><Box variante="fill">marcar outro horário</Box></a>
       </>
     );
   }
