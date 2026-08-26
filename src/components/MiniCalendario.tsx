@@ -85,8 +85,11 @@ export function MiniCalendario({ barbeiroId, servicoId }: { barbeiroId: string; 
               </Chip>
             ))}
           </Row>
+          {/* `/agendar`, e não `/`: quem chegou aqui já escolheu barbeiro e
+              serviço, e volta com um horário na mão. Mandá-lo para a vitrine
+              descartaria os três. */}
           {escolhido && (
-            <a href={`/?barbeiroId=${barbeiroId}&servicoId=${servicoId}&inicio=${encodeURIComponent(escolhido)}`}>
+            <a href={`/agendar?barbeiroId=${barbeiroId}&servicoId=${servicoId}&inicio=${encodeURIComponent(escolhido)}`}>
               <Box variante="fill">
                 usar {slots.find(s => s.inicio === escolhido)?.hora}
               </Box>
