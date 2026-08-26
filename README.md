@@ -20,7 +20,6 @@ Com o back no ar, aqui:
 ```bash
 cp .env.example .env
 docker compose up
-npm run seed
 ```
 
 - `http://brutus.localhost:3000`
@@ -28,10 +27,13 @@ npm run seed
 
 `*.localhost` resolve sozinho no Chrome e no Firefox — não precisa mexer em DNS.
 
-O seed roda do **host**, não de dentro do contêiner: ele lê `DATABASE_URL_HOST`,
-e o `dotenv -e .env` carrega essa variável nos dois lugares — dentro do
-contêiner ela aponta para um `localhost:5433` que não existe lá (esse
-`localhost:5433` é a porta do Postgres do back, publicada pelo compose dele).
+O seed mora no **back** desde a fatia 8, não mais aqui — `npm run seed`
+chamava o `prisma/seed.ts`, que saiu junto com o Prisma. Para recriar os dois
+tenants e a equipe de cada um:
+
+```bash
+docker compose run --rm api python manage.py semear
+```
 
 ## Admin da plataforma
 
@@ -50,20 +52,27 @@ da barbearia guarda. Antes ia só para a tela — e o token só existe em hash n
 banco, então admin que fechasse a aba deixava o dono sem caminho de volta. Vale
 igual para o "novo convite" da lista.
 
-Antes da primeira vez, gerar a credencial:
+Antes da primeira vez, gerar a credencial. Desde a fatia 8 quem autentica é
+o Django (`AdminLoginView`), então `ADMIN_USUARIO` e `ADMIN_SENHA_HASH_B64`
+vão no `.env` do **back** agora, não mais aqui — `npm run admin:hash` saiu
+junto com o Prisma; o comando equivalente mora lá:
 
 ```bash
-npm run admin:hash -- "uma senha longa"
+docker compose run --rm api python manage.py admin_hash "uma senha longa"
+```
+
+Colar a saída em `ADMIN_SENHA_HASH_B64` no `.env` do back, ao lado de um
+`ADMIN_USUARIO` escolhido à mão — nenhum dos dois vai para o versionamento.
+Gerar também `ADMIN_JWT_SECRET`:
+
+```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 ```
 
-Colar as duas saídas em `ADMIN_SENHA_HASH_B64` e `ADMIN_JWT_SECRET` no `.env`,
-e escolher um `ADMIN_USUARIO`. As três nunca vão para o versionamento.
-
-O hash viaja em **base64** por um motivo específico: em claro ele é
-`$argon2id$v=19$m=...`, e tanto o `@next/env` quanto o Docker Compose expandem
-`$` como início de variável — o valor chegaria truncado ao processo, e o
-sintoma seria um "usuário ou senha inválidos" que não explica nada.
+... e colar o **mesmo valor** nos dois `.env` (front e back, tampouco
+versionado): o Django emite o cookie (`AdminLoginView`) e o `proxy.ts` daqui
+só o lê, para guardar as páginas `/admin/*` no Edge antes de qualquer rota
+rodar. Divergir desloga o admin a cada navegação.
 
 O painel só existe no host `admin.`. Em qualquer subdomínio de barbearia,
 `/admin` e `/api/admin/*` respondem **404** — a barreira está no `proxy.ts`,
@@ -101,10 +110,10 @@ IP derrubaria a equipe junto.
 que faz cookie de admin não abrir o painel, e vice-versa, sem nenhuma checagem
 escrita para esse fim.
 
-Depois de `npm run seed`, o primeiro login pode falhar por até um minuto: o
-seed recria a barbearia com um uuid novo e o processo ainda guarda o antigo por
-`TTL_CACHE_TENANT_MS`. O sintoma é "celular ou senha inválidos" com a senha
-certa.
+Depois de `manage.py semear` (no back), o primeiro login pode falhar por até
+um minuto: o seed recria a barbearia com um uuid novo e o processo ainda
+guarda o antigo por `TTL_CACHE_TENANT_MS`. O sintoma é "celular ou senha
+inválidos" com a senha certa.
 
 ## Equipe (só o dono)
 
@@ -218,48 +227,39 @@ dele, com o próximo livre que o painel não mostra em lugar nenhum. Quem filtra
 
 Todo contato com gente de fora sai por aqui: confirmação, cancelamento, lembrete
 e convite de barbeiro. Quem manda é o serviço `evolution`, que mora no compose
-do **back** (`../back`), não neste.
+do **back** (`../back`) — e desde a fatia 8 é o **Django**, não mais este
+repositório, quem fala com ele (`app/services/whatsapp.py`, no back).
 
-Antes da primeira vez, gerar a chave:
+A chave (`EVOLUTION_API_KEY`) e a instância (`EVOLUTION_INSTANCE`) vivem só no
+`.env` do back agora; gerar e configurar por lá — veja `../back/README.md` e
+o `.env.example` de lá. Este `.env` (front) não guarda mais essa chave.
 
-```bash
-node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"
-```
-
-**Uma chave, dois consumidores, dois arquivos `.env` agora:** o serviço
-`evolution` (back) a exige como `AUTHENTICATION_API_KEY` e o `app` (aqui) a
-manda como `EVOLUTION_API_KEY`. Cole o mesmo valor gerado acima em
-`EVOLUTION_API_KEY` neste `.env` **e** no `.env` do back — chave errada é
-**401 silencioso** (o envio é fire-and-forget), então o sintoma seria "a
-mensagem não chega", sem erro em log nenhum.
-
-Depois, com o `evolution` do back no ar (`../back/README.md`), parear o
-telefone a partir daqui:
-
-```bash
-npm run whatsapp:qr        # salva whatsapp-qr.png; escaneia em Aparelhos conectados
-npm run whatsapp:estado    # brutus: open — mensagem sai por aqui
-```
-
-O QR expira em ~40 s; rodar de novo gera outro. Alternativa com painel:
-`http://localhost:8080/manager`, entrando com a mesma chave.
+Para parear o telefone, com o `evolution` do back no ar (`../back/README.md`):
+o painel da própria Evolution, `http://localhost:8080/manager`, entrando com
+`EVOLUTION_API_KEY`. Os scripts `npm run whatsapp:qr`/`whatsapp:estado` que
+existiam aqui saíram na fatia 8 junto com o resto da integração; ainda não
+têm equivalente por linha de comando no back.
 
 **A sessão mora num volume** (`evolution_instances`, no compose do back). É o
 que evita escanear o QR a cada `docker compose down` daquele lado — e, em
 produção, o telefone da barbearia cair a cada deploy. `docker volume rm`
 derruba o pareamento.
 
-**Sem `EVOLUTION_API_URL` o envio cai no `console.info` do app.** É o modo de
-desenvolver sem número de verdade, e é o que torna o lembrete verificável:
+**Sem `EVOLUTION_API_URL` o envio cai no log do back**, não mais no
+`console.info` do app daqui — esse caminho saiu com o resto da integração. É
+o modo de desenvolver sem número de verdade; mesmo formato de antes, agora em
+`app/services/whatsapp.py`:
 
 ```
 [whatsapp] sem EVOLUTION_API_URL: 11977771234 Lembrete: corte hoje às 08:57…
 ```
 
-**A URL tem duas formas**, como as do banco: o app fala com
-`http://evolution:8080` (nome do serviço do back, resolvível porque os dois
-composes dividem a rede externa `brutus`) e os scripts `whatsapp:*`, que rodam
-do host, falam com `EVOLUTION_API_URL_HOST`.
+**A URL mora só do lado do back agora**, `EVOLUTION_API_URL` no compose de lá:
+dentro do compose o nome do serviço é `http://evolution:8080` (resolvível
+porque os dois composes dividem a rede externa `brutus`); ela nunca precisa
+ser lida fora de contêiner porque só o `api` (Django) fala com a Evolution —
+não sobrou nenhum comando de linha deste repositório que precisasse alcançá-la
+do host.
 
 **A Evolution usa o Postgres do back**, com papel e banco próprios e
 **nenhum GRANT** em `brutus` — detalhes em `../back/README.md`. Todo
@@ -273,43 +273,25 @@ mensagem, que já leva nome e endereço. Número por barbearia seria uma coluna 
 
 ## Lembrete no WhatsApp
 
-A tela de confirmado promete ao cliente *"mandamos o lembrete 1h antes"*. Quem
-cumpre isso é o serviço **`agendador`**, que mora no compose do **back**
-(`../back`): ele bate em `POST /api/cron/lembretes` — a rota deste
-repositório — a cada 10 minutos, com `CRON_SECRET` no `Authorization`.
-Acompanhar os tiques é assunto do back; veja `../back/README.md`.
+A tela de confirmado promete ao cliente *"mandamos o lembrete 1h antes"*.
+Cumprir isso é inteiramente do **back** desde a fatia 8: a tarefa
+`app.tasks.lembretes`, batida pelo Celery beat a cada 10 minutos, dispara o
+envio direto. Não passa mais por uma rota deste repositório — o
+`POST /api/cron/lembretes` que existia aqui saiu junto com os outros
+handlers; o nome sobrevive só como gancho manual/externo **no back**
+(`CRON_SECRET` é `.env` de lá agora). Detalhes e como acompanhar os tiques:
+`../back/README.md`.
 
-**Precisa de `CRON_SECRET` no `.env`, o mesmo valor nos dois lados** (quem
-manda o header é o `agendador`, no `.env` do back; quem confere é esta rota,
-no `.env` daqui). Vazio, a rota nega tudo — de propósito: sem segredo
-configurado ela ficaria sendo um disparador público de mensagens para a base
-inteira de clientes. Gerar com:
+A janela (`LEMBRETE_ANTECEDENCIA_MIN = 60`) e a idempotência
+(`lembrete_enviado_em`, no lugar do antigo `lembreteEnviadoEm`) seguem a
+mesma lógica de antes — mensagem sai entre 50 e 60 minutos antes do horário,
+uma vez só por agendamento, e quem marca já dentro da janela não recebe
+lembrete porque a confirmação que acabou de receber já é o lembrete — só que
+implementadas em Django agora; ver `backend/tenant/config.py` e
+`backend/app/services/lembrete.py` no back para o motor.
 
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
-```
-
-Sem o segredo o agendador sobe e toma 401 a cada tique, e isso aparece no log
-dele, no back. É barulhento por escolha: falha em silêncio aqui é lembrete que
-nunca chega e ninguém descobre.
-
-**O tique tem que ser menor que a janela.** São 10 min contra 60
-(`LEMBRETE_TIQUE_MIN` e `LEMBRETE_ANTECEDENCIA_MIN`, lado a lado no
-`config.ts`): a mensagem sai entre 50 e 60 minutos antes. Tique maior que a
-janela perderia agendamento — quem entra nela entre dois tiques nunca seria
-visto.
-
-**Quem marca dentro da janela não recebe lembrete**, porque a confirmação que
-ele acabou de receber já é o lembrete. O agendamento nasce com
-`lembreteEnviadoEm` preenchido. Sem isso, todo encaixe de balcão viraria duas
-mensagens em minutos — o padrão da tela de marcar na mão é 30 minutos.
-
-**O cron marca antes de enviar.** Agendador que dispara duas vezes (reinício,
-tique atrasado) não manda duas mensagens; em troca, envio que falha não é
-repetido. Perder um lembrete é melhor que duplicar.
-
-Sem `EVOLUTION_API_URL` o envio cai no `console.info` do app — é o que deixa
-tudo isso verificável sem depender de um número de WhatsApp de verdade.
+Sem `EVOLUTION_API_URL` o envio cai no log do back — o mesmo modo de
+desenvolver sem número de verdade que valia aqui antes da fatia 8.
 
 ## Visual
 
@@ -344,36 +326,34 @@ dentro dele vira grito ilegível. Frase é `Sub`.
 
 ## Testar
 
-O banco de teste mora no compose do **back** (`../back`) — precisa dele no ar
-antes da primeira rodada; veja `../back/README.md`.
-
 ```bash
 npm test
 ```
 
-Os testes rodam do host contra o banco `brutus_test`. Em máquina nova, aplicar
-as migrações nele antes da primeira rodada:
-
-```bash
-DATABASE_URL="postgresql://brutus_owner:owner@localhost:5433/brutus_test" npx prisma migrate deploy
-```
+Desde a fatia 8 a suíte daqui não toca banco nenhum: o Prisma saiu, e com
+ele a última rota que consultava o Postgres direto do front. Os testes que
+rodavam contra `brutus_test` (RLS, migrações) viraram testes do **back** —
+rodam lá com `docker compose run --rm api pytest -q`; veja
+`../back/README.md`.
 
 ## O que saber antes de mexer
 
-- **Nunca** consultar dado de barbearia fora de `comBarbearia()` — ou de
-  `comBarbeariaAdmin()`, no painel. O RLS devolve zero linhas, e o bug parece
-  "sumiu tudo".
-- **Papel novo no Postgres precisa ser nomeado nas políticas de RLS.** Elas
-  são `TO brutus_app, brutus_admin`; um papel fora dessa lista não casa com
-  política nenhuma e não enxerga linha alguma.
+- **O front não toca mais o banco.** Toda leitura de barbearia passa por
+  `fetch()` para o Django (`src/lib/tenant.ts`), que já vem filtrada. RLS,
+  papéis do Postgres (`brutus_app`/`brutus_owner`) e os antigos
+  `comBarbearia()`/`comBarbeariaAdmin()` — que valiam aqui até a fatia 8 —
+  agora são inteiramente do **back**; ver `tenant/rls.py` e
+  `../back/README.md`.
 - O `proxy.ts` roda no runtime **Edge**: o que ele importa entra no bundle
-  dele. Por isso `slug.ts` não importa o Prisma e `admin-sessao.ts` não
-  importa o argon2 — binário nativo não roda lá.
-- O runtime usa `DATABASE_URL_APP` (papel `brutus_app`). Apontar para
-  `DATABASE_URL` desliga o isolamento: o dono da tabela ignora RLS.
+  dele. Binário nativo (era o caso do `@node-rs/argon2`, hoje só no back)
+  não roda lá — vale lembrar antes de importar algo pesado em `slug.ts`,
+  `admin-sessao.ts` ou `auth.ts`, os três módulos que `proxy.ts` carrega.
 - Conversão de fuso só em `src/lib/datas.ts`.
-- Tabela nova com `barbeariaId` precisa de política de RLS. O teste
-  `varredura estrutural` falha se você esquecer.
+- `tests/ambiente.test.ts` (a "varredura estrutural") confere que toda
+  variável de ambiente **lida** pelo código está declarada em algum lugar —
+  nunca o contrário. Uma variável declarada e nunca lida (como as seis que
+  saíram do `docker-compose.yml` na fatia 8) não aparece nela; ninguém
+  escreve esse teste ainda.
 - **O watcher do Turbopack não enxerga o bind mount do Windows.** Arquivo de
   rota criado com `docker compose up` rodando responde 404, e edição em
   componente não aparece na tela por mais que se recarregue — nos dois casos a

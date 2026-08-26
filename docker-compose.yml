@@ -2,34 +2,15 @@ services:
   app:
     container_name: Marcai-front-app
     build: { context: ., target: dev }
-    # `prisma generate` também aqui, não só no Dockerfile: o cliente gerado
-    # mora em node_modules, que é um volume anônimo — o que a imagem gerou no
-    # build fica escondido atrás dele. Gerar na subida garante que o cliente
-    # acompanhe o schema.prisma montado do host.
-    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev"
+    command: npm run dev
     environment:
-      DATABASE_URL:     postgresql://brutus_owner:owner@db:5432/brutus
-      DATABASE_URL_APP: postgresql://brutus_app:app@db:5432/brutus
-      DATABASE_URL_ADMIN: postgresql://brutus_admin:admin@db:5432/brutus
       NEXT_PUBLIC_DOMINIO_BASE: localhost
       # So' a porta do Django — ver o comentario de NEXT_PUBLIC_API_URL no
       # .env.example. baseDe() (src/lib/api/client.ts) monta o host a partir
       # de `location` em tempo de chamada, nunca de uma origem fixa.
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-8000}
       WATCHPACK_POLLING: "true"
-      # Nome de serviço, resolvível só DENTRO da rede do compose — é por isso
-      # que não mora no .env, ao lado das DATABASE_URL_HOST que existem
-      # justamente porque host e contêiner veem endereços diferentes.
-      EVOLUTION_API_URL: http://evolution:8080
-      EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE:-brutus}
-      # A MESMA chave que o serviço `evolution` exige como
-      # AUTHENTICATION_API_KEY. Uma variável, dois consumidores: chave errada
-      # é 401 silencioso (o envio é fire-and-forget), então o sintoma seria
-      # "a mensagem não chega" sem erro em log nenhum.
-      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
-      # Vêm do .env do host: credencial não fica escrita no compose.
-      ADMIN_USUARIO: ${ADMIN_USUARIO}
-      ADMIN_SENHA_HASH_B64: ${ADMIN_SENHA_HASH_B64}
+      # Vem do .env do host: credencial não fica escrita no compose.
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
     ports: ["3000:3000"]
     volumes:

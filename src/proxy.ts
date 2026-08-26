@@ -60,10 +60,12 @@ export async function proxy(req: NextRequest) {
   }
 
   const headers = new Headers(req.headers);
-  // Apaga o que veio de fora ANTES de escrever o nosso. O header é canal
-  // interno: `curl -H "x-barbearia-slug: dontony"` não escolhe tenant.
+  // Só a limpeza sobrevive: ninguém lê mais `x-barbearia-slug` (o Django
+  // resolve o tenant pelo Host, e `tenant.ts` parou de repassar o header
+  // quando migrou para isso) — mas um valor vindo de fora continua sendo
+  // canal indevido, então `curl -H "x-barbearia-slug: dontony"` segue sem
+  // efeito nenhum.
   headers.delete('x-barbearia-slug');
-  if (slug) headers.set('x-barbearia-slug', slug);
 
   return NextResponse.next({ request: { headers } });
 }
