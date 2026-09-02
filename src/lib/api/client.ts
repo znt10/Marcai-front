@@ -40,6 +40,10 @@ export const MIGRADAS: readonly string[] = [
   '/painel/servicos',
   '/painel/barbeiro-servicos',
   '/painel/expediente',
+  // A foto do barbeiro (data URL na coluna `foto_url`). Esquecer esta linha
+  // manda o PUT para o Next, que responde 404 sem nenhum handler — foi
+  // exatamente o que aconteceu na primeira tentativa.
+  '/painel/foto',
   '/painel/bloqueios',
   '/painel/equipe',
   '/painel/agenda',
@@ -114,7 +118,11 @@ export function baseDe(caminho: string, migradas: readonly string[] = MIGRADAS):
 }
 
 export class ErroApi extends Error {
-  constructor(public status: number, mensagem: string) {
+  /// `corpo` é a resposta inteira, e não só `erro`. Algumas recusas trazem
+  /// dados que a tela precisa: o 409 de bloquear por cima de horário vendido
+  /// devolve QUEM cairia, e sem isso a tela só saberia dizer "deu conflito"
+  /// sem conseguir mostrar os nomes.
+  constructor(public status: number, mensagem: string, public corpo?: unknown) {
     super(mensagem);
     this.name = 'ErroApi';
   }
@@ -175,7 +183,7 @@ export async function pedir<T>(caminho: string, p: Pedido = {}): Promise<T> {
   // respostas que foram escritas com cuidado — inclusive a única resposta do
   // login, que existe para o formulário não enumerar a equipe.
   if (!r.ok) {
-    throw new ErroApi(r.status, corpo?.erro ?? 'Não deu certo. Tenta de novo?');
+    throw new ErroApi(r.status, corpo?.erro ?? 'Não deu certo. Tenta de novo?', corpo);
   }
 
   return corpo as T;

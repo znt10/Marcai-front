@@ -7,7 +7,12 @@ import type { NovoAgendamento } from './publicoAPI';
 
 export const LOGIN_DO_PAINEL = '/painel/login';
 
-export type Eu = { id: string; nome: string; papel: 'DONO' | 'BARBEIRO' };
+export type Eu = {
+  id: string; nome: string; papel: 'DONO' | 'BARBEIRO';
+  /// Data URL, não caminho de arquivo: a foto mora na própria coluna
+  /// `foto_url`, sem storage do outro lado. `null` é o círculo vazio.
+  fotoUrl: string | null;
+};
 
 export type ItemDaAgenda = {
   id: string; inicio: string; fim: string; servicoNome: string;
@@ -22,6 +27,13 @@ export const painelApi = {
     }),
 
   sair: () => pedir<{ ok: true }>('/auth/logout', { metodo: 'POST' }),
+
+  /// `foto: null` apaga. `barbeiroId` só vale para o dono — barbeiro pedindo o
+  /// do colega recebe 404, a mesma regra de horários e serviços.
+  definirFoto: (foto: string | null, barbeiroId?: string) =>
+    pedir<{ ok: true }>('/painel/foto', {
+      metodo: 'PUT', corpo: { foto, barbeiroId }, loginEm: LOGIN_DO_PAINEL,
+    }),
 
   eu: (signal?: AbortSignal) =>
     pedir<Eu>('/auth/eu', { signal, loginEm: LOGIN_DO_PAINEL }),
@@ -116,8 +128,17 @@ export const horariosApi = {
       metodo: 'DELETE', busca: { diaSemana, barbeiroId }, loginEm: LOGIN_DO_PAINEL,
     }),
 
-  criarBloqueio: (p: Partial<Bloqueio> & { motivo: Bloqueio['motivo']; repeteSemanalmente: boolean; barbeiroId?: string }) =>
-    pedir<{ id: string }>('/painel/bloqueios', {
+  /// Quem cairia se o bloqueio fosse criado. Vem no corpo do 409, e não numa
+  /// rota de prévia: perguntar e criar em duas chamadas separadas deixaria a
+  /// agenda mudar entre uma e outra.
+  criarBloqueio: (p: Partial<Bloqueio> & {
+    motivo: Bloqueio['motivo']; repeteSemanalmente: boolean; barbeiroId?: string;
+    /// Sem isto, um bloqueio por cima de horário vendido é RECUSADO com 409 e
+    /// a lista de quem cairia. Com isto, ele é criado e os horários são
+    /// cancelados — cada cliente avisado no WhatsApp.
+    cancelarConflitos?: boolean;
+  }) =>
+    pedir<{ id: string; cancelados: number }>('/painel/bloqueios', {
       metodo: 'POST', corpo: p, loginEm: LOGIN_DO_PAINEL,
     }),
 
