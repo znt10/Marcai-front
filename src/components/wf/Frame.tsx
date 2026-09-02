@@ -13,7 +13,9 @@ export function Frame({
   largo = false, children,
 }: { largo?: boolean; children: React.ReactNode }) {
   return (
-    <div className="w-full min-h-dvh p-5 sm:p-7 md:p-10">
+    // `moldura` nao pinta nada: e' o gancho que deixa um layout desarmar o
+// `min-h-dvh` daqui (ver src/app/painel/layout.tsx).
+    <div className="moldura w-full min-h-dvh p-5 sm:p-7 md:p-10">
       <div
         className={`mx-auto w-full flex flex-col gap-3 md:gap-3.5
                     ${largo ? 'max-w-[1100px]' : 'max-w-[560px]'}`}
