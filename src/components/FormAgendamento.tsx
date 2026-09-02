@@ -126,7 +126,7 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
                   `fotoUrl` desde a fatia 8 e esta tela renderizava o círculo
                   vazio de qualquer jeito. A vitrine (`app/page.tsx`) já
                   passava — eram duas telas discordando sobre o mesmo dado. */}
-              <Avatar fotoUrl={b.fotoUrl} nome={b.nome} />{b.nome}
+              <Avatar tamanho={40} fotoUrl={b.fotoUrl} nome={b.nome} />{b.nome}
             </Box>
           ))}
         </Row>
