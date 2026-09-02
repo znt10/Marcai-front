@@ -91,7 +91,7 @@ export function Equipe({ recarregarEm, euId }: { recarregarEm?: number; euId?: s
               </Chip>
             )}
             {m.ativo
-              ? <Chip acento onClick={() => agir(() => equipeApi.desativar(m.id))}>desativar</Chip>
+              ? <Chip onClick={() => agir(() => equipeApi.desativar(m.id))}>desativar</Chip>
               : <Chip onClick={() => agir(() => equipeApi.reativar(m.id))}>reativar</Chip>}
           </div>
         </Box>

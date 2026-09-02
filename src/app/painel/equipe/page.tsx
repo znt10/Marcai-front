@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Frame, Box, Sep, Sub } from '@/components/wf';
+import { Frame, Sep, Sub } from '@/components/wf';
 import { Equipe } from '@/components/painel/Equipe';
 import { FormBarbeiro } from '@/components/painel/FormBarbeiro';
 import { painelApi, ignorarAborto, type Eu } from '@/lib/api';
@@ -33,7 +33,6 @@ export default function EquipeDoPainel() {
           </>
         )}
 
-      <a href="/painel"><Box>← voltar para a agenda</Box></a>
     </Frame>
   );
 }

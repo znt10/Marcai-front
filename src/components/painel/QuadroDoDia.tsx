@@ -78,7 +78,12 @@ export function QuadroDoDia() {
 
       {/* Rolagem horizontal em vez de quebra de linha: colunas empilhadas
           perdem justamente a comparação lado a lado que é a razão da tela. */}
-      <div className="flex gap-3 overflow-x-auto pb-2">
+      {/* Sangra ate a borda da tela no celular (`-mx-5 px-5`): dentro da
+          moldura, a coluna seguinte era cortada pelo padding e parecia
+          quebrada, nao rolavel. `snap` faz cada barbeiro encaixar inteiro em
+          vez de parar no meio de uma palavra. */}
+      <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory
+                      -mx-5 px-5 sm:-mx-7 sm:px-7 md:mx-0 md:px-0">
         {colunas?.map((c) => <Coluna key={c.barbeiroId} c={c} />)}
       </div>
     </>
@@ -89,7 +94,7 @@ function Coluna({ c }: { c: ColunaDoDia }) {
   const fechado = c.abre === null || c.fecha === null;
 
   return (
-    <div className="shrink-0 w-[230px] flex flex-col gap-2">
+    <div className="shrink-0 w-[230px] snap-start flex flex-col gap-2">
       <Box variante={fechado ? 'mut' : 'normal'}>
         <div className="flex items-baseline justify-between gap-2">
           <span>{c.barbeiroNome}</span>
