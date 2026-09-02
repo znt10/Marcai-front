@@ -11,10 +11,13 @@
 /// O servidor NÃO confia nisto — `app/services/foto.py` refaz as checagens.
 /// Aqui é conveniência de quem usa a tela; lá é a regra.
 
-/// Espelha FOTO_LADO_PX do `tenant/config.py`. Quadrado porque todo lugar que
-/// desenha a foto é um círculo — recortar depois, no CSS, faria o navegador
-/// carregar pixel que ninguém vê.
-const LADO = 128;
+/// Espelha FOTO_LADO_PX do `tenant/config.py` — mudar aqui exige mudar lá.
+/// Quadrado porque todo lugar que desenha a foto é um círculo: recortar depois,
+/// no CSS, faria o navegador carregar pixel que ninguém vê.
+///
+/// 192 dá conta do maior círculo do produto (72px na vitrine) em tela retina,
+/// onde 72 pede 144 pixels reais.
+const LADO = 192;
 
 /// Espelha FOTO_TAMANHO_MAXIMO_BYTES. Aqui serve para escolher a qualidade;
 /// quem recusa de verdade é o servidor.
