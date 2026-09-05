@@ -4,7 +4,10 @@ import { Box, Chip, Lbl, Sub } from '@/components/wf';
 import {
   resumoApi, mensagemDoErro, type LinhaDoResumo, type Resumo as Dados,
 } from '@/lib/api';
-import { ATALHOS, atalhoDoPeriodo, periodoDoAtalho, type Periodo } from '@/lib/resumo';
+import { PizzaDeCortes } from '@/components/painel/PizzaDeCortes';
+import {
+  MODOS, andar, modoDoPeriodo, periodoDe, rotuloDe, type Periodo,
+} from '@/lib/resumo';
 import { diaDeHoje } from '@/lib/datas';
 
 /// Delega a `diaDeHoje`: fuso só se converte em `datas.ts`, nunca aqui. Sem
@@ -19,7 +22,13 @@ const hoje = () => diaDeHoje(new Date());
 const curto = (dia: string) => `${dia.slice(8, 10)}/${dia.slice(5, 7)}`;
 
 export function Resumo() {
-  const [periodo, setPeriodo] = useState<Periodo>(() => periodoDoAtalho('mes', hoje()));
+  // O período é o estado, e o modo é DERIVADO dele (`modoDoPeriodo`) em vez de
+  // guardado ao lado. Guardar os dois abriria a possibilidade de discordarem —
+  // um modo "semana" apontando para um intervalo que não é uma semana, depois
+  // de o dono mexer nos campos de data. Derivando, isso não tem como acontecer:
+  // mexeu na data e o intervalo deixou de ser de calendário, nenhum botão
+  // acende, e é a verdade.
+  const [periodo, setPeriodo] = useState<Periodo>(() => periodoDe('mes', hoje()));
   const [dados, setDados] = useState<Dados | null>(null);
   const [erro, setErro] = useState('');
 
@@ -55,7 +64,19 @@ export function Resumo() {
   // balcão. Recarregar sozinho só trocaria o número embaixo do olho de quem
   // está somando.
 
-  const aceso = atalhoDoPeriodo(periodo, hoje());
+  const agora = hoje();
+  const modo = modoDoPeriodo(periodo);
+  // Trocar de modo ancora em HOJE quando hoje está dentro do período que se
+  // olha, e no começo do período quando não está. É o que faz "estou em
+  // agosto, quero ver por semana" cair numa semana de agosto em vez de pular
+  // para esta semana, sem que "estou no mês corrente, quero ver o dia" caia no
+  // dia 1º em vez de hoje.
+  const ancora = periodo.de <= agora && agora <= periodo.ate ? agora : periodo.de;
+  // Adiantar não é proibido, só inútil: mês que ainda não aconteceu vem zerado
+  // (o serviço só conta `fim <= agora`). A seta desligada diz isso sem precisar
+  // de uma tela vazia para explicar.
+  const temFuturo = periodo.ate < agora;
+
   // O teto da barra é o maior do período, e não um número fixo: a comparação
   // que interessa é entre os barbeiros deste período, não contra uma meta que
   // ninguém combinou.
@@ -64,17 +85,37 @@ export function Resumo() {
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
-        {ATALHOS.map(({ chave, rotulo }) => (
-          <Chip key={chave} ativo={aceso === chave}
-                onClick={() => setPeriodo(periodoDoAtalho(chave, hoje()))}>
+        {MODOS.map(({ chave, rotulo }) => (
+          <Chip key={chave} ativo={modo === chave}
+                onClick={() => setPeriodo(periodoDe(chave, ancora))}>
             {rotulo}
           </Chip>
         ))}
       </div>
 
-      {/* Os campos de data ficam ABAIXO dos atalhos e sempre visíveis, não
-          atrás de um "personalizar": escondê-los faria o dono acreditar que
-          só existem três períodos. */}
+      {/* As setas andam um período INTEIRO — é o que separa "semana passada"
+          de "sete dias atrás". Ficam desligadas num intervalo digitado à mão,
+          porque ali não existe "o anterior". */}
+      <div className="flex items-center gap-3 w-full max-w-[280px]">
+        <Chip aria-label="Período anterior" disabled={!modo}
+              onClick={() => modo && setPeriodo(periodoDe(modo, andar(modo, periodo.de, -1)))}>
+          ‹
+        </Chip>
+        <span className="flex-1 text-center font-letreiro uppercase tracking-[0.06em]
+                         text-sm md:text-base truncate">
+          {modo ? rotuloDe(modo, periodo.de, agora) : 'período próprio'}
+        </span>
+        <Chip aria-label="Próximo período" disabled={!modo || !temFuturo}
+              onClick={() => modo && setPeriodo(periodoDe(modo, andar(modo, periodo.de, 1)))}>
+          ›
+        </Chip>
+      </div>
+
+      {/* Os campos de data ficam ABAIXO e sempre visíveis, não atrás de um
+          "personalizar": escondê-los faria o dono acreditar que só existem
+          três períodos. Sem `max` no "até" — um mês de calendário vai até o
+          dia 30 mesmo quando hoje é dia 5, e a conta continua certa porque o
+          serviço só soma o que já terminou. */}
       <div className="flex flex-wrap items-center gap-2">
         <Lbl>de</Lbl>
         <input type="date" value={periodo.de} max={periodo.ate}
@@ -82,7 +123,7 @@ export function Resumo() {
                className="bg-superficie border border-borda rounded-wf px-3 py-2
                           text-[13px] md:text-sm font-dado text-tinta" />
         <Lbl>até</Lbl>
-        <input type="date" value={periodo.ate} min={periodo.de} max={hoje()}
+        <input type="date" value={periodo.ate} min={periodo.de}
                onChange={(e) => e.target.value && setPeriodo({ ...periodo, ate: e.target.value })}
                className="bg-superficie border border-borda rounded-wf px-3 py-2
                           text-[13px] md:text-sm font-dado text-tinta" />
@@ -100,6 +141,11 @@ export function Resumo() {
           {dados.linhas.length === 0 && (
             <Box variante="dash">Nenhum barbeiro na equipe ainda.</Box>
           )}
+
+          {/* Antes das linhas: a proporção é a leitura de relance, e os
+              números embaixo são a resposta exata para quem quiser conferir.
+              A pizza se apaga sozinha quando não há divisão a mostrar. */}
+          <PizzaDeCortes linhas={dados.linhas} />
 
           {dados.linhas.map((l) => <Linha key={l.barbeiroId} l={l} teto={teto} />)}
 
