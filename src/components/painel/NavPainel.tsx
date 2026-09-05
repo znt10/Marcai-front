@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { painelApi, ignorarAborto, mensagemDoErro, type Eu } from '@/lib/api';
 import { Avatar } from '@/components/wf';
@@ -36,10 +37,12 @@ function Abas({ caminho, dono, embaixo }: { caminho: string; dono: boolean; emba
       {SECOES.filter((s) => !s.soDono || dono).map((s) => {
         const ativo = caminho === s.href;
         return (
-          <a key={s.href} href={s.href} aria-current={ativo ? 'page' : undefined}
+          <Link key={s.href} href={s.href} aria-current={ativo ? 'page' : undefined}
              className={`relative flex-1 text-center font-letreiro uppercase tracking-[0.06em]
                          ${embaixo ? 'py-3 text-[13px]' : 'py-2.5 text-sm'}
                          ${ativo ? 'text-acento' : 'text-sub hover:text-tinta'}`}>
+            {/* Link do Next: preserva o layout, não remonta o cabeçalho, reduz
+                `eu()` a uma sessão. */}
             {/* Reforço, nunca o único sinal: quem não distingue o âmbar do
                 cinza tem o `aria-current` e a própria barra. */}
             {ativo && (
@@ -47,7 +50,7 @@ function Abas({ caminho, dono, embaixo }: { caminho: string; dono: boolean; emba
                     className={`absolute inset-x-3 h-[3px] bg-latao ${embaixo ? 'top-0' : 'bottom-0'}`} />
             )}
             {s.rotulo}
-          </a>
+          </Link>
         );
       })}
     </>
