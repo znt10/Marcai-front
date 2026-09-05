@@ -274,3 +274,33 @@ export const equipeApi = {
       metodo: 'POST', loginEm: LOGIN_DO_PAINEL,
     }),
 };
+
+/// `clientes` é gente distinta, `cortes` é atendimento. O mesmo cliente
+/// voltando três vezes é 3 e 1 — por isso são duas colunas e não uma.
+export type LinhaDoResumo = {
+  barbeiroId: string;
+  barbeiroNome: string;
+  /// Barbeiro desligado que atendeu no período continua aparecendo: desligar
+  /// alguém não pode reescrever o mês que já fechou.
+  ativo: boolean;
+  cortes: number;
+  clientes: number;
+};
+
+export type Resumo = {
+  de: string;
+  ate: string;
+  linhas: LinhaDoResumo[];
+  /// `totais.clientes` é distinto na BARBEARIA, não a soma das linhas: quem
+  /// cortou com dois barbeiros é uma pessoa só. A soma das linhas pode passar
+  /// do total, e está certo — a tela rotula em vez de esconder.
+  totais: { cortes: number; clientes: number };
+};
+
+/// Só o dono chega aqui: a rota responde 403 para `BARBEIRO`.
+export const resumoApi = {
+  ver: (de: string, ate: string, signal?: AbortSignal) =>
+    pedir<Resumo>('/painel/resumo', {
+      busca: { de, ate }, signal, loginEm: LOGIN_DO_PAINEL,
+    }),
+};

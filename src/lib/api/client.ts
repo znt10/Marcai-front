@@ -48,6 +48,11 @@ export const MIGRADAS: readonly string[] = [
   '/painel/equipe',
   '/painel/agenda',
   '/painel/dia',
+  // O resumo do dono. Sem esta linha o pedido vai para `/api/painel/resumo`
+  // NO NEXT, que nao tem handler nenhum desde a fatia 8 — 404 mudo, longe da
+  // causa. E' o mesmo esquecimento que `/painel/foto` levou na primeira
+  // tentativa.
+  '/painel/resumo',
   '/painel/conflitos',
   '/painel/agendamentos',
   '/painel/barbearia',
