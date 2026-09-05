@@ -22,6 +22,9 @@ import { useEu } from '@/components/painel/SessaoDoPainel';
 /// O item ativo ganha a barra sólida de latão, não uma pílula nem um brilho: é
 /// o mesmo gesto de letreiro pintado que `--shadow-sel` já usa no resto do
 /// produto — sombra sólida, sem desfoque.
+///
+/// Cada seção é `<Link>` do Next, não `<a>`: preserva o layout ao trocar de
+/// tela, não remonta o cabeçalho, reduz `eu()` a uma sessão só.
 type Secao = { href: string; rotulo: string; soDono?: boolean };
 
 const SECOES: Secao[] = [
@@ -43,11 +46,9 @@ function Abas({ caminho, dono, embaixo }: { caminho: string; dono: boolean; emba
         const ativo = caminho === s.href;
         return (
           <Link key={s.href} href={s.href} aria-current={ativo ? 'page' : undefined}
-             className={`relative flex-1 text-center font-letreiro uppercase tracking-[0.06em]
+             className={`relative min-w-0 flex-1 text-center font-letreiro uppercase tracking-[0.06em]
                          ${embaixo ? 'py-3 text-[13px]' : 'py-2.5 text-sm'}
                          ${ativo ? 'text-acento' : 'text-sub hover:text-tinta'}`}>
-            {/* Link do Next: preserva o layout, não remonta o cabeçalho, reduz
-                `eu()` a uma sessão. */}
             {/* Reforço, nunca o único sinal: quem não distingue o âmbar do
                 cinza tem o `aria-current` e a própria barra. */}
             {ativo && (
@@ -149,7 +150,7 @@ export function NavPainel() {
           {erroFoto && <div className="text-[12px] text-acento pb-2">{erroFoto}</div>}
           {/* Enquanto `carregando`, `dono` seria um palpite (sempre `false`,
               porque `eu` ainda é `null`) — e a aba "equipe" (`soDono: true`)
-              somia da lista até a resposta chegar. A barra nascia com 4 abas
+              sumia da lista até a resposta chegar. A barra nascia com 4 abas
               e virava 5 quando `painelApi.eu()` respondia; como cada aba é
               `flex-1`, a largura de TODAS mudava junto, e a barra sólida do
               item ativo saltava de posição — o "pulo" relatado como "foi

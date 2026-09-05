@@ -2,14 +2,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Box, Chip, Lbl, Sub } from '@/components/wf';
 import {
-  resumoApi, ignorarAborto, mensagemDoErro, type LinhaDoResumo, type Resumo as Dados,
+  resumoApi, mensagemDoErro, type LinhaDoResumo, type Resumo as Dados,
 } from '@/lib/api';
 import { ATALHOS, atalhoDoPeriodo, periodoDoAtalho, type Periodo } from '@/lib/resumo';
+import { diaDeHoje } from '@/lib/datas';
 
-/// `sv-SE` é o locale que formata como YYYY-MM-DD — o formato que a rota
-/// espera — sem passar por UTC e cair no dia anterior. Mesmo truque do
-/// QuadroDoDia, e pelo mesmo motivo.
-const hoje = () => new Date().toLocaleDateString('sv-SE');
+/// Delega a `diaDeHoje`: fuso só se converte em `datas.ts`, nunca aqui. Sem
+/// isso, entre 21h e meia-noite local o contêiner (UTC) e o navegador
+/// (America/Sao_Paulo) discordariam sobre que dia é hoje — e `Resumo`, Client
+/// Component renderizado no servidor, hidrataria com um valor divergente do
+/// `useState` inicial e do `max={hoje()}`.
+const hoje = () => diaDeHoje(new Date());
 
 /// "01/09" — o intervalo é lido de relance, e YYYY-MM-DD por extenso duas
 /// vezes seguidas vira um borrão de dígitos.
@@ -22,11 +25,21 @@ export function Resumo() {
 
   const carregar = useCallback(async (p: Periodo, signal?: AbortSignal) => {
     setDados(null);
+    setErro('');
     try {
-      setDados(await resumoApi.ver(p.de, p.ate, signal));
-      setErro('');
+      const resposta = await resumoApi.ver(p.de, p.ate, signal);
+      setDados(resposta);
+      // O back pode recusar o período pedido (mais de 366 dias) e devolver o
+      // mês corrente no lugar. Sem sincronizar aqui, os `<input>` continuam
+      // mostrando o que foi digitado enquanto o rótulo já mudou — dois
+      // períodos diferentes na mesma tela. A comparação evita laço: só chama
+      // `setPeriodo` quando a resposta realmente diverge do pedido, e a
+      // segunda volta (já pedindo o período corrigido) não diverge mais.
+      if (resposta.de !== p.de || resposta.ate !== p.ate) {
+        setPeriodo({ de: resposta.de, ate: resposta.ate });
+      }
     } catch (e) {
-      ignorarAborto(e);
+      if ((e as Error)?.name === 'AbortError') return;
       setErro(mensagemDoErro(e));
     }
   }, []);
