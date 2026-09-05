@@ -1,9 +1,10 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { Box, Sub } from '@/components/wf';
-import { painelApi, ignorarAborto, type Eu, type ItemDaAgenda } from '@/lib/api';
+import { painelApi, ignorarAborto, type ItemDaAgenda } from '@/lib/api';
 import { useAtualizacaoPeriodica } from '@/lib/useAtualizacaoPeriodica';
 import { PAINEL_ATUALIZACAO_MS } from '@/lib/config';
+import { useEu } from '@/components/painel/SessaoDoPainel';
 
 /// `sv-SE` porque é o locale que formata como YYYY-MM-DD — o formato que a
 /// rota espera — sem passar por UTC e cair no dia anterior.
@@ -43,7 +44,9 @@ const duracao = (min: number) => {
 };
 
 export function AgendaDoDia() {
-  const [eu, setEu] = useState<Eu | null>(null);
+  // `eu` vem do provider do layout — era aqui uma das seis buscas
+  // independentes de `painelApi.eu()`. Ver `SessaoDoPainel.tsx`.
+  const { eu } = useEu();
   const [dia, setDia] = useState(hoje());
   const [itens, setItens] = useState<ItemDaAgenda[] | null>(null);
   /// O relógio da tela. Sem ele a linha do "agora" congela no minuto em que a
@@ -73,12 +76,6 @@ export function AgendaDoDia() {
       if (silencioso) return;
       ignorarAborto(e);
     }
-  }, []);
-
-  useEffect(() => {
-    const ctrl = new AbortController();
-    painelApi.eu(ctrl.signal).then(setEu).catch(ignorarAborto);
-    return () => ctrl.abort();
   }, []);
 
   useEffect(() => {
