@@ -1,10 +1,11 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { painelApi, ignorarAborto, mensagemDoErro, type Eu } from '@/lib/api';
+import { painelApi, mensagemDoErro } from '@/lib/api';
 import { Avatar } from '@/components/wf';
 import { prepararFoto, ErroDeFoto } from '@/lib/foto';
+import { useEu } from '@/components/painel/SessaoDoPainel';
 
 /// A navegação do painel, uma só para as cinco telas.
 ///
@@ -57,21 +58,27 @@ function Abas({ caminho, dono, embaixo }: { caminho: string; dono: boolean; emba
   );
 }
 
+/// Fica no lugar de `Abas` enquanto `dono` ainda não é confiável (ver
+/// `carregando` em `NavPainel`). Mesma altura de uma aba de verdade
+/// (`py`/`text` iguais), conteúdo invisível: a barra reserva o espaço sem
+/// desenhar nada que possa estar errado.
+function Espaco({ embaixo }: { embaixo?: boolean }) {
+  return (
+    <span aria-hidden className={`flex-1 invisible ${embaixo ? 'py-3 text-[13px]' : 'py-2.5 text-sm'}`}>
+      ·
+    </span>
+  );
+}
+
 export function NavPainel() {
   const caminho = usePathname();
-  const [eu, setEu] = useState<Eu | null>(null);
+  // `eu` vem do provider montado no layout, não de uma busca própria: era
+  // aqui que uma das seis buscas independentes de `painelApi.eu()` vivia.
+  // Ver `SessaoDoPainel.tsx` para a busca em si.
+  const { eu, carregando, setEu } = useEu();
   const [erroFoto, setErroFoto] = useState('');
   const seletor = useRef<HTMLInputElement>(null);
   const naEntrada = caminho === '/painel/login';
-
-  useEffect(() => {
-    // Na entrada não há quem perguntar, e perguntar levaria a pessoa de volta
-    // para a própria tela em que ela já está.
-    if (naEntrada) return;
-    const ctrl = new AbortController();
-    painelApi.eu(ctrl.signal).then(setEu).catch(ignorarAborto);
-    return () => ctrl.abort();
-  }, [naEntrada]);
 
   if (naEntrada) return null;
 
@@ -136,8 +143,17 @@ export function NavPainel() {
             </button>
           </div>
           {erroFoto && <div className="text-[12px] text-acento pb-2">{erroFoto}</div>}
+          {/* Enquanto `carregando`, `dono` seria um palpite (sempre `false`,
+              porque `eu` ainda é `null`) — e a aba "equipe" (`soDono: true`)
+              somia da lista até a resposta chegar. A barra nascia com 4 abas
+              e virava 5 quando `painelApi.eu()` respondia; como cada aba é
+              `flex-1`, a largura de TODAS mudava junto, e a barra sólida do
+              item ativo saltava de posição — o "pulo" relatado como "foi
+              para outra aba e voltou". Aqui a lista só desenha depois de
+              saber `dono` de verdade; `Espaco` reserva a altura antes disso,
+              para a página não pular por baixo. */}
           <nav aria-label="Seções do painel" className="hidden md:flex">
-            <Abas caminho={caminho} dono={dono} />
+            {carregando ? <Espaco /> : <Abas caminho={caminho} dono={dono} />}
           </nav>
         </div>
       </div>
@@ -147,7 +163,7 @@ export function NavPainel() {
       <nav aria-label="Seções do painel"
            className="md:hidden fixed bottom-0 inset-x-0 z-20 flex border-t border-borda
                       bg-superficie pb-[env(safe-area-inset-bottom)]">
-        <Abas caminho={caminho} dono={dono} embaixo />
+        {carregando ? <Espaco embaixo /> : <Abas caminho={caminho} dono={dono} embaixo />}
       </nav>
     </>
   );

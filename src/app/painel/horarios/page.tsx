@@ -1,17 +1,12 @@
 'use client';
-import { useEffect, useState } from 'react';
 import { Frame, Sub } from '@/components/wf';
 import { Horarios } from '@/components/painel/Horarios';
-import { painelApi, ignorarAborto, type Eu } from '@/lib/api';
+import { useEu } from '@/components/painel/SessaoDoPainel';
 
 export default function HorariosDoPainel() {
-  const [eu, setEu] = useState<Eu | null>(null);
-
-  useEffect(() => {
-    const ctrl = new AbortController();
-    painelApi.eu(ctrl.signal).then(setEu).catch(ignorarAborto);
-    return () => ctrl.abort();
-  }, []);
+  // `eu` vem do provider do layout, buscado uma vez por sessão — não mais
+  // uma busca própria desta tela. Ver `SessaoDoPainel.tsx`.
+  const { eu } = useEu();
 
   return (
     <Frame>
