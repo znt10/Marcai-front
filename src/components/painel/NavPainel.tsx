@@ -30,6 +30,10 @@ const SECOES: Secao[] = [
   { href: '/painel/horarios', rotulo: 'horários' },
   { href: '/painel/servicos', rotulo: 'serviços' },
   { href: '/painel/equipe', rotulo: 'equipe', soDono: true },
+  // No fim, e junto de `equipe`, porque as duas são as seções de quem
+  // administra — e porque entrar no meio reordenaria cinco abas que a equipe
+  // já sabe onde ficam. O barbeiro comum continua vendo quatro.
+  { href: '/painel/resumo', rotulo: 'resumo', soDono: true },
 ];
 
 function Abas({ caminho, dono, embaixo }: { caminho: string; dono: boolean; embaixo?: boolean }) {
