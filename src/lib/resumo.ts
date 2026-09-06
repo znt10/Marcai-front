@@ -35,7 +35,7 @@ const MESES = [
 /// Os mesmos três caracteres que `tenant/datas.py` usa do outro lado —
 /// inclusive "sab" e "set" sem acento. Divergir aqui faria a mesma data se
 /// escrever de dois jeitos dependendo de qual lado a produziu.
-const MESES_CURTOS = [
+export const MESES_CURTOS = [
   'jan', 'fev', 'mar', 'abr', 'mai', 'jun',
   'jul', 'ago', 'set', 'out', 'nov', 'dez',
 ];
@@ -209,4 +209,53 @@ export function coresPorBarbeiro(
     if (ehNomeado.has(l.barbeiroId)) cores.set(l.barbeiroId, CORES_DE_BARBEIRO[i++]);
   }
   return cores;
+}
+
+/// ## O calendário do seletor
+///
+/// As setas sozinhas resolvem "a semana passada" e não resolvem "o domingo
+/// retrasado": chegar lá custa dez cliques. Por isso o rótulo entre elas vira
+/// botão, e clicar abre a grade — o salto passa a ser um clique.
+///
+/// Estas funções são puras e ficam aqui, e não dentro do componente, porque a
+/// aritmética de calendário é onde o erro de convenção mora (`diaSemanaDe` é
+/// `getDay()`: DOMINGO = 0) e porque assim ela tem teste sem montar tela.
+
+/// O domingo que abre a semana de `dia`. Mesma conta que `periodoDe('semana')`
+/// faz por dentro — exportada porque a grade precisa dela para acender a
+/// LINHA inteira: no modo semana, clicar numa quarta abre a semana da quarta.
+export function inicioDaSemana(dia: string): string {
+  return somarDias(dia, -diaSemanaDe(dia));
+}
+
+/// "2026-09-06" -> "2026-09". O mês como o `<input type="month">` o escreve.
+export function mesDe(dia: string): string {
+  return dia.slice(0, 7);
+}
+
+export function somarMeses(mesISO: string, n: number): string {
+  const [ano, mes] = mesISO.split('-').map(Number);
+  return primeiroDoMes(ano, mes + n).slice(0, 7);
+}
+
+/// Os 42 dias que a grade desenha: SEIS linhas, sempre.
+///
+/// Sempre seis, e não "as que couberem": com cinco, o calendário muda de
+/// altura ao virar o mês e o que está embaixo dele pula sob o ponteiro de
+/// quem ia clicar. Um mês pode precisar de quatro linhas e meia ou de seis;
+/// fixar em seis é o que faz a caixa parar quieta.
+///
+/// Começa no domingo da semana que contém o dia 1º — inclusive quando esse
+/// domingo é do mês anterior, que é o que faz cada linha da grade ser
+/// exatamente uma semana e o modo semana poder acender a linha inteira.
+export function diasDaGrade(mesISO: string): string[] {
+  const primeiro = inicioDaSemana(`${mesISO}-01`);
+  return Array.from({ length: 42 }, (_, i) => somarDias(primeiro, i));
+}
+
+/// "setembro" — e com o ano quando não é o corrente, pela mesma razão de
+/// `rotuloDe`: sem ele, setembro de 2025 e de 2026 se leem exatamente iguais.
+export function rotuloDoMes(mesISO: string, hoje: string): string {
+  const [ano, mes] = mesISO.split('-').map(Number);
+  return `${MESES[mes - 1]}${ano !== Number(hoje.slice(0, 4)) ? ` ${ano}` : ''}`;
 }
