@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Lbl } from '@/components/wf';
 import type { LinhaDoResumo } from '@/lib/api';
-import { porcentagens } from '@/lib/resumo';
+import { porcentagens, coresPorBarbeiro, COR_OUTROS, CORES_DE_BARBEIRO } from '@/lib/resumo';
 
 /// A divisão dos cortes do período entre a equipe — "que pedaço do movimento
 /// foi meu".
@@ -13,43 +13,42 @@ import { porcentagens } from '@/lib/resumo';
 /// outra pergunta, a de proporção, e é por isso que as duas coisas convivem
 /// na tela em vez de uma substituir a outra.
 ///
-/// ## Por que QUATRO cores, e não seis
-///
-/// Numa pizza qualquer fatia pode ser comparada com qualquer outra — e a
-/// primeira e a última ainda se encostam no anel. Então a paleta precisa
-/// passar no teste de TODOS os pares, não só dos vizinhos, e é aí que o tema
-/// escuro aperta: a faixa de claridade utilizável (OKLCH L entre 0.48 e 0.67)
-/// não comporta seis matizes que sobrevivam a daltonismo. Cinco e seis foram
-/// medidos e reprovaram; quatro passa nos cinco testes, com pior separação
-/// ΔE 9.3 sob deuteranopia e 19.4 em visão normal.
-///
-/// Do quinto barbeiro em diante a cauda vira "outros", em cinza. Inventar uma
-/// quinta cor seria produzir duas fatias que parte das pessoas lê como uma só.
-const CORES = ['#b88819', '#4a8ed0', '#c2537f', '#2e7a45'];
-/// Cinza de recuo, fora da paleta categórica de propósito: "outros" não é uma
-/// identidade, é a ausência de uma.
-const COR_OUTROS = '#6c5e54';
-const MAXIMO_DE_FATIAS = CORES.length;
+/// As cores moram em `lib/resumo.ts` (`CORES_DE_BARBEIRO`), junto da regra de
+/// QUEM recebe cada uma — e é lá que está escrito por que são quatro e não
+/// seis. Elas moram lá, e não aqui, porque o gráfico de cortes por dia usa as
+/// MESMAS: a fatia que o dono clicou e as barras que aparecem em seguida
+/// precisam ser da mesma cor, senão a segunda tela não parece falar da
+/// primeira.
+const MAXIMO_DE_FATIAS = CORES_DE_BARBEIRO.length;
 
 type Fatia = { nome: string; cortes: number; cor: string };
 
 function fatiasDe(linhas: LinhaDoResumo[]): Fatia[] {
+  // A cor vem de `coresPorBarbeiro`, que a prende ao BARBEIRO e não à posição
+  // dele no ranking — dois trocando de lugar em volume não trocam mais de cor.
+  const cores = coresPorBarbeiro(linhas);
   const comCorte = linhas.filter((l) => l.cortes > 0).sort((a, b) => b.cortes - a.cortes);
-  if (comCorte.length <= MAXIMO_DE_FATIAS) {
-    return comCorte.map((l, i) => ({ nome: l.barbeiroNome, cortes: l.cortes, cor: CORES[i] }));
-  }
-  // Dobra a cauda em vez de gerar cor nova. Os maiores ficam nomeados porque
-  // são sobre quem a pergunta é.
-  const cabeca = comCorte.slice(0, MAXIMO_DE_FATIAS - 1);
-  const cauda = comCorte.slice(MAXIMO_DE_FATIAS - 1);
-  return [
-    ...cabeca.map((l, i) => ({ nome: l.barbeiroNome, cortes: l.cortes, cor: CORES[i] })),
-    {
+
+  // A ORDEM das fatias continua sendo por volume: é o que faz a maior começar
+  // no topo e a leitura girar do maior para o menor. O que deixou de depender
+  // do volume é só a cor.
+  const nomeadas = comCorte.filter((l) => cores.has(l.barbeiroId));
+  const cauda = comCorte.filter((l) => !cores.has(l.barbeiroId));
+
+  const fatias: Fatia[] = nomeadas.map((l) => ({
+    nome: l.barbeiroNome, cortes: l.cortes, cor: cores.get(l.barbeiroId)!,
+  }));
+
+  // Dobra a cauda em vez de gerar cor nova: inventar uma quinta cor seria
+  // produzir duas fatias que parte das pessoas lê como uma só.
+  if (cauda.length > 0) {
+    fatias.push({
       nome: `outros (${cauda.length})`,
       cortes: cauda.reduce((s, l) => s + l.cortes, 0),
       cor: COR_OUTROS,
-    },
-  ];
+    });
+  }
+  return fatias;
 }
 
 const R = 52;

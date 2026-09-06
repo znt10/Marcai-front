@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useState } from 'react';
 import { Box, Lbl, Sub, Sep } from '@/components/wf';
 import { publicoApi, mensagemDoErro } from '@/lib/api';
@@ -57,7 +58,7 @@ export function Confirmado(p: Props) {
       <>
         <h1>Horário cancelado.</h1>
         <Sub>Esse agendamento não está mais valendo.</Sub>
-        <a href="/agendar"><Box variante="fill">marcar outro horário</Box></a>
+        <Link href="/agendar"><Box variante="fill">marcar outro horário</Box></Link>
       </>
     );
   }

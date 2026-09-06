@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { barbeariaAtual } from '@/lib/tenant';
 import { Frame, Sub, Sep } from '@/components/wf';
 import { FormAgendamento } from '@/components/FormAgendamento';
@@ -27,7 +28,7 @@ export default async function Agendar({
       <FormAgendamento inicial={{ barbeiroId, servicoId, inicio }} />
       <Sep />
       <div className="text-[10px] md:text-xs text-lbl text-center">
-        <a href="/">‹ a barbearia</a>
+        <Link href="/">‹ a barbearia</Link>
       </div>
     </Frame>
   );
