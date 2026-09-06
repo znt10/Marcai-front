@@ -34,6 +34,26 @@ export const SUBDOMINIOS_RESERVADOS = [
 export const TTL_CACHE_TENANT_MS = 60_000;
 export const SLUG_REGEX = /^[a-z0-9]([a-z0-9-]{1,30}[a-z0-9])$/;
 
+/// True quando o host não carrega subdomínio nenhum sob o domínio base.
+///
+/// É a única porta por onde a barbearia padrão de dev entra (ver
+/// NEXT_PUBLIC_TENANT_PADRAO no proxy.ts), e o recorte é o que importa: são os
+/// dois casos em que não há subdomínio para ler — o domínio nu (`localhost`) e
+/// um host de fora dele (`10.0.0.7`, o celular na rede).
+///
+/// Fica de fora, de propósito, todo host que TEM subdomínio e mesmo assim não
+/// vira barbearia: `www.localhost` (reservado), `a.b.localhost`,
+/// `naoexiste.localhost`. Esses continuam sem barbearia até em dev — se
+/// caíssem no padrão, um erro de digitação no subdomínio abriria a barbearia
+/// errada em silêncio.
+///
+/// Espelha `sem_subdominio` do backend/tenant/config.py. Divergir daqui é um
+/// host que um lado manda para a barbearia padrão e o outro trata como 404.
+export function semSubdominio(host: string, dominioBase: string): boolean {
+  const semPorta = host.split(':')[0].toLowerCase();
+  return semPorta === dominioBase || !semPorta.endsWith(`.${dominioBase}`);
+}
+
 // Admin da plataforma (admin §4).
 // A trava do login do admin é por IP, e não por conta como a do barbeiro:
 // a conta é UMA, então travá-la deixaria qualquer um trancar o dono do site
