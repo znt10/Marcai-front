@@ -1,5 +1,5 @@
 'use client';
-import { Frame, Box } from '@/components/wf';
+import { Frame } from '@/components/wf';
 import { QuadroDoDia } from '@/components/painel/QuadroDoDia';
 
 export default function DiaDoPainel() {
@@ -11,7 +11,6 @@ export default function DiaDoPainel() {
       {/* Todos entram: o dono vê a equipe, o barbeiro vê a própria coluna —
           com o "próximo livre" que a agenda não mostra. */}
       <QuadroDoDia />
-      <a href="/painel"><Box>← voltar para a agenda</Box></a>
     </Frame>
   );
 }
