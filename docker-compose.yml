@@ -5,6 +5,12 @@ services:
     command: npm run dev
     environment:
       NEXT_PUBLIC_DOMINIO_BASE: localhost
+      # Vazia = desligado. A saída para testar pelo celular sem DNS curinga:
+      # com o slug de uma barbearia aqui, todo host SEM subdomínio cai nela,
+      # e `http://<ip-da-máquina>:3000` funciona no aparelho. Precisa ser
+      # IGUAL ao TENANT_PADRAO do .env do back — divergir faz um lado servir a
+      # institucional e o outro a barbearia, no mesmo endereço.
+      NEXT_PUBLIC_TENANT_PADRAO: ${TENANT_PADRAO:-}
       # So' a porta do Django — ver o comentario de NEXT_PUBLIC_API_URL no
       # .env.example. baseDe() (src/lib/api/client.ts) monta o host a partir
       # de `location` em tempo de chamada, nunca de uma origem fixa.

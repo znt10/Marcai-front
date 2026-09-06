@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { extrairSlug, ehHostAdmin } from '@/lib/slug';
+import { semSubdominio } from '@/lib/config';
 import { lerSessao, COOKIE_ADMIN } from '@/lib/admin-sessao';
 import { lerSessao as lerSessaoBarbeiro, COOKIE_SESSAO } from '@/lib/auth';
 
@@ -8,6 +9,15 @@ import { lerSessao as lerSessaoBarbeiro, COOKIE_SESSAO } from '@/lib/auth';
 /// é a mesma de antes.
 
 const DOMINIO_BASE = process.env.NEXT_PUBLIC_DOMINIO_BASE ?? 'localhost';
+
+/// A barbearia padrão de dev — vazia em produção, e é assim que fica: quem a
+/// liga de verdade é o Django (`tenant_padrao`, que exige DJANGO_DEBUG=1). Aqui
+/// ela só decide UMA coisa: se o domínio nu ainda serve a página institucional.
+///
+/// Sem isto, `http://10.0.0.7:3000/` no celular renderizaria a institucional
+/// enquanto o Django, do outro lado do mesmo host, serviria a barbearia — os
+/// dois lados discordando sobre o que aquele endereço significa.
+const TENANT_PADRAO = process.env.NEXT_PUBLIC_TENANT_PADRAO ?? '';
 
 export async function proxy(req: NextRequest) {
   const host = req.headers.get('host') ?? '';
@@ -54,8 +64,11 @@ export async function proxy(req: NextRequest) {
 
   const slug = extrairSlug(host, DOMINIO_BASE);
 
-  // Domínio nu na raiz: não é tenant nenhum, é a vitrine do produto.
-  if (!slug && caminho === '/') {
+  // Domínio nu na raiz: não é tenant nenhum, é a vitrine do produto — a menos
+  // que a barbearia padrão de dev esteja ligada, e aí este host É uma
+  // barbearia (o mesmo recorte que o TenantMiddleware aplica do outro lado).
+  const caiNoPadrao = !!TENANT_PADRAO && semSubdominio(host, DOMINIO_BASE);
+  if (!slug && !caiNoPadrao && caminho === '/') {
     return NextResponse.rewrite(new URL('/institucional', req.url));
   }
 
