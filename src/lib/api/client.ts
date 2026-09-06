@@ -24,6 +24,12 @@
 /// quatro entradas. Tambem nao seria desejavel: com o login no Django e o
 /// `/auth/eu` no Next, um SESSAO_JWT_SECRET divergente entre os dois `.env`
 /// passaria despercebido ate a tela que menos se espera.
+// `esquecer` e' a UNICA dependencia deste arquivo para fora de si mesmo, e
+// e' de tipo nenhum: quem descobre que a sessao morreu (401) e' este cliente,
+// e a copia de `eu` guardada no navegador precisa morrer junto. Ver
+// `src/lib/eu-lembrado.ts`.
+import { esquecer } from '@/lib/eu-lembrado';
+
 export const MIGRADAS: readonly string[] = [
   '/barbeiros',
   '/auth',
@@ -176,6 +182,15 @@ export async function pedir<T>(caminho: string, p: Pedido = {}): Promise<T> {
   });
 
   if (r.status === 401 && p.loginEm && typeof window !== 'undefined') {
+    // A sessão morreu: esquece quem era. Sem isto, a cópia guardada
+    // sobreviveria à expulsão e a tela de entrada seria seguida de um painel
+    // pintado com o nome de alguém que já não está logado — até a
+    // revalidação levar 401 de novo e expulsar outra vez.
+    //
+    // Aqui e não no provider porque a promessa acima nunca resolve: nenhum
+    // `.then`, `.catch` ou `.finally` do chamador chega a rodar. Este é o
+    // único ponto do código que sabe que a sessão acabou.
+    esquecer();
     window.location.href = p.loginEm;
     // Navegação não é síncrona: sem esta promessa que nunca resolve, o
     // chamador seguiria em frente e tentaria pintar a tela com nada.
