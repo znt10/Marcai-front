@@ -13,8 +13,16 @@ export function Servicos({ eu }: { eu: Eu }) {
   const [barbeiros, setBarbeiros] = useState<Barbeiro[]>([]);
   const [barbeiroId, setBarbeiroId] = useState(eu.id);
   const [erro, setErro] = useState('');
+  // Fechado ao abrir a tela, sempre. Serviço desativado é o que a barbearia
+  // NÃO vende hoje — é consulta ocasional, não parte do trabalho do dia.
+  const [verDesativados, setVerDesativados] = useState(false);
 
   const alvo = barbeiroId === eu.id ? undefined : barbeiroId;
+
+  // O backend ja devolve os desativados por ultimo (`order_by("-ativo",
+  // "ordem")`); a separacao aqui e' o que os tira da lista principal.
+  const ativos = catalogo?.filter((s) => s.ativo) ?? [];
+  const desativados = catalogo?.filter((s) => !s.ativo) ?? [];
 
   const carregar = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -174,39 +182,88 @@ export function Servicos({ eu }: { eu: Eu }) {
             Tudo que a sua barbearia oferece. É desta lista que cada barbeiro
             escolhe, lá em cima, o que faz. Só você mexe aqui.
           </Sub>
-          {catalogo?.map((s) => (
-            <Box key={s.id} variante={s.ativo ? 'normal' : 'mut'}>
-              <div className="flex items-center justify-between gap-3">
-                <span className="min-w-0 truncate">{s.nome}</span>
-                {/* Sem `acento`: era ambar em todo servico LIGADO, ou seja,
-                    quatro botoes de destaque no estado normal da tela — e no
-                    botao que DESLIGA. O ambar aqui e' do que conclui. */}
-                <Chip onClick={() => agir(() => servicosApi.editar(s.id, { ativo: !s.ativo }))}>
-                  {s.ativo ? 'tirar da lista' : 'voltar para a lista'}
-                </Chip>
-              </div>
-              {/* "min 20 · sugerida 40" nao dizia minimo de QUE, nem sugerida
-                  para quem. Sao os dois limites que o barbeiro encontra la em
-                  cima quando poe o tempo dele. */}
-              <Sub className="mt-1">
-                nunca menos de {s.duracaoMinimaMin} min · normalmente {s.duracaoSugeridaMin} min
-              </Sub>
-              {/* Zero é o aviso de que o serviço existe e ninguém oferece. */}
-              {s.ativo && s.barbeiros === 0 && (
-                <Sub className="text-acento mt-1">
-                  nenhum barbeiro faz este — o cliente não vê ele
-                </Sub>
-              )}
-            </Box>
+          {ativos.map((s) => (
+            <CartaoDoCatalogo key={s.id} servico={s} agir={agir} />
           ))}
 
           <NovoServico aoCriar={(d) => agir(() => servicosApi.criar(d))} />
+
+          {/* Os desativados saem da lista principal e ficam AQUI, fechados.
+              Antes eles seguiam no meio dos outros, apagados, para sempre — e
+              numa barbearia que mexe no cardápio algumas vezes por ano isso
+              vira uma lista em que a maioria das caixas é de coisa que não se
+              vende mais.
+
+              Escondidos, e não apagados: o serviço guarda o histórico de quem
+              já cortou, e o nome dele é único na barbearia — quem "apagasse"
+              Corte e tentasse criar outro Corte esbarraria no repetido sem
+              entender por quê. Aqui ele volta com um toque. */}
+          {desativados.length > 0 && (
+            <>
+              <button onClick={() => setVerDesativados((v) => !v)}
+                      aria-expanded={verDesativados}
+                      className="flex items-center gap-2 text-left text-[11px] md:text-xs
+                                 text-lbl hover:text-acento uppercase tracking-[0.12em]">
+                <span aria-hidden className={verDesativados ? 'rotate-90' : ''}>›</span>
+                {desativados.length === 1
+                  ? '1 serviço fora da lista'
+                  : `${desativados.length} serviços fora da lista`}
+              </button>
+              {verDesativados && (
+                <>
+                  {/* Diz o que essa gaveta É, para quem abriu sem saber: sem
+                      isto, um "Corte" apagado aqui embaixo parece um bug. */}
+                  <Sub>
+                    Estes não aparecem para o cliente e nenhum barbeiro pode
+                    marcá-los. Ficam guardados aqui caso você queira de volta.
+                  </Sub>
+                  {desativados.map((s) => (
+                    <CartaoDoCatalogo key={s.id} servico={s} agir={agir} />
+                  ))}
+                </>
+              )}
+            </>
+          )}
 
         </>
       )}
 
       {erro && <Sub className="text-acento">{erro}</Sub>}
     </>
+  );
+}
+
+/// Um cartao do catalogo da barbearia. Extraido porque a lista principal e a
+/// gaveta dos desativados desenham o MESMO cartao — duas copias divergiriam na
+/// primeira vez que alguem mexesse so numa delas.
+function CartaoDoCatalogo({ servico: s, agir }: {
+  servico: ServicoDoCatalogo;
+  agir: (acao: () => Promise<unknown>) => Promise<void>;
+}) {
+  return (
+    <Box variante={s.ativo ? 'normal' : 'mut'}>
+      <div className="flex items-center justify-between gap-3">
+        <span className="min-w-0 truncate">{s.nome}</span>
+        {/* Sem `acento`: era ambar em todo servico LIGADO, ou seja,
+            quatro botoes de destaque no estado normal da tela — e no
+            botao que DESLIGA. O ambar aqui e' do que conclui. */}
+        <Chip onClick={() => agir(() => servicosApi.editar(s.id, { ativo: !s.ativo }))}>
+          {s.ativo ? 'tirar da lista' : 'voltar para a lista'}
+        </Chip>
+      </div>
+      {/* "min 20 · sugerida 40" nao dizia minimo de QUE, nem sugerida
+          para quem. Sao os dois limites que o barbeiro encontra la em
+          cima quando poe o tempo dele. */}
+      <Sub className="mt-1">
+        nunca menos de {s.duracaoMinimaMin} min · normalmente {s.duracaoSugeridaMin} min
+      </Sub>
+      {/* Zero é o aviso de que o serviço existe e ninguém oferece. */}
+      {s.ativo && s.barbeiros === 0 && (
+        <Sub className="text-acento mt-1">
+          nenhum barbeiro faz este — o cliente não vê ele
+        </Sub>
+      )}
+    </Box>
   );
 }
 
