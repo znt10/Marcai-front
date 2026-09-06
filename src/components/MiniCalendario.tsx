@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Box, Chip, Row, Lbl, Sub } from '@/components/wf';
 import { publicoApi, ignorarAborto } from '@/lib/api';
+import { urlAgendar } from '@/lib/escolha';
 
 const CABECALHO = ['s', 't', 'q', 'q', 's', 's', 'd']; // semana começa na segunda
 
@@ -89,7 +90,7 @@ export function MiniCalendario({ barbeiroId, servicoId }: { barbeiroId: string; 
               serviço, e volta com um horário na mão. Mandá-lo para a vitrine
               descartaria os três. */}
           {escolhido && (
-            <a href={`/agendar?barbeiroId=${barbeiroId}&servicoId=${servicoId}&inicio=${encodeURIComponent(escolhido)}`}>
+            <a href={urlAgendar({ barbeiroId, servicoId, inicio: escolhido })}>
               <Box variante="fill">
                 usar {slots.find(s => s.inicio === escolhido)?.hora}
               </Box>

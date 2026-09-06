@@ -65,7 +65,11 @@ export default async function Barbearia() {
             <div className="grid grid-cols-3 gap-2">
               {equipe.map((p) => (
                 <Box key={p.id} className="flex flex-col items-center gap-2 py-3">
-                  <Avatar tamanho={38} fotoUrl={p.fotoUrl} nome={p.nome} />
+                  {/* O rosto é o que a vitrine tem para mostrar de quem
+                      trabalha na casa — 38px era um selo ao lado do nome, não
+                      uma apresentação. 72 é o que cabe na coluna da grade de
+                      três num telefone de 390px. */}
+                  <Avatar tamanho={72} fotoUrl={p.fotoUrl} nome={p.nome} />
                   <span className="text-[13px]">{p.nome}</span>
                 </Box>
               ))}
@@ -101,9 +105,11 @@ export default async function Barbearia() {
         </Box>
       </a>
 
-      <div className="text-[10px] md:text-xs text-lbl text-center flex flex-col gap-1 mt-1">
-        <span>ou chama no zap: {formatar(b.whatsappContato)}</span>
-        <a href="/painel">sou barbeiro · entrar no painel</a>
+      {/* Sem o link do painel: esta tela e' a vitrine do CLIENTE, e a porta de
+          servico nao pertence a fachada. Quem trabalha aqui chega por
+          /painel direto, ou pelo link do convite. */}
+      <div className="text-[10px] md:text-xs text-lbl text-center mt-1">
+        ou chama no zap: {formatar(b.whatsappContato)}
       </div>
     </Frame>
   );

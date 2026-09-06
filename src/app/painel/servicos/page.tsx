@@ -1,24 +1,18 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { Frame, Box, Sub } from '@/components/wf';
+import { Frame, Sub } from '@/components/wf';
 import { Servicos } from '@/components/painel/Servicos';
-import { painelApi, ignorarAborto, type Eu } from '@/lib/api';
+import { useEu } from '@/components/painel/SessaoDoPainel';
 
 export default function ServicosDoPainel() {
-  const [eu, setEu] = useState<Eu | null>(null);
-
-  useEffect(() => {
-    const ctrl = new AbortController();
-    painelApi.eu(ctrl.signal).then(setEu).catch(ignorarAborto);
-    return () => ctrl.abort();
-  }, []);
+  // `eu` vem do provider do layout, buscado uma vez por sessão — não mais
+  // uma busca própria desta tela. Ver `SessaoDoPainel.tsx`.
+  const { eu } = useEu();
 
   return (
     <Frame>
       <h1>Serviços</h1>
       {/* Todos entram: cada um marca o que faz. O catálogo, embaixo, só o dono. */}
       {eu ? <Servicos eu={eu} /> : <Sub>carregando…</Sub>}
-      <a href="/painel"><Box>← voltar para a agenda</Box></a>
     </Frame>
   );
 }
