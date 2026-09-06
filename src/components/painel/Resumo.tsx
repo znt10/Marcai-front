@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { Box, Chip, Lbl, Sub } from '@/components/wf';
+import { SeletorDePeriodo } from '@/components/painel/SeletorDePeriodo';
 import {
   resumoApi, mensagemDoErro, type LinhaDoResumo, type Resumo as Dados,
 } from '@/lib/api';
@@ -93,41 +94,37 @@ export function Resumo() {
         ))}
       </div>
 
-      {/* As setas andam um período INTEIRO — é o que separa "semana passada"
-          de "sete dias atrás". Ficam desligadas num intervalo digitado à mão,
-          porque ali não existe "o anterior". */}
-      <div className="flex items-center gap-3 w-full max-w-[280px]">
-        <Chip aria-label="Período anterior" disabled={!modo}
-              onClick={() => modo && setPeriodo(periodoDe(modo, andar(modo, periodo.de, -1)))}>
-          ‹
-        </Chip>
-        <span className="flex-1 text-center font-letreiro uppercase tracking-[0.06em]
-                         text-sm md:text-base truncate">
-          {modo ? rotuloDe(modo, periodo.de, agora) : 'período próprio'}
-        </span>
-        <Chip aria-label="Próximo período" disabled={!modo || !temFuturo}
-              onClick={() => modo && setPeriodo(periodoDe(modo, andar(modo, periodo.de, 1)))}>
-          ›
-        </Chip>
-      </div>
+      {/* Um controle, e não dois campos de data.
+          As setas andam um período INTEIRO — é o que separa "semana passada"
+          de "sete dias atrás" — e o RÓTULO entre elas é um botão: elas
+          resolvem "a semana passada" e não resolvem "o domingo retrasado",
+          que por elas custaria dez cliques e dez consultas.
 
-      {/* Os campos de data ficam ABAIXO e sempre visíveis, não atrás de um
-          "personalizar": escondê-los faria o dono acreditar que só existem
-          três períodos. Sem `max` no "até" — um mês de calendário vai até o
-          dia 30 mesmo quando hoje é dia 5, e a conta continua certa porque o
-          serviço só soma o que já terminou. */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Lbl>de</Lbl>
-        <input type="date" value={periodo.de} max={periodo.ate}
-               onChange={(e) => e.target.value && setPeriodo({ ...periodo, de: e.target.value })}
-               className="bg-superficie border border-borda rounded-wf px-3 py-2
-                          text-[13px] md:text-sm font-dado text-tinta" />
-        <Lbl>até</Lbl>
-        <input type="date" value={periodo.ate} min={periodo.de}
-               onChange={(e) => e.target.value && setPeriodo({ ...periodo, ate: e.target.value })}
-               className="bg-superficie border border-borda rounded-wf px-3 py-2
-                          text-[13px] md:text-sm font-dado text-tinta" />
-      </div>
+          Os campos "de" e "até" que ficavam aqui saíram junto. Dois campos
+          pediam duas decisões para escolher uma coisa só, e abriam um quarto
+          estado — o intervalo que não é dia, nem semana, nem mês — contra o
+          qual a própria spec argumenta: o que o dono compara é "setembro
+          contra agosto". */}
+      <SeletorDePeriodo
+        modo={modo ?? 'mes'}
+        ancora={periodo.de}
+        rotulo={modo ? rotuloDe(modo, periodo.de, agora) : `${curto(periodo.de)} — ${curto(periodo.ate)}`}
+        hoje={agora}
+        podeAvancar={temFuturo}
+        // `null` quando hoje já está dentro do período mostrado: não há de
+        // onde voltar, e o botão some em vez de virar um clique que não muda
+        // nada.
+        aoVoltarParaHoje={
+          periodo.de <= agora && agora <= periodo.ate
+            ? null
+            : () => setPeriodo(periodoDe(modo ?? 'mes', agora))
+        }
+        aoAndar={(d) => modo && setPeriodo(periodoDe(modo, andar(modo, periodo.de, d)))}
+        // Clicar num dia âncora o período do modo corrente em volta dele: no
+        // modo semana, uma quarta abre a semana da quarta; no modo dia, o dia.
+        aoEscolherDia={(dia) => setPeriodo(periodoDe(modo ?? 'dia', dia))}
+        aoEscolherMes={(mesISO) => setPeriodo(periodoDe('mes', `${mesISO}-01`))}
+      />
 
       {dados === null && !erro && <Sub>carregando…</Sub>}
       {erro && <Sub className="text-acento">{erro}</Sub>}

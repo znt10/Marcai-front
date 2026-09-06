@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   periodoDe, andar, rotuloDe, modoDoPeriodo, porcentagens, type Modo,
+  coresPorBarbeiro, CORES_DE_BARBEIRO,
+  diasDaGrade, inicioDaSemana, mesDe, somarMeses, rotuloDoMes,
 } from '@/lib/resumo';
 
 // 2026-09-05 e' um SABADO — o ultimo dia da semana quando a semana comeca no
@@ -171,5 +173,89 @@ describe('porcentagens', () => {
 
   it('total zero devolve zeros, sem dividir por zero', () => {
     expect(porcentagens([0, 0])).toEqual([0, 0]);
+  });
+});
+
+describe('coresPorBarbeiro', () => {
+  const linha = (barbeiroId: string, cortes: number) => ({ barbeiroId, cortes });
+
+  it('a cor segue o BARBEIRO, nao a posicao no ranking', () => {
+    // Este e' o teste inteiro. Na versao anterior a cor saia da ordem de
+    // volume: bastava dois trocarem de lugar de um mes para o outro para
+    // trocarem de cor, e quem tinha aprendido "o azul e' o Nando" via o azul
+    // virar outra pessoa sem nada avisar.
+    const equipe = [linha('a', 10), linha('b', 20), linha('c', 5)];
+    const antes = coresPorBarbeiro(equipe);
+
+    // Mes seguinte: 'a' passou 'b'. A ordem da EQUIPE (a, b, c) nao mudou.
+    const depois = coresPorBarbeiro([linha('a', 30), linha('b', 20), linha('c', 5)]);
+
+    expect(depois.get('a')).toBe(antes.get('a'));
+    expect(depois.get('b')).toBe(antes.get('b'));
+    expect(depois.get('c')).toBe(antes.get('c'));
+  });
+
+  it('quem nao cortou no periodo nao ocupa cor', () => {
+    const cores = coresPorBarbeiro([linha('a', 3), linha('b', 0), linha('c', 1)]);
+    expect(cores.has('b')).toBe(false);
+    expect([...cores.keys()]).toEqual(['a', 'c']);
+  });
+
+  it('passando do maximo, os MAIORES ficam nomeados e a cauda dobra', () => {
+    const cores = coresPorBarbeiro(
+      [linha('a', 1), linha('b', 50), linha('c', 40), linha('d', 30), linha('e', 2)],
+      4,
+    );
+    // Tres nomeados (a quarta cor fica para o "outros"), e sao os tres maiores.
+    expect([...cores.keys()].sort()).toEqual(['b', 'c', 'd']);
+    // Mas a cor de cada um vem da ordem da EQUIPE, nao da de volume.
+    expect(cores.get('b')).toBe(CORES_DE_BARBEIRO[0]);
+    expect(cores.get('c')).toBe(CORES_DE_BARBEIRO[1]);
+    expect(cores.get('d')).toBe(CORES_DE_BARBEIRO[2]);
+  });
+
+  it('nenhuma cor se repete', () => {
+    const cores = coresPorBarbeiro([linha('a', 4), linha('b', 3), linha('c', 2), linha('d', 1)]);
+    expect(new Set(cores.values()).size).toBe(4);
+  });
+});
+
+describe('o calendario do seletor', () => {
+  it('a grade tem SEIS linhas sempre, para a caixa nao mudar de altura', () => {
+    for (const mes of ['2026-02', '2026-08', '2026-09', '2028-02']) {
+      expect(diasDaGrade(mes)).toHaveLength(42);
+    }
+  });
+
+  it('a grade comeca no DOMINGO da semana do dia 1', () => {
+    // 2026-09-01 e' uma terca; o domingo daquela semana e' 30/08.
+    expect(diasDaGrade('2026-09')[0]).toBe('2026-08-30');
+    // 2026-11-01 e' um domingo: a grade comeca nele proprio.
+    expect(diasDaGrade('2026-11')[0]).toBe('2026-11-01');
+  });
+
+  it('cada LINHA da grade e exatamente uma semana', () => {
+    // E' isso que deixa o modo semana acender a linha inteira.
+    const grade = diasDaGrade('2026-09');
+    for (let i = 0; i < 42; i += 7) {
+      expect(periodoDe('semana', grade[i])).toEqual({ de: grade[i], ate: grade[i + 6] });
+    }
+  });
+
+  it('inicioDaSemana cai no domingo, de qualquer dia da semana', () => {
+    for (const d of ['2026-08-30', '2026-09-02', '2026-09-05']) {
+      expect(inicioDaSemana(d)).toBe('2026-08-30');
+    }
+  });
+
+  it('somarMeses atravessa o ano nos dois sentidos', () => {
+    expect(somarMeses('2026-12', 1)).toBe('2027-01');
+    expect(somarMeses('2026-01', -1)).toBe('2025-12');
+    expect(mesDe('2026-09-06')).toBe('2026-09');
+  });
+
+  it('o rotulo do mes traz o ano so quando nao e o corrente', () => {
+    expect(rotuloDoMes('2026-09', HOJE)).toBe('setembro');
+    expect(rotuloDoMes('2025-09', HOJE)).toBe('setembro 2025');
   });
 });
