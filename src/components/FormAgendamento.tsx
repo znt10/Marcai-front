@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box, Chip, Row, Lbl, Sub, Avatar } from '@/components/wf';
 import { formatar } from '@/lib/telefone';
 import { formatarPreco } from '@/lib/dinheiro';
@@ -8,6 +8,8 @@ import {
   type Barbeiro, type Servico, type Slot, type DiaComSlots as Dia,
 } from '@/lib/api';
 import { DIAS_NA_HOME } from '@/lib/config';
+import { urlCalendario } from '@/lib/escolha';
+import { lerRascunho, salvarRascunho, limparRascunho } from '@/lib/rascunho';
 
 /// 'YYYY-MM-DD' de um instante ISO, no fuso do navegador. Não usa
 /// `@/lib/datas` de propósito: aquele módulo é o ponto único de conversão do
@@ -30,13 +32,36 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
   const [barbeiroId, setBarbeiroId] = useState<string>(inicial.barbeiroId ?? '');
   const [servicoId, setServicoId] = useState<string>(inicial.servicoId ?? '');
   const [slot, setSlot] = useState<Slot | null>(null);
-  // Consumido uma vez só: depois de casar com um slot da lista, some, para
-  // não reeleger o mesmo horário quando o usuário trocar de serviço.
-  const [inicioPendente, setInicioPendente] = useState<string | null>(inicial.inicio ?? null);
+  // REF, e não estado, e isso é a correção de um bug real: consumi-lo não pode
+  // disparar de novo o efeito que busca a grade. Como estado, ele era
+  // dependência daquele efeito — e o efeito começa com `setSlot(null)`. A
+  // sequência era: a lista chega, o horário é eleito, `inicioPendente` vira
+  // null, o efeito roda DE NOVO e apaga o horário recém-eleito, rebuscando
+  // hoje. Quem vinha do calendário via o dia sumir e o botão voltar a
+  // "confirmar" seco. O sintoma visível era a segunda requisição a /horarios.
+  //
+  // Consumido uma vez só, pelo mesmo motivo de antes: não reeleger o mesmo
+  // horário quando a pessoa trocar de serviço.
+  const inicioPendente = useRef<string | null>(inicial.inicio ?? null);
   const [nome, setNome] = useState('');
   const [whats, setWhats] = useState('');
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
+
+  // O nome e o telefone atravessam a ida ao calendário pela aba, não pela URL
+  // (`@/lib/rascunho` explica por que não pela URL). Lido em efeito, e nunca no
+  // `useState` inicial: `sessionStorage` não existe no servidor, e ler no
+  // render faria o HTML do servidor divergir do primeiro render do cliente —
+  // erro de hidratação, com o React descartando a árvore inteira.
+  useEffect(() => {
+    const r = lerRascunho();
+    if (r.nome) setNome(r.nome);
+    if (r.whats) setWhats(r.whats);
+  }, []);
+
+  // Grava a cada tecla. É barato (duas strings curtas) e é o que sobrevive a
+  // fechar a aba sem querer no meio do preenchimento.
+  useEffect(() => { salvarRascunho({ nome, whats }); }, [nome, whats]);
 
   // Todo fetch em efeito leva `signal` e aborta na limpeza. Sem isso, trocar
   // de barbeiro ou de serviço rápido deixa buscas sobrepostas no ar, e a
@@ -69,21 +94,23 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
     if (!servicoId || !barbeiroId) { setDias([]); return; }
     // Vindo do calendário, o dia escolhido pode estar muito além dos dois
     // dias da home — busca-se o dia dele, não os próximos.
-    const janela = inicioPendente
-      ? { de: diaLocalDe(inicioPendente), dias: 1 }
+    const janela = inicioPendente.current
+      ? { de: diaLocalDe(inicioPendente.current), dias: 1 }
       : { dias: DIAS_NA_HOME };
     const ctrl = new AbortController();
     publicoApi.horarios({ barbeiroId, servicoId, ...janela }, ctrl.signal)
       .then(setDias).catch(ignorarAborto);
     return () => ctrl.abort();
-  }, [servicoId, barbeiroId, inicioPendente]);
+  }, [servicoId, barbeiroId]);
 
   // Reeleger o horário que veio do calendário assim que a lista chega.
   useEffect(() => {
-    if (!inicioPendente) return;
-    const achado = dias.flatMap(d => d.slots).find(s => s.inicio === inicioPendente);
-    if (achado) { setSlot(achado); setInicioPendente(null); }
-  }, [dias, inicioPendente]);
+    if (!inicioPendente.current) return;
+    const achado = dias.flatMap(d => d.slots).find(s => s.inicio === inicioPendente.current);
+    // Zerar a ref não re-renderiza — e é justamente isso que se quer: eleger o
+    // horário não pode remexer na grade que acabou de chegar.
+    if (achado) { setSlot(achado); inicioPendente.current = null; }
+  }, [dias]);
 
   const servico = servicos.find(s => s.id === servicoId);
   const pronto = !!servicoId && !!slot && nome.trim().length >= 2 && whats.replace(/\D/g, '').length >= 10;
@@ -96,6 +123,10 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
         barbeiroId: slot!.barbeiroId, servicoId, inicio: slot!.inicio,
         nome, whatsapp: whats,
       });
+      // O rascunho cumpriu o papel de atravessar o calendário. Some agora,
+      // e não quando a aba fechar: o balcão da barbearia é um aparelho só, e o
+      // próximo cliente não pode achar o telefone do anterior no formulário.
+      limparRascunho();
       window.location.href = `/agendamento/${codigo}`;
     } catch (e) {
       setErro(mensagemDoErro(e));
@@ -169,7 +200,11 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
         {servicoId && <Sub>só aparece o que está livre</Sub>}
 
         {barbeiroId && servicoId && (
-          <a href={`/calendario?barbeiroId=${barbeiroId}&servicoId=${servicoId}`}>
+          // `urlCalendario`, e não uma URL escrita à mão: era escrita à mão, e
+          // esquecia o `inicio`. Quem já tinha um horário na mão e ia ao
+          // calendário só para dar uma olhada voltava sem ele — o "‹ voltar"
+          // de lá só sabe devolver o que chegou.
+          <a href={urlCalendario({ barbeiroId, servicoId, inicio: slot?.inicio })}>
             <Box className="flex justify-between items-center">
               <span>escolher outro dia</span><Lbl>calendário ›</Lbl>
             </Box>
