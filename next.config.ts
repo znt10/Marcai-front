@@ -11,9 +11,26 @@ import type { NextConfig } from "next";
 // So' vale em `next dev`; `next start` ignora.
 const dominio = process.env.NEXT_PUBLIC_DOMINIO_BASE;
 
+// No modo barbearia-padrao (ver NEXT_PUBLIC_TENANT_PADRAO no proxy.ts) o host
+// e' o IP da maquina na rede, que muda a cada DHCP — nao ha o que escrever
+// aqui, entao entram as FAIXAS privadas. Nenhum IP publico casa com elas.
+//
+// Isto nao afrouxa nada que ja nao estivesse aberto: a porta 3000 e' publicada
+// na rede de qualquer jeito, entao quem alcanca estes IPs ja baixava o HTML. O
+// que `allowedDevOrigins` guarda e' o site MALICIOSO fazendo o navegador de
+// alguem buscar /_next de outra origem — e um site na internet nao tem origem
+// 10.x. Vale so' em `next dev`, e so' com a variavel ligada a mao.
+const REDE_LOCAL = ["10.*.*.*", "192.168.*.*", "172.*.*.*"];
+const padrao = process.env.NEXT_PUBLIC_TENANT_PADRAO;
+
+const origens = [
+  ...(dominio ? [dominio, `*.${dominio}`] : []),
+  ...(padrao ? REDE_LOCAL : []),
+];
+
 const nextConfig: NextConfig = {
   output: "standalone",
-  ...(dominio ? { allowedDevOrigins: [dominio, `*.${dominio}`] } : {}),
+  ...(origens.length ? { allowedDevOrigins: origens } : {}),
 };
 
 export default nextConfig;
