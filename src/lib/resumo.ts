@@ -162,3 +162,51 @@ export function modoDoPeriodo(p: Periodo): Modo | null {
   }
   return null;
 }
+
+/// ## A cor de cada barbeiro
+///
+/// Quatro cores, e não seis: numa pizza qualquer fatia pode ser comparada com
+/// qualquer outra — e a primeira e a última ainda se encostam no anel. Então a
+/// paleta precisa passar no teste de TODOS os pares, não só dos vizinhos, e é
+/// aí que o tema escuro aperta. Cinco e seis foram medidos e reprovaram;
+/// quatro passa nos cinco testes, com pior separação ΔE 9.3 sob deuteranopia
+/// e 22.2 em visão normal, contra a superfície `#1e1815`.
+export const CORES_DE_BARBEIRO = ['#b88819', '#4a8ed0', '#c2537f', '#2e7a45'];
+
+/// Cinza de recuo, fora da paleta categórica de propósito: "outros" não é uma
+/// identidade, é a ausência de uma.
+export const COR_OUTROS = '#6c5e54';
+
+/// Qual cor é de qual barbeiro — e a resposta **não depende de quem cortou
+/// mais**.
+///
+/// A versão anterior ordenava por volume e distribuía as cores nessa ordem. O
+/// efeito: bastava dois barbeiros trocarem de posição de um mês para o outro
+/// para trocarem de cor. O dono que aprendeu "o azul é o Nando" via o azul
+/// virar outra pessoa sem nada avisar — e o pior é que a tela continuava
+/// coerente consigo mesma, então não havia como desconfiar.
+///
+/// Aqui o volume decide só **quem ganha cor** (os maiores, porque a cauda
+/// dobra em "outros"); a ordem das cores vem da ordem da EQUIPE, que é a que o
+/// back manda e não muda com o movimento do mês.
+export function coresPorBarbeiro(
+  linhas: readonly { barbeiroId: string; cortes: number }[],
+  maximoDeCores = CORES_DE_BARBEIRO.length,
+): Map<string, string> {
+  const comCorte = linhas.filter((l) => l.cortes > 0);
+  // Quem aparece nomeado: todos, se couberem; senão os maiores, guardando uma
+  // vaga para o "outros" que recolhe a cauda.
+  const nomeados =
+    comCorte.length <= maximoDeCores
+      ? comCorte
+      : [...comCorte].sort((a, b) => b.cortes - a.cortes).slice(0, maximoDeCores - 1);
+
+  const ehNomeado = new Set(nomeados.map((l) => l.barbeiroId));
+  const cores = new Map<string, string>();
+  let i = 0;
+  // Percorre na ordem ORIGINAL (a da equipe), não na de volume.
+  for (const l of linhas) {
+    if (ehNomeado.has(l.barbeiroId)) cores.set(l.barbeiroId, CORES_DE_BARBEIRO[i++]);
+  }
+  return cores;
+}

@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Box, Lbl, Sub } from '@/components/wf';
 import { GRANULARIDADE_MIN, PAINEL_ANTECEDENCIA_PADRAO_MIN } from '@/lib/config';
@@ -148,7 +149,7 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
            className={pronto ? 'cursor-pointer' : ''} onClick={marcar}>
         {enviando ? 'marcando…' : 'marcar'}
       </Box>
-      <a href="/painel"><Box>← voltar para a agenda</Box></a>
+      <Link href="/painel"><Box>← voltar para a agenda</Box></Link>
     </>
   );
 }

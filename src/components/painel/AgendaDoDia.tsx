@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Box, Sub } from '@/components/wf';
 import { painelApi, ignorarAborto, type ItemDaAgenda } from '@/lib/api';
@@ -224,7 +225,7 @@ export function AgendaDoDia() {
         );
       })}
 
-      <a href="/painel/novo"><Box variante="fill">+ marcar na mão</Box></a>
+      <Link href="/painel/novo"><Box variante="fill">+ marcar na mão</Box></Link>
     </>
   );
 }

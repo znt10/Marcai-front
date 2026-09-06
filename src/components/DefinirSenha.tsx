@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useState } from 'react';
 import { Box, Lbl, Sub } from '@/components/wf';
 import { publicoApi, mensagemDoErro } from '@/lib/api';
@@ -27,7 +28,7 @@ export function DefinirSenha({ token }: { token: string }) {
     return (
       <>
         <Sub>Senha criada. Já dá pra entrar no painel.</Sub>
-        <a href="/painel"><Box variante="fill">ir para o painel</Box></a>
+        <Link href="/painel"><Box variante="fill">ir para o painel</Box></Link>
       </>
     );
   }

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { barbeariaAtual } from '@/lib/tenant';
 import { equipeDaBarbearia, cardapioDaBarbearia } from '@/lib/vitrine';
 import { Frame, Box, Lbl, Sub, Avatar } from '@/components/wf';
@@ -99,11 +100,11 @@ export default async function Barbearia() {
       )}
 
       {/* Por último, como no desenho: a decisão vem depois de ler a casa. */}
-      <a href="/agendar" aria-label={`Marcar horário na ${b.nome}`}>
+      <Link href="/agendar" aria-label={`Marcar horário na ${b.nome}`}>
         <Box variante="fill" className="!py-4 !text-base md:!text-lg">
           marcar horário
         </Box>
-      </a>
+      </Link>
 
       {/* Sem o link do painel: esta tela e' a vitrine do CLIENTE, e a porta de
           servico nao pertence a fachada. Quem trabalha aqui chega por
