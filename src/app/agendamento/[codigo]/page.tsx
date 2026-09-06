@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { origemDoTenantNoServidor } from '@/lib/tenant';
 import { Frame } from '@/components/wf';
 import { Confirmado } from '@/components/Confirmado';
+import { urlDoIcs } from '@/lib/calendario';
 
 /// O `podeCancelar` vem PRONTO do Django desde a fatia 8. Ele era calculado
 /// aqui (`minutosAte > PRAZO_CANCELAMENTO_MIN`) sobre o relogio do servidor
@@ -44,6 +45,7 @@ export default async function Pagina({ params }: { params: Promise<{ codigo: str
   return (
     <Frame>
       <Confirmado
+        urlIcs={urlDoIcs(origem, codigo)}
         codigo={ag.codigo}
         clienteNome={ag.clienteNome}
         barbeiroNome={ag.barbeiroNome}

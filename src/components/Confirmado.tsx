@@ -4,11 +4,15 @@ import { useState } from 'react';
 import { Box, Lbl, Sub, Sep } from '@/components/wf';
 import { publicoApi, mensagemDoErro } from '@/lib/api';
 import { formatarPreco } from '@/lib/dinheiro';
+import { linkDoGoogleAgenda } from '@/lib/calendario';
 
 type Props = {
   codigo: string; clienteNome: string; barbeiroNome: string; servicoNome: string;
   inicioIso: string; fimIso: string; status: string; podeCancelar: boolean;
   endereco: string; whatsappBarbearia: string;
+  /// Montada no servidor: `urlDoIcs` precisa da origem do Django, e
+  /// `baseDe()` lê `window` — que não existe na renderização de servidor.
+  urlIcs: string;
   /// Snapshot do momento de marcar — nulo quando o barbeiro não tinha
   /// preço definido pra aquele serviço naquela hora.
   precoCentavos: number | null;
@@ -33,24 +37,6 @@ export function Confirmado(p: Props) {
     } catch (e) {
       setErro(mensagemDoErro(e));
     }
-  }
-
-  function baixarIcs() {
-    const fmt = (s: string) => s.replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-    const ics = [
-      'BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT',
-      `UID:${p.codigo}@barbearia`,
-      // DTSTAMP é obrigatório no RFC 5545; sem ele parte dos clientes de
-      // calendário recusa o arquivo em silêncio.
-      `DTSTAMP:${fmt(new Date().toISOString())}`,
-      `DTSTART:${fmt(p.inicioIso)}`, `DTEND:${fmt(p.fimIso)}`,
-      `SUMMARY:${p.servicoNome} com ${p.barbeiroNome}`,
-      `LOCATION:${p.endereco}`, 'END:VEVENT', 'END:VCALENDAR',
-    ].join('\r\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
-    a.download = 'agendamento.ics';
-    a.click();
   }
 
   if (status !== 'CONFIRMADO') {
@@ -102,7 +88,27 @@ export function Confirmado(p: Props) {
       </div>
 
       <Sub>Mandamos o lembrete no WhatsApp 1h antes.</Sub>
-      <Box variante="fill" className="cursor-pointer" onClick={baixarIcs}>salvar no calendário</Box>
+      {/* `<a>` e não `<Link>`, e aqui é a exceção da regra: `<Link>` é para
+          navegação INTERNA, e estes dois saem do app — um baixa um arquivo,
+          o outro vai para o Google. Um `<Link>` neles não faria sentido.
+
+          O `.ics` vem do SERVIDOR (`urlDoIcs`), e não de um `Blob` montado
+          aqui. Era esse o defeito: o Safari do iOS ignora `download` em URL
+          `blob:`, então no iPhone o botão não fazia nada. */}
+      <a href={p.urlIcs}>
+        <Box variante="fill">salvar no calendário</Box>
+      </a>
+
+      {/* O segundo caminho. O `.ics` acima resolve iPhone e Android, onde o
+          aparelho abre o calendário nativo; quem usa Google Agenda no
+          navegador prefere abrir lá já preenchido, sem baixar nada. */}
+      <a href={linkDoGoogleAgenda({
+            servicoNome: p.servicoNome, barbeiroNome: p.barbeiroNome,
+            inicioIso: p.inicioIso, fimIso: p.fimIso, endereco: p.endereco,
+          })}
+         target="_blank" rel="noopener noreferrer">
+        <Box className="text-center">abrir no Google Agenda</Box>
+      </a>
 
       {p.podeCancelar ? (
         <Box className="text-center cursor-pointer" onClick={cancelar}>cancelar meu horário</Box>
