@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { usePathname } from 'next/navigation';
 import { painelApi, ignorarAborto, type Eu } from '@/lib/api';
+import { lembrado, lembrar } from '@/lib/eu-lembrado';
 
 /// `eu` buscado UMA VEZ por visita ao painel, aqui, e compartilhado por
 /// contexto — não uma busca por tela. Antes eram seis: `NavPainel`,
@@ -29,8 +30,21 @@ const Contexto = createContext<SessaoDoPainel | null>(null);
 
 export function ProvedorDaSessao({ children }: { children: React.ReactNode }) {
   const caminho = usePathname();
-  const [eu, setEu] = useState<Eu | null>(null);
-  const [carregando, setCarregando] = useState(true);
+  // Começa do que o navegador lembra, não de `null`. A função no `useState`
+  // roda uma vez, ANTES da primeira pintura, então a barra de seções já nasce
+  // com as abas certas e o cabeçalho com o nome — em vez de aparecerem quando
+  // `/api/auth/eu` responde, que era o pisca de toda carga de página.
+  //
+  // No servidor `lembrado()` devolve `null` (não há `localStorage` lá), então
+  // o HTML renderizado no servidor é o estado "sem ninguém". Isso é de
+  // propósito: o painel é conteúdo de sessão, e mandar nome de gente no HTML
+  // de servidor seria pior que um quadro a mais de pintura.
+  const [eu, setEu] = useState<Eu | null>(lembrado);
+  // `carregando` responde "ainda não sei quem é", e com a cópia em mãos eu já
+  // sei — mesmo que ela possa estar velha. Quem consome usa isto para decidir
+  // se desenha; a revalidação abaixo corrige o desenho se o servidor
+  // discordar.
+  const [carregando, setCarregando] = useState(() => lembrado() === null);
   const naEntrada = caminho === '/painel/login';
 
   useEffect(() => {
@@ -40,7 +54,15 @@ export function ProvedorDaSessao({ children }: { children: React.ReactNode }) {
     // `NavPainel` já usava antes de a busca vir para cá.
     if (naEntrada) { setCarregando(false); return; }
     const ctrl = new AbortController();
-    painelApi.eu(ctrl.signal).then(setEu).catch(ignorarAborto).finally(() => setCarregando(false));
+    // Revalida SEMPRE, inclusive quando a cópia existe: nome, foto e papel
+    // mudam (o dono promove alguém, alguém troca a própria foto), e a sessão
+    // pode ter morrido. O que voltar daqui manda — a cópia só adiantou a
+    // pintura. Um 401 nem chega a este `.then`: o `client.ts` redireciona
+    // para a entrada e esquece a cópia lá.
+    painelApi.eu(ctrl.signal)
+      .then((atual) => { setEu(atual); lembrar(atual); })
+      .catch(ignorarAborto)
+      .finally(() => setCarregando(false));
     return () => ctrl.abort();
   }, [naEntrada]);
 

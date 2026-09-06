@@ -6,6 +6,7 @@ import { painelApi, mensagemDoErro } from '@/lib/api';
 import { Avatar } from '@/components/wf';
 import { prepararFoto, ErroDeFoto } from '@/lib/foto';
 import { useEu } from '@/components/painel/SessaoDoPainel';
+import { lembrar, esquecer } from '@/lib/eu-lembrado';
 
 /// A navegação do painel, uma só para as cinco telas.
 ///
@@ -98,6 +99,10 @@ export function NavPainel() {
       const pronta = await prepararFoto(arquivo);
       await painelApi.definirFoto(pronta);
       setEu((atual) => (atual ? { ...atual, fotoUrl: pronta } : atual));
+      // A cópia lembrada também: sem isto, a próxima carga de página pintaria
+      // por um instante a foto ANTIGA — o pisca de volta, só que pior, porque
+      // mostraria dado errado em vez de dado nenhum.
+      if (eu) lembrar({ ...eu, fotoUrl: pronta });
     } catch (e) {
       setErroFoto(e instanceof ErroDeFoto ? e.message : mensagemDoErro(e));
     }
@@ -108,6 +113,11 @@ export function NavPainel() {
     // lugar nenhum. Num aparelho de balcão, isso é a sessão do dono aberta para
     // quem pegar o telefone.
     await painelApi.sair().catch(() => {});
+    // Esquece ANTES de sair da página: num aparelho de balcão, o nome e a
+    // foto do dono não podem sobrar no navegador depois que ele saiu. O
+    // cookie já morreu no servidor, então isto não é o que protege a conta —
+    // é não deixar o rastro de quem estava aqui.
+    esquecer();
     window.location.href = '/painel/login';
   }
 
