@@ -28,15 +28,19 @@ describe('os blocos de preco por barbeiro da vitrine', () => {
     expect(blocos[1].servicos[0].precoCentavos).toBe(4000);
   });
 
-  it('tira da lista o barbeiro que nao faz servico nenhum', () => {
-    // Um bloco vazio com o nome em cima diria "este barbeiro nao faz nada",
-    // que nao e' o que "ninguem cadastrou os servicos dele" quer dizer.
+  it('MANTEM o barbeiro que ainda nao tem servico cadastrado', () => {
+    // A regra virou ao contrario, e o motivo e' a tela: os barbeiros agora
+    // sao o SELETOR da vitrine, nao quatro listas empilhadas. Sumir com o
+    // recem-chegado do seletor o apagaria da fachada — ele trabalha ali, e a
+    // grade de rostos sempre mostrou a equipe inteira. Quem decide o que
+    // dizer sobre a lista vazia e a tela, nao esta funcao.
     const blocos = blocosDeCardapio(
       [barbeiro('a', 'Jose cicero'), barbeiro('b', 'Recem-chegado')],
       [[servico('cabelo', 2200)], []],
     );
 
-    expect(blocos.map((b) => b.barbeiro.nome)).toEqual(['Jose cicero']);
+    expect(blocos.map((b) => b.barbeiro.nome)).toEqual(['Jose cicero', 'Recem-chegado']);
+    expect(blocos[1].servicos).toEqual([]);
   });
 
   it('mantem o servico sem preco definido', () => {
@@ -55,8 +59,9 @@ describe('os blocos de preco por barbeiro da vitrine', () => {
   it('aguenta a lista de cardapios mais curta que a equipe', () => {
     // Defesa contra o desencontro de indices: se um fetch falhasse e a lista
     // viesse curta, o pareamento por posicao daria `undefined` e a pagina
-    // quebraria no `.map` do bloco.
+    // quebraria no `.map` do bloco. O barbeiro fica, com cardapio vazio.
     const blocos = blocosDeCardapio([barbeiro('a', 'Jose'), barbeiro('b', 'Val')], [[servico('cabelo', 2200)]]);
-    expect(blocos).toHaveLength(1);
+    expect(blocos).toHaveLength(2);
+    expect(blocos[1].servicos).toEqual([]);
   });
 });
