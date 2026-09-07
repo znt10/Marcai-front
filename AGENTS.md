@@ -93,3 +93,21 @@ cookie é emitido por um lado e lido pelo outro.
 - Se mexeu em gráfico ou layout: **olhar o resultado renderizado**, não só o código.
   O erro de a pizza somar 99% só apareceu quando o SVG virou PNG e alguém olhou.
 - Diga quais telas, componentes ou libs mudaram e por quê.
+
+## "Rodar na net" — abrir pelo celular, na rede local
+
+Quando o dono pedir para **"rodar na net"**, ele quer abrir o app **no celular
+dele, pela rede de casa** — não é deploy. A receita completa está no
+`AGENTS.md` do `Marcai-back`, porque ela mexe nos dois repositórios; aqui fica
+só a parte que é deste lado e a armadilha que ela tem.
+
+No `.env` DESTE repositório a variável chama-se **`TENANT_PADRAO`**, sem o
+prefixo `NEXT_PUBLIC_`. O `docker-compose.yml` daqui interpola
+`${TENANT_PADRAO}` e é ele quem define `NEXT_PUBLIC_TENANT_PADRAO` dentro do
+contêiner — escrever o nome com prefixo no `.env` **não faz nada**, porque a
+compose sobrescreve.
+
+O sintoma quando se erra isso: o Django resolve a barbearia certo
+(`/api/saude` traz o slug) e o Next serve a página institucional no mesmo
+endereço, porque `proxy.ts` lê `NEXT_PUBLIC_TENANT_PADRAO` vazio e conclui que
+o host nu não é barbearia nenhuma.
