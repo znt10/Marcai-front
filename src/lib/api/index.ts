@@ -1,7 +1,7 @@
 /// Ponto de entrada da camada de API. Página e componente importam **daqui**,
 /// nunca escrevem caminho de rota à mão.
 
-export { pedir, ErroApi, ignorarAborto, mensagemDoErro, baseDe } from './client';
+export { pedir, ErroApi, ignorarAborto, mensagemDoErro, baseDe, origemDoTenant } from './client';
 export type { Pedido, Busca } from './client';
 
 export { publicoApi } from './publicoAPI';
