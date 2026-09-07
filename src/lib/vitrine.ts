@@ -46,15 +46,14 @@ export type CardapioDoBarbeiro = { barbeiro: Barbeiro; servicos: Servico[] };
 /// (um fetch que falhou) viraria `undefined.map` na página. O teste prova
 /// os dois casos.
 ///
-/// Barbeiro sem serviço nenhum sai da lista: um bloco vazio com o nome dele
-/// em cima diria "este barbeiro não faz nada", que não é o que "ninguém
-/// cadastrou os serviços dele ainda" quer dizer.
+/// Barbeiro sem serviço cadastrado FICA, com a lista vazia. Ele é uma das
+/// opções do seletor da vitrine, e sumir com ele ali o apagaria da fachada —
+/// a grade de rostos sempre mostrou a equipe inteira, tenha preço ou não.
+/// O que dizer sobre a lista vazia é decisão da tela, não desta função.
 export function blocosDeCardapio(
   equipe: Barbeiro[], porBarbeiro: Servico[][],
 ): CardapioDoBarbeiro[] {
-  return equipe
-    .map((barbeiro, i) => ({ barbeiro, servicos: porBarbeiro[i] ?? [] }))
-    .filter((bloco) => bloco.servicos.length > 0);
+  return equipe.map((barbeiro, i) => ({ barbeiro, servicos: porBarbeiro[i] ?? [] }));
 }
 
 /// O cardápio de CADA barbeiro, para a vitrine mostrar quanto custa com quem.
