@@ -84,4 +84,9 @@ export const PAINEL_ANTECEDENCIA_PADRAO_MIN = 30;
 // Verificação de número no WhatsApp (§10.5)
 export const CHECK_NUMERO_TIMEOUT_MS = 3_000;
 export const CHECK_NUMERO_TTL_MS = 86_400_000;
-export const CHECK_NUMERO_LIMITE_POR_IP_HORA = 10;
+// 10 viraram 60 quando o oráculo passou a ser OBRIGATÓRIO para marcar: agora
+// estourar o limite RECUSA o agendamento, e o limite é por IP — que no 4G não
+// é uma pessoa (CGNAT põe milhares de assinantes atrás do mesmo endereço).
+// Continua por IP e não por número: é assim que ele impede varredura, porque
+// quem varre consulta números DIFERENTES. Ver `tenant/config.py`.
+export const CHECK_NUMERO_LIMITE_POR_IP_HORA = 60;

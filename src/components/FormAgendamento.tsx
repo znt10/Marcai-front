@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { Box, Chip, Row, Lbl, Sub, Avatar } from '@/components/wf';
-import { formatar } from '@/lib/telefone';
+import { formatar, celular } from '@/lib/telefone';
 import { formatarPreco } from '@/lib/dinheiro';
 import {
   publicoApi, ignorarAborto, mensagemDoErro, ErroApi,
@@ -10,6 +10,7 @@ import {
 import { DIAS_NA_HOME } from '@/lib/config';
 import { urlCalendario } from '@/lib/escolha';
 import { lerRascunho, salvarRascunho, limparRascunho } from '@/lib/rascunho';
+import { lerMeusDados, salvarMeusDados, esquecerMeusDados } from '@/lib/meus-dados';
 
 /// 'YYYY-MM-DD' de um instante ISO, no fuso do navegador. Não usa
 /// `@/lib/datas` de propósito: aquele módulo é o ponto único de conversão do
@@ -47,6 +48,12 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
   const [whats, setWhats] = useState('');
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
+  // Só para a tela poder DIZER que lembrou e oferecer esquecer. Sem esta
+  // marca, o formulário apareceria preenchido sem explicação — que é
+  // exatamente o que `rascunho.ts` recusou quando decidiu não usar
+  // `localStorage`: no balcão, um aparelho só, o telefone do cliente anterior
+  // esperando o próximo. O que torna isto aceitável é o "não é você?".
+  const [veioDaMemoria, setVeioDaMemoria] = useState(false);
 
   // O nome e o telefone atravessam a ida ao calendário pela aba, não pela URL
   // (`@/lib/rascunho` explica por que não pela URL). Lido em efeito, e nunca no
@@ -54,9 +61,22 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
   // render faria o HTML do servidor divergir do primeiro render do cliente —
   // erro de hidratação, com o React descartando a árvore inteira.
   useEffect(() => {
+    // O rascunho PRIMEIRO e a memória depois: quem está no meio de um
+    // preenchimento (foi ao calendário e voltou) não pode ter o que acabou de
+    // digitar sobrescrito pelo que marcou mês passado.
     const r = lerRascunho();
-    if (r.nome) setNome(r.nome);
-    if (r.whats) setWhats(r.whats);
+    if (r.nome || r.whats) {
+      setNome(r.nome);
+      setWhats(r.whats);
+      return;
+    }
+
+    const meus = lerMeusDados();
+    if (meus) {
+      setNome(meus.nome);
+      setWhats(meus.whats);
+      setVeioDaMemoria(true);
+    }
   }, []);
 
   // Grava a cada tecla. É barato (duas strings curtas) e é o que sobrevive a
@@ -113,7 +133,13 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
   }, [dias]);
 
   const servico = servicos.find(s => s.id === servicoId);
-  const pronto = !!servicoId && !!slot && nome.trim().length >= 2 && whats.replace(/\D/g, '').length >= 10;
+  // `celular()` e não "tem 10 dígitos": a regra virou a mesma do Django, que
+  // agora exige CELULAR (11 dígitos, DDD que existe). Um botão que acende com
+  // um fixo é um botão que promete o que a API vai recusar — e o número
+  // errado só apareceria como cadeira vazia, porque sem WhatsApp não há
+  // confirmação, nem lembrete, nem link de cancelar.
+  const whatsValido = celular(whats) !== null;
+  const pronto = !!servicoId && !!slot && nome.trim().length >= 2 && whatsValido;
 
   async function confirmar() {
     if (!pronto || enviando) return;
@@ -127,6 +153,11 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
       // e não quando a aba fechar: o balcão da barbearia é um aparelho só, e o
       // próximo cliente não pode achar o telefone do anterior no formulário.
       limparRascunho();
+      // E LEMBRAR, que é o par disto: o rascunho some porque cumpriu o papel
+      // de atravessar o calendário; a memória nasce agora, porque o servidor
+      // acabou de aceitar este nome e este número. Guardar antes gravaria
+      // "Jos" e meio telefone.
+      salvarMeusDados({ nome, whats });
       window.location.href = `/agendamento/${codigo}`;
     } catch (e) {
       setErro(mensagemDoErro(e));
@@ -226,6 +257,31 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
                    setWhats(d.length >= 10 ? formatar(d) : d);
                  }} />
         </Box>
+
+        {/* Só depois de 10 dígitos: acusar "número inválido" no terceiro
+            dígito é o formulário reclamando de quem ainda está digitando. */}
+        {whats.replace(/\D/g, '').length >= 10 && !whatsValido && (
+          <Sub className="text-acento">
+            Precisa ser um celular com DDD — o horário é confirmado no WhatsApp.
+          </Sub>
+        )}
+
+        {/* A saída que torna a memória aceitável. Sem ela o formulário
+            apareceria preenchido sem explicação, e no balcão da barbearia
+            (um aparelho só) o próximo cliente marcaria com o telefone do
+            anterior sem perceber. */}
+        {veioDaMemoria && (
+          <Sub>
+            salvo neste aparelho ·{' '}
+            <button type="button" className="underline hover:text-acento"
+                    onClick={() => {
+                      esquecerMeusDados();
+                      setNome(''); setWhats(''); setVeioDaMemoria(false);
+                    }}>
+              não é você?
+            </button>
+          </Sub>
+        )}
 
         {erro && <Sub className="text-acento">{erro}</Sub>}
 
