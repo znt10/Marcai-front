@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { barbeariaAtual } from '@/lib/tenant';
-import { equipeDaBarbearia, cardapioDaBarbearia } from '@/lib/vitrine';
+import { equipeDaBarbearia, cardapioPorBarbeiro } from '@/lib/vitrine';
 import { Frame, Box, Lbl, Sub, Avatar } from '@/components/wf';
 import { formatar } from '@/lib/telefone';
 import { formatarPreco } from '@/lib/dinheiro';
@@ -21,10 +21,10 @@ import { formatarPreco } from '@/lib/dinheiro';
 /// HTML sair. Buscar equipe e preços depois da montagem faria a página chegar
 /// com dois blocos vazios e preenchê-los na cara de quem olha.
 export default async function Barbearia() {
-  const [b, equipe, cardapio] = await Promise.all([
+  const [b, equipe, cardapios] = await Promise.all([
     barbeariaAtual(),
     equipeDaBarbearia(),
-    cardapioDaBarbearia(),
+    cardapioPorBarbeiro(),
   ]);
 
   return (
@@ -79,21 +79,47 @@ export default async function Barbearia() {
         )}
       </Box>
 
-      {cardapio.length > 0 && (
+      {/* Um bloco por barbeiro, e não uma lista só de serviços.
+
+          A lista de antes vinha de `barbeiroId=qualquer`, o sentinela que
+          devolve o MENOR preço entre quem faz o serviço. Na znt isso
+          anunciava "cabelo R$ 22,00" — o preço do dono — enquanto os outros
+          três cobram R$ 40,00, e sem nenhum "a partir de" na tela. Quem
+          marcasse com outro pagaria quase o dobro do que a fachada prometeu.
+
+          O preço é por barbeiro no banco desde sempre; era só esta tela que
+          achatava. Agora cada um mostra o dele, e a comparação que o cliente
+          quer fazer ("com quem sai mais barato") acontece antes de escolher,
+          não na hora de pagar. */}
+      {cardapios.length > 0 && (
         <div className="flex flex-col gap-2">
           <Lbl>serviços</Lbl>
-          {cardapio.map((s) => (
-            <Box key={s.id} className="flex items-baseline justify-between gap-3">
-              <span>
-                {s.nome} <span className="font-dado text-[11px] text-lbl">{s.duracaoMin}min</span>
-              </span>
-              {/* Nulo enquanto ninguém que faz o serviço definiu preço. Some
-                  em vez de mostrar "R$ 0,00", que seria mentira. */}
-              {s.precoCentavos !== null && (
-                <span className="font-dado text-acento shrink-0">
-                  {formatarPreco(s.precoCentavos)}
-                </span>
-              )}
+          {cardapios.map(({ barbeiro, servicos }) => (
+            <Box key={barbeiro.id} className="flex flex-col gap-2.5">
+              <div className="flex items-center gap-2">
+                <Avatar tamanho={28} fotoUrl={barbeiro.fotoUrl} nome={barbeiro.nome} />
+                <span className="text-[15px]">{barbeiro.nome}</span>
+              </div>
+
+              <div className="flex flex-col gap-1 pl-[36px]">
+                {servicos.map((s) => (
+                  <div key={s.id} className="flex items-baseline justify-between gap-3">
+                    <span className="text-[13px] text-sub">
+                      {s.nome}{' '}
+                      <span className="font-dado text-[11px] text-lbl">{s.duracaoMin}min</span>
+                    </span>
+                    {/* Nulo enquanto este barbeiro não definiu preço para o
+                        serviço. Some o PREÇO, não a linha: "faço barba, preço
+                        a combinar" é informação; sumir com a barba esconde
+                        que ele faz. */}
+                    {s.precoCentavos !== null && (
+                      <span className="font-dado text-acento shrink-0">
+                        {formatarPreco(s.precoCentavos)}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
             </Box>
           ))}
         </div>
