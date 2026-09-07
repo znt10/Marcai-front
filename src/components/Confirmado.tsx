@@ -4,15 +4,11 @@ import { useState } from 'react';
 import { Box, Lbl, Sub, Sep } from '@/components/wf';
 import { publicoApi, mensagemDoErro } from '@/lib/api';
 import { formatarPreco } from '@/lib/dinheiro';
-import { linkDoGoogleAgenda } from '@/lib/calendario';
 
 type Props = {
   codigo: string; clienteNome: string; barbeiroNome: string; servicoNome: string;
   inicioIso: string; fimIso: string; status: string; podeCancelar: boolean;
   endereco: string; whatsappBarbearia: string;
-  /// Montada no servidor: `urlDoIcs` precisa da origem do Django, e
-  /// `baseDe()` lê `window` — que não existe na renderização de servidor.
-  urlIcs: string;
   /// Snapshot do momento de marcar — nulo quando o barbeiro não tinha
   /// preço definido pra aquele serviço naquela hora.
   precoCentavos: number | null;
@@ -88,27 +84,21 @@ export function Confirmado(p: Props) {
       </div>
 
       <Sub>Mandamos o lembrete no WhatsApp 1h antes.</Sub>
-      {/* `<a>` e não `<Link>`, e aqui é a exceção da regra: `<Link>` é para
-          navegação INTERNA, e estes dois saem do app — um baixa um arquivo,
-          o outro vai para o Google. Um `<Link>` neles não faria sentido.
 
-          O `.ics` vem do SERVIDOR (`urlDoIcs`), e não de um `Blob` montado
-          aqui. Era esse o defeito: o Safari do iOS ignora `download` em URL
-          `blob:`, então no iPhone o botão não fazia nada. */}
-      <a href={p.urlIcs}>
-        <Box variante="fill">salvar no calendário</Box>
-      </a>
+      {/* Aqui ficavam os dois botões de calendário (`.ics` e Google Agenda).
+          Saíram inteiros a pedido do dono: dois botões disputando a tela
+          logo abaixo do cupom, para uma coisa que o lembrete do WhatsApp já
+          resolve. O que faltava mesmo era o caminho de VOLTA — sem ele, a
+          única ação desta tela era desfazer o que a pessoa acabou de fazer.
 
-      {/* O segundo caminho. O `.ics` acima resolve iPhone e Android, onde o
-          aparelho abre o calendário nativo; quem usa Google Agenda no
-          navegador prefere abrir lá já preenchido, sem baixar nada. */}
-      <a href={linkDoGoogleAgenda({
-            servicoNome: p.servicoNome, barbeiroNome: p.barbeiroNome,
-            inicioIso: p.inicioIso, fimIso: p.fimIso, endereco: p.endereco,
-          })}
-         target="_blank" rel="noopener noreferrer">
-        <Box className="text-center">abrir no Google Agenda</Box>
-      </a>
+          Marcar de novo é o que acontece de verdade: o outro filho, a barba
+          junto, a semana que vem. Sem este botão o caminho era voltar no
+          navegador ou digitar o endereço outra vez.
+
+          `Box` liso e não `variante="fill"`: quem chegou aqui já conseguiu o
+          que queria, e um botão gritando "marcar" logo depois de marcar
+          convida ao horário duplicado. O destaque da tela é o cupom. */}
+      <Link href="/agendar"><Box className="text-center">marcar outro horário</Box></Link>
 
       {p.podeCancelar ? (
         <Box className="text-center cursor-pointer" onClick={cancelar}>cancelar meu horário</Box>
