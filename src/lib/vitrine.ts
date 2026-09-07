@@ -30,11 +30,60 @@ export const equipeDaBarbearia = cache(async (): Promise<Barbeiro[]> => {
   return d.barbeiros;
 });
 
-/// `barbeiroId=qualquer` é o sentinela que o Django já entende: devolve o
-/// serviço com o MENOR preço entre quem o faz, e a duração equivalente. É
-/// exatamente o que uma vitrine quer dizer — "a partir de" —, e evita esta
-/// tela ter de escolher um barbeiro para poder listar preço.
-export const cardapioDaBarbearia = cache(async (): Promise<Servico[]> => {
-  const d = await ler<{ servicos: Servico[] }>('/api/servicos?barbeiroId=qualquer');
-  return d.servicos;
+// `cardapioDaBarbearia()` morava aqui e SAIU junto com a lista achatada da
+// `/`. Ela usava `barbeiroId=qualquer`, o sentinela que o Django entende como
+// "o menor preço entre quem faz o serviço". O sentinela CONTINUA existindo no
+// back — se um dia a vitrine quiser dizer "a partir de R$ 22,00" em vez de
+// listar barbeiro por barbeiro, é por ele, e não por uma conta nova aqui.
+
+/// Um barbeiro e o cardápio DELE — o par que a `/` mostra num bloco.
+export type CardapioDoBarbeiro = { barbeiro: Barbeiro; servicos: Servico[] };
+
+/// Pareia a equipe com o cardápio de cada um, na ordem da equipe.
+///
+/// Pura, e separada da busca de propósito: o pareamento é por POSIÇÃO, e é
+/// exatamente onde um `Promise.all` que devolva menos itens que a equipe
+/// (um fetch que falhou) viraria `undefined.map` na página. O teste prova
+/// os dois casos.
+///
+/// Barbeiro sem serviço nenhum sai da lista: um bloco vazio com o nome dele
+/// em cima diria "este barbeiro não faz nada", que não é o que "ninguém
+/// cadastrou os serviços dele ainda" quer dizer.
+export function blocosDeCardapio(
+  equipe: Barbeiro[], porBarbeiro: Servico[][],
+): CardapioDoBarbeiro[] {
+  return equipe
+    .map((barbeiro, i) => ({ barbeiro, servicos: porBarbeiro[i] ?? [] }))
+    .filter((bloco) => bloco.servicos.length > 0);
+}
+
+/// O cardápio de CADA barbeiro, para a vitrine mostrar quanto custa com quem.
+///
+/// ## Por que isto existe, e o que ele conserta
+///
+/// A `/` mostrava uma lista só de serviços, alimentada por
+/// `cardapioDaBarbearia()` — que usa o sentinela `barbeiroId=qualquer` e
+/// devolve o MENOR preço entre quem faz. Numa barbearia onde o dono cobra
+/// R$ 22,00 e os outros R$ 40,00, a fachada anunciava R$ 22,00 **sem dizer
+/// "a partir de"**, e quem marcasse com outro pagaria quase o dobro. O preço
+/// é por barbeiro no banco (`tenant_barbeiroservico`) desde sempre; era só a
+/// vitrine que achatava.
+///
+/// ## O custo, que é real
+///
+/// Uma requisição por barbeiro, em paralelo. É O(N) no tamanho da equipe, e
+/// numa casa de quinze barbeiros seriam quinze — o momento de trocar isto por
+/// uma rota só no Django é quando alguma equipe crescer, não agora. Roda no
+/// servidor, então quem espera é o servidor e não o telefone de quem abriu.
+export const cardapioPorBarbeiro = cache(async (): Promise<CardapioDoBarbeiro[]> => {
+  const equipe = await equipeDaBarbearia();
+  const cardapios = await Promise.all(
+    equipe.map(async (b) => {
+      const d = await ler<{ servicos: Servico[] }>(
+        `/api/servicos?barbeiroId=${encodeURIComponent(b.id)}`,
+      );
+      return d.servicos;
+    }),
+  );
+  return blocosDeCardapio(equipe, cardapios);
 });
