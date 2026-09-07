@@ -101,7 +101,7 @@ const PORTA_API = process.env.NEXT_PUBLIC_API_URL || '8000';
 /// Action chamando isto hoje. Se um dia houver, a resposta certa nao e'
 /// inventar um host aqui — seria escolher uma barbearia no escuro, o mesmo
 /// defeito que este arquivo existe para consertar — por isso o erro alto.
-function origemDoTenant(): string {
+export function origemDoTenant(): string {
   if (typeof window === 'undefined') {
     throw new Error(
       'baseDe(): sem window nao ha host para montar a origem do Django. ' +
