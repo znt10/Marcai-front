@@ -278,4 +278,4 @@ e rodam lá com `docker compose run --rm api pytest -q`.
 
 ## Licença
 
-Sem licença declarada: todos os direitos reservados.
+MIT — veja o arquivo [`LICENSE`](LICENSE).
