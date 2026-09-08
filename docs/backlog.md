@@ -1,7 +1,6 @@
 # Backlog
 
-Ideias e dívidas registradas, com o motivo. Nada aqui está em construção — o que
-entra numa etapa ganha spec em `docs/superpowers/specs/`.
+Ideias e dívidas registradas, com o motivo. Nada aqui está em construção.
 
 ---
 
