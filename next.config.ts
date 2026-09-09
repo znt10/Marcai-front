@@ -28,8 +28,14 @@ const origens = [
   ...(padrao ? REDE_LOCAL : []),
 ];
 
+// `standalone` existe para o Dockerfile, que copia `.next/standalone` para uma
+// imagem sem node_modules. Na Vercel ele NAO pode existir: o build com
+// Turbopack morre em `ENOENT .next/next-server.js.nft.json` — o rastreamento
+// de arquivos que o modo standalone pede nao e' gerado la, e a plataforma
+// empacota a saida do proprio jeito, entao o modo nao acrescenta nada.
+// `VERCEL` e' definida pela plataforma durante o build.
 const nextConfig: NextConfig = {
-  output: "standalone",
+  ...(process.env.VERCEL ? {} : { output: "standalone" as const }),
   ...(origens.length ? { allowedDevOrigins: origens } : {}),
 };
 
