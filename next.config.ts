@@ -28,6 +28,19 @@ const origens = [
   ...(padrao ? REDE_LOCAL : []),
 ];
 
+// A origem do Django, para o rewrite de `/api/*` abaixo.
+//
+// SEM o prefixo `NEXT_PUBLIC_`, e isso e' o ponto inteiro: aquele prefixo
+// manda o Next INLINAR o valor no bundle do navegador, e um valor no bundle
+// e' um valor que o navegador usa — ele passaria a chamar o Django DIRETO,
+// noutro dominio registravel. Ai o cookie de sessao vira third-party, e o
+// Safari (todo iPhone) bloqueia third-party por padrao: o login pararia de
+// funcionar em metade dos aparelhos, sem erro nenhum na tela.
+//
+// Lida so' aqui, no processo do servidor. O navegador nunca sabe que o
+// Railway existe: ele fala com `brutus.marcai.api.br` e mais nada.
+const apiInterna = process.env.API_INTERNA_URL;
+
 // `standalone` existe para o Dockerfile, que copia `.next/standalone` para uma
 // imagem sem node_modules. Na Vercel ele NAO pode existir: o build com
 // Turbopack morre em `ENOENT .next/next-server.js.nft.json` — o rastreamento
@@ -37,6 +50,30 @@ const origens = [
 const nextConfig: NextConfig = {
   ...(process.env.VERCEL ? {} : { output: "standalone" as const }),
   ...(origens.length ? { allowedDevOrigins: origens } : {}),
+
+  // `/api/*` sai do Next e vai para o Django, de servidor para servidor.
+  //
+  // E' isto que faz `NEXT_PUBLIC_API_URL="443"` fechar o circuito: com a
+  // porta padrao do HTTPS, `origemDoTenant()` (lib/api/client.ts) devolve a
+  // PROPRIA origem da pagina, o pedido volta para o Next, e este rewrite o
+  // entrega ao Django. Para o navegador tudo e' same-origin — sem CORS, sem
+  // `SameSite=None`, e o cookie continua host-only como em dev, onde front e
+  // back so' diferiam na porta.
+  //
+  // O casamento e' `/api/*` e NADA MAIS. `/admin/*` fica de fora de
+  // proposito: no Next essas sao as PAGINAS do painel da plataforma, e o
+  // Django tem um `/admin/django/` proprio — mandar o prefixo inteiro para la
+  // engoliria o painel.
+  //
+  // Sem a variavel nao ha rewrite nenhum: em dev o navegador fala direto com
+  // a porta 8000, que e' o arranjo que `origemDoTenant()` ja monta sozinho.
+  ...(apiInterna
+    ? {
+        rewrites: async () => [
+          { source: "/api/:caminho*", destination: `${apiInterna}/api/:caminho*` },
+        ],
+      }
+    : {}),
 };
 
 export default nextConfig;
