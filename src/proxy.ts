@@ -19,6 +19,46 @@ const DOMINIO_BASE = process.env.NEXT_PUBLIC_DOMINIO_BASE ?? 'localhost';
 /// dois lados discordando sobre o que aquele endereço significa.
 const TENANT_PADRAO = process.env.NEXT_PUBLIC_TENANT_PADRAO ?? '';
 
+/// Os cabeçalhos com que o pedido segue adiante.
+///
+/// Em `/api/*` o rewrite do `next.config.ts` entrega o pedido ao Django no
+/// Railway, e nesse salto o Host vira o do Railway — até o `x-forwarded-host`
+/// chega com ele (conferido no DisallowedHost de produção). Como aqui o tenant
+/// É o host, o Django precisa do original: vai em `x-marcai-host`, com o
+/// segredo em `x-marcai-proxy`. Quem confere é o `HostDoProxyMiddleware`.
+///
+/// O IP do cliente vai junto, em `x-marcai-ip`: no salto até o Railway o
+/// `x-forwarded-for` passa a começar pelo IP da Vercel, e a trava de login do
+/// admin contaria as falhas de todo mundo num balde só. Aqui, na borda, ele
+/// ainda é o de quem chamou.
+///
+/// Os três são APAGADOS antes de tudo, venham de onde vierem: chegando de
+/// fora, é alguém tentando se passar por este proxy. O segredo barraria o
+/// golpe de qualquer jeito; apagar tira a dúvida de qual valor seguiu.
+///
+/// `PROXY_SEGREDO` sem `NEXT_PUBLIC_` de propósito — prefixado, iria para o
+/// bundle do navegador. Vazio (dev) = nenhum cabeçalho, e o Django segue no
+/// Host real da conexão, que em dev já é o da barbearia.
+function cabecalhosParaODjango(req: NextRequest, host: string, caminho: string): Headers {
+  const headers = new Headers(req.headers);
+  // Ninguém lê mais `x-barbearia-slug` (o Django resolve o tenant pelo Host),
+  // mas um valor vindo de fora continua sendo canal indevido, então
+  // `curl -H "x-barbearia-slug: dontony"` segue sem efeito nenhum.
+  headers.delete('x-barbearia-slug');
+  headers.delete('x-marcai-host');
+  headers.delete('x-marcai-proxy');
+  headers.delete('x-marcai-ip');
+
+  const segredo = process.env.PROXY_SEGREDO;
+  if (segredo && caminho.startsWith('/api/')) {
+    headers.set('x-marcai-host', host);
+    headers.set('x-marcai-proxy', segredo);
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    if (ip) headers.set('x-marcai-ip', ip);
+  }
+  return headers;
+}
+
 export async function proxy(req: NextRequest) {
   const host = req.headers.get('host') ?? '';
   const caminho = req.nextUrl.pathname;
@@ -37,7 +77,7 @@ export async function proxy(req: NextRequest) {
         : NextResponse.redirect(new URL('/admin/login', req.url));
     }
     if (caminho === '/') return NextResponse.rewrite(new URL('/admin', req.url));
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: cabecalhosParaODjango(req, host, caminho) } });
   }
 
   // ---- Fora do host do admin, o painel não existe ----
@@ -72,15 +112,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.rewrite(new URL('/institucional', req.url));
   }
 
-  const headers = new Headers(req.headers);
-  // Só a limpeza sobrevive: ninguém lê mais `x-barbearia-slug` (o Django
-  // resolve o tenant pelo Host, e `tenant.ts` parou de repassar o header
-  // quando migrou para isso) — mas um valor vindo de fora continua sendo
-  // canal indevido, então `curl -H "x-barbearia-slug: dontony"` segue sem
-  // efeito nenhum.
-  headers.delete('x-barbearia-slug');
-
-  return NextResponse.next({ request: { headers } });
+  return NextResponse.next({ request: { headers: cabecalhosParaODjango(req, host, caminho) } });
 }
 
 export const config = {
