@@ -39,7 +39,11 @@ const origens = [
 //
 // Lida so' aqui, no processo do servidor. O navegador nunca sabe que o
 // Railway existe: ele fala com `brutus.marcai.api.br` e mais nada.
-const apiInterna = process.env.API_INTERNA_URL;
+// A barra final sai aqui, e nao na disciplina de quem preenche a variavel: com
+// `https://...railway.app/` o destino vira `...app//api/...`, e o Django
+// responde 404 para toda rota — foi exatamente o que aconteceu no primeiro
+// deploy com o proxy ligado.
+const apiInterna = process.env.API_INTERNA_URL?.trim().replace(/\/+$/, "");
 
 // `standalone` existe para o Dockerfile, que copia `.next/standalone` para uma
 // imagem sem node_modules. Na Vercel ele NAO pode existir: o build com
