@@ -19,6 +19,32 @@ const DOMINIO_BASE = process.env.NEXT_PUBLIC_DOMINIO_BASE ?? 'localhost';
 /// dois lados discordando sobre o que aquele endereço significa.
 const TENANT_PADRAO = process.env.NEXT_PUBLIC_TENANT_PADRAO ?? '';
 
+/// O admin do Django e o CSS/JS que ele carrega — este último não mora sob
+/// `/admin`: o Django o serve em `/static/admin/...`.
+function ehDoAdminDoDjango(caminho: string): boolean {
+  return caminho === '/admin/django' || caminho.startsWith('/admin/django/') || caminho.startsWith('/static/');
+}
+
+/// O que sai do Next e é atendido pelo Django: `/api/*` pelo rewrite do
+/// `next.config.ts`, o admin do Django pelo rewrite feito AQUI.
+function vaiParaODjango(caminho: string): boolean {
+  return caminho.startsWith('/api/') || ehDoAdminDoDjango(caminho);
+}
+
+/// A URL no Django para o admin dele, com o caminho INTEIRO — barra final
+/// incluída — e a query, lidos da URL crua do pedido.
+///
+/// Não vai pelo `rewrites()` do `next.config.ts` de propósito: lá o
+/// `:caminho*` engole a barra final, e toda URL do admin do Django termina em
+/// `/`. Null sem API_INTERNA_URL: em dev o link do painel já aponta para a
+/// porta 8000 e nada passa por aqui.
+function destinoNoDjango(req: NextRequest): URL | null {
+  const base = process.env.API_INTERNA_URL?.trim().replace(/\/+$/, '');
+  if (!base) return null;
+  const bruta = new URL(req.url);
+  return new URL(`${base}${bruta.pathname}${bruta.search}`);
+}
+
 /// Os cabeçalhos com que o pedido segue adiante.
 ///
 /// Em `/api/*` o rewrite do `next.config.ts` entrega o pedido ao Django no
@@ -50,7 +76,7 @@ function cabecalhosParaODjango(req: NextRequest, host: string, caminho: string):
   headers.delete('x-marcai-ip');
 
   const segredo = process.env.PROXY_SEGREDO;
-  if (segredo && caminho.startsWith('/api/')) {
+  if (segredo && vaiParaODjango(caminho)) {
     headers.set('x-marcai-host', host);
     headers.set('x-marcai-proxy', segredo);
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
@@ -62,6 +88,21 @@ function cabecalhosParaODjango(req: NextRequest, host: string, caminho: string):
 export async function proxy(req: NextRequest) {
   const host = req.headers.get('host') ?? '';
   const caminho = req.nextUrl.pathname;
+
+  // `skipTrailingSlashRedirect` (next.config.ts) desliga o 308 automático do
+  // Next para que as URLs do admin do Django cheguem COM a barra final. O resto
+  // do site mantém o comportamento de antes: `/agendar/` vira `/agendar`. Lido
+  // da URL crua, que é onde a barra com certeza ainda está.
+  //
+  // A URL do redirecionamento TAMBÉM sai da crua, e não de `req.nextUrl.clone()`:
+  // o NextURL lembra que a original tinha barra e a repõe ao serializar, e o
+  // resultado era um 308 de `/agendar/` para `/agendar/` — laço infinito em
+  // todo endereço digitado com barra no fim.
+  const bruta = new URL(req.url);
+  if (bruta.pathname !== '/' && bruta.pathname.endsWith('/') && !ehDoAdminDoDjango(bruta.pathname)) {
+    bruta.pathname = bruta.pathname.replace(/\/+$/, '') || '/';
+    return NextResponse.redirect(bruta, 308);
+  }
 
   // ---- O host do admin ----
   // A sessão é conferida AQUI, antes de qualquer rota rodar. `jose` funciona
@@ -77,7 +118,15 @@ export async function proxy(req: NextRequest) {
         : NextResponse.redirect(new URL('/admin/login', req.url));
     }
     if (caminho === '/') return NextResponse.rewrite(new URL('/admin', req.url));
-    return NextResponse.next({ request: { headers: cabecalhosParaODjango(req, host, caminho) } });
+    const headers = cabecalhosParaODjango(req, host, caminho);
+    // Só DEPOIS da conferência da sessão acima: o admin do Django e os
+    // estáticos dele exigem o cookie da plataforma já aqui, e de novo lá
+    // (`AdminDjangoMiddleware`).
+    if (ehDoAdminDoDjango(caminho)) {
+      const destino = destinoNoDjango(req);
+      if (destino) return NextResponse.rewrite(destino, { request: { headers } });
+    }
+    return NextResponse.next({ request: { headers } });
   }
 
   // ---- Fora do host do admin, o painel não existe ----

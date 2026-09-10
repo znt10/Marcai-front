@@ -53,6 +53,13 @@ const apiInterna = process.env.API_INTERNA_URL?.trim().replace(/\/+$/, "");
 // `VERCEL` e' definida pela plataforma durante o build.
 const nextConfig: NextConfig = {
   ...(process.env.VERCEL ? {} : { output: "standalone" as const }),
+
+  // Sem isto o Next responde 308 tirando a barra final ANTES do proxy.ts e de
+  // qualquer rewrite — e toda URL do admin do Django termina em `/`
+  // (`/admin/django/`, `/admin/django/tenant/barbearia/`). Sem
+  // `CommonMiddleware` no Django, a forma sem barra e' 404. O resto do site
+  // mantem o redirecionamento de antes: quem o faz agora e' o proxy.ts.
+  skipTrailingSlashRedirect: true,
   ...(origens.length ? { allowedDevOrigins: origens } : {}),
 
   // `/api/*` sai do Next e vai para o Django, de servidor para servidor.
