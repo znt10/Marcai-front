@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import { origemDoTenantNoServidor } from './tenant';
+import { buscarNoDjango } from './tenant';
 import type { Barbeiro, Servico } from './api';
 
 /// A equipe e o cardápio da barbearia, lidos NO SERVIDOR para a tela `/`.
@@ -15,12 +15,7 @@ import type { Barbeiro, Servico } from './api';
 /// cara de quem olha — e um robô de busca não veria nada.
 
 async function ler<T>(caminho: string): Promise<T> {
-  const r = await fetch(`${await origemDoTenantNoServidor()}${caminho}`, {
-    // Mesmo raciocínio de `barbeariaAtual`: o dono muda preço ou desliga um
-    // serviço no painel e precisa ver na vitrine. O `cache()` do React abaixo
-    // já evita repetir dentro de UMA requisição.
-    cache: 'no-store',
-  });
+  const r = await buscarNoDjango(caminho);
   if (!r.ok) throw new Error(`GET ${caminho} devolveu ${r.status}`);
   return r.json();
 }

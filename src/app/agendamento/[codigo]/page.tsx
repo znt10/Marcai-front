@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { origemDoTenantNoServidor } from '@/lib/tenant';
+import { buscarNoDjango } from '@/lib/tenant';
 import { Frame } from '@/components/wf';
 import { Confirmado } from '@/components/Confirmado';
 
@@ -25,16 +25,13 @@ type Detalhe = {
 export default async function Pagina({ params }: { params: Promise<{ codigo: string }> }) {
   const { codigo } = await params;
 
-  // MESMA montagem de origem que `barbeariaAtual()` — importada de `@/lib/tenant`
-  // em vez de repetida aqui: duas copias divergentes seriam o mesmo defeito
-  // que `baseDe()` existe para evitar do lado do navegador.
-  const origem = await origemDoTenantNoServidor();
-
+  // A MESMA busca que `barbeariaAtual()` usa — importada de `@/lib/tenant` em
+  // vez de repetida aqui: duas copias divergentes seriam o mesmo defeito que
+  // `baseDe()` existe para evitar do lado do navegador.
+  //
   // O RLS continua garantindo que um codigo de outra barbearia nao aparece —
-  // so que agora quem entra no tenant e o Django, pelo Host desta requisicao.
-  const r = await fetch(`${origem}/api/agendamentos/${encodeURIComponent(codigo)}`, {
-    cache: 'no-store',
-  });
+  // so que agora quem entra no tenant e o Django, pelo host desta requisicao.
+  const r = await buscarNoDjango(`/api/agendamentos/${encodeURIComponent(codigo)}`);
   // So 404 e agendamento inexistente (ou de outro tenant, via RLS). Um 5xx
   // NAO e a mesma coisa — ver o comentario equivalente em barbeariaAtual().
   if (r.status === 404) notFound();
