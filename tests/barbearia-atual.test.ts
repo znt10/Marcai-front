@@ -15,6 +15,56 @@ describe('barbeariaAtual', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  // A configuração de PRODUÇÃO: `NEXT_PUBLIC_API_URL="443"` para o navegador
+  // chamar a própria origem, e `API_INTERNA_URL` para o servidor. Montar a
+  // origem pelo host aqui dava `http://brutus.<dominio>:443` — HTTP puro na
+  // porta do HTTPS —, e toda página renderizada no servidor respondia 500.
+  // O navegador nunca passou por esse caminho, então nada no painel acusava.
+  it('em produção, vai pela rede interna levando o host da barbearia no cabeçalho', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_URL', '443');
+    vi.stubEnv('API_INTERNA_URL', 'http://api:8000/');
+    vi.stubEnv('PROXY_SEGREDO', 's3gredo');
+    const fetchFalso = vi.fn(async (_url: string, _init?: RequestInit) => new Response(
+      JSON.stringify({ nome: 'BRUTUS', endereco: 'Rua Aurora, 88',
+                       horarioResumo: null, whatsappContato: '11988887777' }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    ));
+    vi.stubGlobal('fetch', fetchFalso);
+    headersMock.mockReturnValue(new Headers({ host: 'brutus.usemarcai.online' }));
+
+    const { barbeariaAtual } = await import('@/lib/tenant');
+    await barbeariaAtual();
+
+    // A barra final da variável sai, como no `next.config.ts`.
+    expect(fetchFalso.mock.calls[0][0]).toBe('http://api:8000/api/barbearia');
+    // Nesse salto o Host vira `api:8000`, que não é barbearia nenhuma: o
+    // Django só acha o tenant pelo `HostDoProxyMiddleware`, com o segredo.
+    const enviados = new Headers(fetchFalso.mock.calls[0][1]?.headers);
+    expect(enviados.get('x-marcai-host')).toBe('brutus.usemarcai.online');
+    expect(enviados.get('x-marcai-proxy')).toBe('s3gredo');
+  });
+
+  // Espelha o `proxy.ts`: sem segredo, nenhum cabeçalho — um `x-marcai-host`
+  // sem segredo o Django ignora de qualquer jeito, e mandá-lo sugeriria que
+  // ele vale alguma coisa.
+  it('com API_INTERNA_URL mas sem PROXY_SEGREDO, não inventa cabeçalho', async () => {
+    vi.stubEnv('API_INTERNA_URL', 'http://api:8000');
+    vi.stubEnv('PROXY_SEGREDO', '');
+    const fetchFalso = vi.fn(async (_url: string, _init?: RequestInit) =>
+      new Response(JSON.stringify({ nome: 'X', endereco: '', horarioResumo: null, whatsappContato: '' }),
+                   { status: 200 }));
+    vi.stubGlobal('fetch', fetchFalso);
+    headersMock.mockReturnValue(new Headers({ host: 'brutus.usemarcai.online' }));
+
+    const { barbeariaAtual } = await import('@/lib/tenant');
+    await barbeariaAtual();
+
+    const enviados = new Headers(fetchFalso.mock.calls[0][1]?.headers);
+    expect(enviados.get('x-marcai-host')).toBeNull();
+    expect(enviados.get('x-marcai-proxy')).toBeNull();
   });
 
   it('monta a origem do Django a partir do host da requisicao', async () => {
@@ -44,7 +94,7 @@ describe('barbeariaAtual', () => {
 
     await expect(barbeariaAtual()).rejects.toThrow('NEXT_NOT_FOUND');
     // A propriedade que este arquivo existe para provar: a origem e' POR
-    // HOST, nao um valor fixo. Um `origemDoTenantNoServidor` que devolvesse sempre
+    // HOST, nao um valor fixo. Um `buscarNoDjango` que fosse sempre a
     // 'http://brutus.localhost:8000' passaria no teste de cima sozinho —
     // aqui, um host DIFERENTE tem que produzir uma origem DIFERENTE.
     expect(fetchFalso.mock.calls[0][0]).toBe('http://naoexiste.localhost:8000/api/barbearia');
