@@ -1,0 +1,52 @@
+# Roda a suite em todo PR para a `main`, e na propria `main` depois do merge.
+#
+# Nao precisa de banco nem de contêiner: os testes daqui sao de unidade sobre
+# funcoes puras (`whatsapp-estado`, `client-base`, os formatadores) e nao
+# falam com o Django. Por isso este workflow e' curto e o do back nao e'.
+#
+# `tsc --noEmit` entra junto e NAO e' redundante com o vitest: o vitest
+# executa, o `tsc` confere os tipos de tudo — inclusive dos arquivos que
+# nenhum teste importa, que sao justamente onde um tipo quebrado passa
+# despercebido ate o build de producao.
+name: testes
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Dependencias
+        run: npm ci
+
+      # `npm test` roda por `dotenv -e .env`, e o `.env` nao e' versionado (nem
+      # deve ser). O `.env.example` tem a MESMA forma com valores de fachada,
+      # que e' tudo de que estes testes precisam — nenhum deles fala com
+      # servico de fora.
+      - name: Ambiente de fachada
+        run: cp .env.example .env
+
+      # `next typegen` ANTES do `tsc`, e sem ele o CI quebra em
+      # `LayoutProps`: o Next 16 GERA tipos de rota, pagina e layout dentro de
+      # `.next/types`, e `.next` nao e' versionado. Na maquina de quem
+      # desenvolve o diretorio existe porque o `next dev` esta rodando, entao
+      # o `tsc` passa ali e falha aqui — a pior forma de divergencia entre
+      # maquina e CI.
+      - name: Tipos
+        run: |
+          npx next typegen
+          npx tsc --noEmit
+
+      - name: Suite
+        run: npm run test:ci
