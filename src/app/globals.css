@@ -67,9 +67,12 @@
      produto vira uma regra, não dez edições. */
   h1 {
     font-family: var(--font-letreiro);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+    font-weight: 800;
+    /* Caixa mista, e espaçamento NEGATIVO: os dois andam juntos. A caixa
+       alta precisava de ar entre as letras para não virar um bloco; a caixa
+       mista pesada precisa do contrário — fechada, para o título ler como
+       uma palavra só. */
+    letter-spacing: -0.02em;
     line-height: 1.05;
     font-size: 1.75rem;
   }

@@ -1,14 +1,22 @@
 import type { Metadata } from 'next';
-import { Big_Shoulders, Archivo, Space_Mono } from 'next/font/google';
+import { Poppins, Archivo, Space_Mono } from 'next/font/google';
 import './globals.css';
 
 /// Três faces, três trabalhos — expostas como variáveis CSS para que os
 /// primitivos de @/components/wf as usem sem importar next/font.
 
-/// Letreiro condensado, caixa alta: títulos e o botão que conclui.
-/// Big Shoulders no lugar do Oswald de sempre — mesma família de letreiro,
-/// sem ser a que já está em todo lugar.
-const letreiro = Big_Shoulders({
+/// Títulos e o botão que conclui.
+///
+/// Era Big Shoulders, condensada e em caixa alta — uma face desenhada para
+/// gritar de longe, num letreiro de fachada. O redesign do painel troca isso
+/// por uma geométrica pesada em caixa MISTA: o título agora é lido de perto,
+/// na mão, como cabeçalho de tela e não como placa.
+///
+/// Vem com pesos explícitos porque a Poppins não é variável: cada peso é um
+/// arquivo. São os quatro que o produto usa — 800 nos títulos, 600 nas abas
+/// e botões, 400 no resto.
+const letreiro = Poppins({
+  weight: ['400', '600', '700', '800'],
   subsets: ['latin'], variable: '--fonte-letreiro', display: 'swap',
 });
 
