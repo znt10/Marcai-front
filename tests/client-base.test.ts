@@ -190,3 +190,35 @@ describe('baseDe', () => {
     expect(baseDe('/barbearias', ['/barbearia'])).toBe('/api');
   });
 });
+
+/// A rede que faltava, e ela existe porque o mesmo esquecimento já aconteceu
+/// TRÊS vezes: `/painel/foto`, `/painel/resumo` e `/painel/whatsapp`. Rota
+/// nova no `painelAPI.ts` sem a linha correspondente em `MIGRADAS` manda o
+/// pedido para o Next, que desde a fatia 8 não tem handler nenhum — 404 mudo,
+/// longe da causa, e a tela só diz "Não deu certo. Tenta de novo?".
+///
+/// O teste lê os caminhos do PRÓPRIO arquivo de rotas, e não de uma lista
+/// escrita à mão aqui: uma segunda lista para manter seria mais um lugar de
+/// onde esquecer.
+describe('MIGRADAS cobre todas as rotas do painel', () => {
+  it('nenhum caminho de painelAPI.ts fica apontando para o Next', async () => {
+    const { readFileSync } = await import('node:fs');
+    const fonte = readFileSync(
+      new URL('../src/lib/api/painelAPI.ts', import.meta.url), 'utf8',
+    );
+
+    // `pedir<...>('/painel/whatsapp'` e `pedir<...>(`/painel/equipe/${id}`)` —
+    // as duas formas, porque o arquivo usa as duas.
+    const caminhos = [...fonte.matchAll(/pedir<[^>]*>\(\s*['`](\/painel\/[^'`$]*)/g)]
+      .map((m) => m[1].replace(/\/$/, ''));
+
+    expect(caminhos.length).toBeGreaterThan(0);
+
+    comHost('brutus.localhost');
+    const esquecidos = [...new Set(caminhos)].filter(
+      (caminho) => baseDe(caminho) === '/api',
+    );
+
+    expect(esquecidos, 'faltam em MIGRADAS (src/lib/api/client.ts)').toEqual([]);
+  });
+});
