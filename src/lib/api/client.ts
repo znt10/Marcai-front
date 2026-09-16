@@ -62,6 +62,17 @@ export const MIGRADAS: readonly string[] = [
   '/painel/conflitos',
   '/painel/agendamentos',
   '/painel/barbearia',
+  // O WhatsApp da barbearia (estado, QR, desconectar). UMA entrada cobre as
+  // duas rotas: o casamento e por SEGMENTO, entao '/painel/whatsapp' ja
+  // arrasta '/painel/whatsapp/desconectar' junto.
+  //
+  // Esta linha faltou na primeira tentativa, e foi o terceiro esquecimento
+  // igual nesta lista (depois de '/painel/foto' e '/painel/resumo'). O
+  // sintoma nao ajuda em nada: o pedido vai para o Next, que nao tem handler
+  // desde a fatia 8, e a tela so diz "Nao deu certo. Tenta de novo?" —
+  // nenhum pedido chega ao Django, entao nem o log dele denuncia. Agora ha
+  // teste que pega isso sozinho (tests/client-base.test.ts).
+  '/painel/whatsapp',
   // Fecha a travessia — bloco C: as 3 rotas publicas que o cliente usa sem
   // sessao. '/agendamentos' e '/painel/agendamentos' se CHAMAM parecido mas
   // sao prefixos DIFERENTES (o casamento e por segmento, nao por comeco de

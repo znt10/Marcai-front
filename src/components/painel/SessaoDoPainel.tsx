@@ -30,21 +30,42 @@ const Contexto = createContext<SessaoDoPainel | null>(null);
 
 export function ProvedorDaSessao({ children }: { children: React.ReactNode }) {
   const caminho = usePathname();
-  // Começa do que o navegador lembra, não de `null`. A função no `useState`
-  // roda uma vez, ANTES da primeira pintura, então a barra de seções já nasce
-  // com as abas certas e o cabeçalho com o nome — em vez de aparecerem quando
-  // `/api/auth/eu` responde, que era o pisca de toda carga de página.
+  // Nasce VAZIO, igual ao servidor. A cópia lembrada entra logo abaixo, num
+  // efeito, e a diferença entre as duas coisas é o que mantém a hidratação
+  // inteira.
   //
-  // No servidor `lembrado()` devolve `null` (não há `localStorage` lá), então
-  // o HTML renderizado no servidor é o estado "sem ninguém". Isso é de
-  // propósito: o painel é conteúdo de sessão, e mandar nome de gente no HTML
-  // de servidor seria pior que um quadro a mais de pintura.
-  const [eu, setEu] = useState<Eu | null>(lembrado);
-  // `carregando` responde "ainda não sei quem é", e com a cópia em mãos eu já
-  // sei — mesmo que ela possa estar velha. Quem consome usa isto para decidir
-  // se desenha; a revalidação abaixo corrige o desenho se o servidor
-  // discordar.
-  const [carregando, setCarregando] = useState(() => lembrado() === null);
+  // Antes isto era `useState(lembrado)`, para o cabeçalho já nascer com o nome
+  // e as abas em vez de esperar `/api/auth/eu` — o pisca de toda carga de
+  // página. A intenção era boa e o efeito, o contrário: no servidor
+  // `localStorage` não existe, então o HTML vinha "sem ninguém", enquanto o
+  // PRIMEIRO render do cliente já vinha com nome, avatar e seis abas. React
+  // compara exatamente esses dois e reclamava "Hydration failed... this tree
+  // will be regenerated on the client" — e a palavra que importa ali é
+  // REGENERATED: ele descartava a árvore do servidor e repintava tudo no
+  // cliente. Ou seja, o pisca acontecia do mesmo jeito, agora com um erro
+  // junto e com o trabalho de renderização feito duas vezes.
+  //
+  // Com a cópia entrando depois da hidratação, o pisca é o mesmo de antes (um
+  // quadro), e o erro some. Não há terceira opção enquanto o nome vier do
+  // `localStorage`: o servidor não tem como saber quem é, e o primeiro render
+  // do cliente TEM que ser igual ao do servidor.
+  const [eu, setEu] = useState<Eu | null>(null);
+  // `carregando` responde "ainda não sei quem é". Começa em `true` para os
+  // dois lados concordarem; o efeito da cópia o desliga no quadro seguinte,
+  // sem esperar a rede, e a revalidação abaixo corrige o desenho se o
+  // servidor discordar.
+  const [carregando, setCarregando] = useState(true);
+
+  // DEPOIS da hidratação, nunca durante o render: é este atraso de um quadro
+  // que faz o cliente começar igual ao servidor. `[]` porque a cópia só
+  // interessa na montagem — daí em diante quem manda é a revalidação.
+  useEffect(() => {
+    const copia = lembrado();
+    if (copia) {
+      setEu(copia);
+      setCarregando(false);
+    }
+  }, []);
   const naEntrada = caminho === '/painel/login';
 
   useEffect(() => {

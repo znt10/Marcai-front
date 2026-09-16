@@ -5,8 +5,14 @@ import { pedir } from './client';
 
 export const LOGIN_DO_ADMIN = '/admin/login';
 
+/// O que a barbearia comprou. `SEM_ZAP`: o cliente não recebe WhatsApp e vê a
+/// confirmação na tela; a equipe continua recebendo pelo número do Marcaí.
+/// `COM_ZAP`: a barbearia tem número próprio, e é dele que saem as mensagens
+/// para os clientes.
+export type Plano = 'SEM_ZAP' | 'COM_ZAP';
+
 export type BarbeariaDaLista = {
-  id: string; slug: string; nome: string; ativo: boolean;
+  id: string; slug: string; nome: string; ativo: boolean; plano: Plano;
   barbeiros: number; agendamentos: number;
 };
 
@@ -16,6 +22,10 @@ export type BarbeariaDaLista = {
 export type NovaBarbearia = {
   slug: string; nome: string; endereco: string;
   whatsappContato: string; donoNome: string;
+  /// Ausente = `SEM_ZAP` do lado do servidor. Errar para o plano mais barato
+  /// não manda mensagem nenhuma de um número errado; errar para o outro,
+  /// manda.
+  plano?: Plano;
 };
 
 export const adminApi = {
@@ -37,6 +47,13 @@ export const adminApi = {
 
   alternarAtivo: (id: string, ativo: boolean) =>
     pedir<{ ok: true }>(`/admin/barbearias/${id}`, { metodo: 'PATCH', corpo: { ativo } }),
+
+  /// Um campo por chamada, e não os dois juntos, porque o servidor trata cada
+  /// um como um gatilho: trocar de plano cria ou apaga a instância da
+  /// Evolution, e desativar apaga também. No mesmo pedido, a ordem entre as
+  /// duas decidiria o resultado.
+  trocarPlano: (id: string, plano: Plano) =>
+    pedir<{ ok: true }>(`/admin/barbearias/${id}`, { metodo: 'PATCH', corpo: { plano } }),
 
   reemitirConvite: (id: string) =>
     pedir<{ linkConvite: string }>(`/admin/barbearias/${id}/convite`, { metodo: 'POST' }),

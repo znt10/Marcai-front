@@ -304,3 +304,41 @@ export const resumoApi = {
       busca: { de, ate }, signal, loginEm: LOGIN_DO_PAINEL,
     }),
 };
+
+/// O WhatsApp da própria barbearia.
+///
+/// `qrBase64` chega `null` para quem não é dono — a rota decide isso, não a
+/// tela. Com o QR na mão, um barbeiro ligaria o WhatsApp da barbearia ao
+/// próprio celular e passaria a receber a conversa de todo cliente. O
+/// `estado`, esse sim, todo mundo vê: é dele que sai a faixa de "caiu".
+export type EstadoDoWhatsapp =
+  /// A instância ainda não existe do lado da Evolution. Some sozinho: a
+  /// conferência de 5 minutos a cria.
+  | 'PENDENTE'
+  | 'AGUARDANDO_QR'
+  | 'CONECTADO'
+  | 'DESCONECTADO';
+
+export type WhatsappDaBarbearia = {
+  plano: 'SEM_ZAP' | 'COM_ZAP';
+  /// `null` no plano sem zap — não há vínculo nenhum de que falar.
+  estado: EstadoDoWhatsapp | null;
+  numeroConectado: string | null;
+  desconectadoDesde: string | null;
+  qrBase64: string | null;
+  /// Quantas mensagens de cliente não saíram enquanto o vínculo esteve fora
+  /// do ar. É o número que faz o dono descobrir a queda pelo prejuízo.
+  naoEnviadas: number;
+};
+
+export const whatsappApi = {
+  ver: (signal?: AbortSignal) =>
+    pedir<WhatsappDaBarbearia>('/painel/whatsapp', { signal, loginEm: LOGIN_DO_PAINEL }),
+
+  /// Trocar de celular: desliga o aparelho atual e a instância volta a gerar
+  /// QR. Só o dono — a rota responde 403 para `BARBEIRO`.
+  desconectar: () =>
+    pedir<{ ok: true }>('/painel/whatsapp/desconectar', {
+      metodo: 'POST', loginEm: LOGIN_DO_PAINEL,
+    }),
+};
