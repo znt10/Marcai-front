@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CAMINHO_DO_QR, faixaDoWhatsapp } from '@/lib/whatsapp-estado';
+import { CAMINHO_DO_QR, faixaDoWhatsapp, textoDoInterruptorBot } from '@/lib/whatsapp-estado';
 
 /// A combinação estado × papel, que é onde o erro caro mora: um barbeiro com
 /// caminho para o QR ligaria o WhatsApp da barbearia ao próprio celular; um
@@ -92,5 +92,21 @@ describe('faixaDoWhatsapp', () => {
 
   it('omite a contagem quando não há nenhuma', () => {
     expect(faixaDoWhatsapp(comZap, 'DONO', AGORA)!.texto).not.toContain('mensagem');
+  });
+});
+
+describe('textoDoInterruptorBot', () => {
+  it('descreve o desligado como o que acontece SE ligar, não como já ligado', () => {
+    // "Ligado, o robô responde…" ao lado de um interruptor "Desligado" lia
+    // como se o robô já estivesse respondendo — o oposto do que a tela mostra.
+    const texto = textoDoInterruptorBot(false);
+    expect(texto.startsWith('Se ligar')).toBe(true);
+    expect(texto).not.toMatch(/^Ligado,/);
+  });
+
+  it('mantém o texto do ligado como está', () => {
+    expect(textoDoInterruptorBot(true)).toContain(
+      'Quem escreve para este número recebe um menu para marcar ou cancelar.',
+    );
   });
 });

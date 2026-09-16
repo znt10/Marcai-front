@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Box, Frame, Lbl, Sep, Sub } from '@/components/wf';
 import { useEu } from '@/components/painel/SessaoDoPainel';
 import { mensagemDoErro, whatsappApi, type WhatsappDaBarbearia } from '@/lib/api';
+import { textoDoInterruptorBot } from '@/lib/whatsapp-estado';
 
 /// A tela de conectar o WhatsApp da barbearia — só do dono.
 ///
@@ -158,11 +159,7 @@ function Miolo({
             {mudandoBot ? 'mudando…' : dados.botAtivo ? 'Ligado' : 'Desligado'}
           </Box>
         </button>
-        <Sub>
-          {dados.botAtivo
-            ? 'Quem escreve para este número recebe um menu para marcar ou cancelar. Se alguém da barbearia responder pelo celular, o robô fica quieto naquela conversa por 4 horas.'
-            : 'Ligado, o robô responde quem escrever para este número com um menu para marcar ou cancelar horário. Grupo, áudio e foto ele ignora.'}
-        </Sub>
+        <Sub>{textoDoInterruptorBot(dados.botAtivo)}</Sub>
       </>
     );
   }
