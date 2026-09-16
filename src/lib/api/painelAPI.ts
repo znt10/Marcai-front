@@ -329,6 +329,9 @@ export type WhatsappDaBarbearia = {
   /// Quantas mensagens de cliente não saíram enquanto o vínculo esteve fora
   /// do ar. É o número que faz o dono descobrir a queda pelo prejuízo.
   naoEnviadas: number;
+  /// O atendimento automático. Só liga com o WhatsApp conectado, e nasce
+  /// desligado — ninguém acorda com um robô atendendo o número do negócio.
+  botAtivo: boolean;
 };
 
 export const whatsappApi = {
@@ -340,5 +343,12 @@ export const whatsappApi = {
   desconectar: () =>
     pedir<{ ok: true }>('/painel/whatsapp/desconectar', {
       metodo: 'POST', loginEm: LOGIN_DO_PAINEL,
+    }),
+
+  /// Liga ou desliga o bot. Só o dono — a rota responde 403 para `BARBEIRO`.
+  /// Responde 422 quando a Evolution recusa: nesse caso nada mudou.
+  ligarBot: (ativo: boolean) =>
+    pedir<{ ok: true; botAtivo: boolean }>('/painel/whatsapp/bot', {
+      metodo: 'POST', corpo: { ativo }, loginEm: LOGIN_DO_PAINEL,
     }),
 };
