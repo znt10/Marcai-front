@@ -37,8 +37,16 @@ jobs:
       - name: Ambiente de fachada
         run: cp .env.example .env
 
+      # `next typegen` ANTES do `tsc`, e sem ele o CI quebra em
+      # `LayoutProps`: o Next 16 GERA tipos de rota, pagina e layout dentro de
+      # `.next/types`, e `.next` nao e' versionado. Na maquina de quem
+      # desenvolve o diretorio existe porque o `next dev` esta rodando, entao
+      # o `tsc` passa ali e falha aqui — a pior forma de divergencia entre
+      # maquina e CI.
       - name: Tipos
-        run: npx tsc --noEmit
+        run: |
+          npx next typegen
+          npx tsc --noEmit
 
       - name: Suite
         run: npm run test:ci
