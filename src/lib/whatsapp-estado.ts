@@ -80,18 +80,3 @@ function contagem(quantas: number): string {
     ? ' · 1 mensagem não enviada'
     : ` · ${quantas} mensagens não enviadas`;
 }
-
-/// O texto explicativo abaixo do interruptor do atendimento automático.
-///
-/// Com o robô DESLIGADO, o texto descreve o que acontece SE o dono ligar —
-/// não o que já está acontecendo. "Ligado, o robô responde…" ao lado de um
-/// interruptor "Desligado" lia como se o robô já estivesse respondendo, que
-/// é o oposto do que a tela mostra.
-export function textoDoInterruptorBot(ativo: boolean): string {
-  return ativo
-    ? 'Quem escreve para este número recebe um menu para marcar ou cancelar. '
-      + 'Se alguém da barbearia responder pelo celular, o robô fica quieto '
-      + 'naquela conversa por 4 horas.'
-    : 'Se ligar, o robô passa a responder quem escrever para este número com '
-      + 'um menu para marcar ou cancelar horário. Grupo, áudio e foto ele ignora.';
-}
