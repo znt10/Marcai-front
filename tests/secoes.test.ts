@@ -15,7 +15,6 @@ describe('rotuloDaSecao', () => {
     expect(rotuloDaSecao('/painel/horarios')).toBe('horários');
     expect(rotuloDaSecao('/painel/servicos')).toBe('serviços');
     expect(rotuloDaSecao('/painel/resumo')).toBe('resumo');
-    expect(rotuloDaSecao('/painel/whatsapp')).toBe('whatsapp');
   });
 
   // `/painel/novo` existe e não é uma seção da lista: o botão é a única coisa
@@ -32,8 +31,8 @@ describe('rotuloDaSecao', () => {
 });
 
 describe('SECOES', () => {
-  it('marca como de dono só equipe, resumo e whatsapp', () => {
+  it('marca como de dono só equipe e resumo', () => {
     expect(SECOES.filter((s) => s.soDono).map((s) => s.href))
-      .toEqual(['/painel/equipe', '/painel/resumo', '/painel/whatsapp']);
+      .toEqual(['/painel/equipe', '/painel/resumo']);
   });
 });
