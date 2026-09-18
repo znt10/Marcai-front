@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<!--
+  A tela que o app instalado mostra quando abre sem sinal.
+
+  HTML solto, sem framework: ela é servida pelo service worker justamente
+  quando a rede não responde — se dependesse de carregar qualquer coisa, não
+  apareceria. As cores são as do painel no escuro, escritas à mão aqui pelo
+  mesmo motivo: a folha de estilo do app está do outro lado da rede que caiu.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sem conexão</title>
+<style>
+  html { color-scheme: dark; }
+  body {
+    margin: 0; min-height: 100dvh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; padding: 24px; text-align: center;
+    background: #1c1814; color: #f6f0e2;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  img { width: 72px; height: 72px; border-radius: 16px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+  p { margin: 0; max-width: 320px; font-size: 14px; line-height: 1.5; color: #c2b29b; }
+  button {
+    margin-top: 6px; padding: 14px 24px; border: 0; border-radius: 11px;
+    background: #d9a34a; color: #241a10; font-size: 15px; font-weight: 700;
+    font-family: inherit; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <img src="/marca.png" alt="">
+  <h1>Sem conexão</h1>
+  <p>
+    O painel precisa de internet para mostrar a agenda de hoje — e uma agenda
+    velha seria pior que nenhuma. Assim que o sinal voltar, é só tentar de novo.
+  </p>
+  <button onclick="location.reload()">tentar de novo</button>
+</body>
+</html>

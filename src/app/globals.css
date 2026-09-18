@@ -43,6 +43,15 @@
   --color-mut-borda:  #29211b;
   --color-linha:      #241d18;
 
+  /* Os quatro tokens que só o redesign do painel usa (Figma "Marcaí —
+     Painel do Dono (redesign)"). Nascem aqui, e não soltos nos componentes,
+     pela mesma razão dos de cima: cor literal em componente é como a próxima
+     tela diverge desta. */
+  --color-superficie2:  #413326;   /* o cartão dentro do cartão */
+  --color-borda-suave:  #3a2c1e;   /* o fio que separa linhas de uma lista */
+  --color-acento-forte: #e8b360;   /* o âmbar do DADO: hora, aba acesa */
+  --color-no-acento:    #241a10;   /* a tinta que vai POR CIMA do âmbar */
+
   --radius-wf:        4px;
 
   /* O gesto mais característico do wireframe, traduzido: sombra sólida sem
@@ -89,4 +98,128 @@
 
   a { text-decoration: none; }
   a:hover { color: var(--color-acento); }
+}
+
+/* O PAINEL — o redesign.
+
+   O painel do dono/barbeiro tem desenho próprio, desenhado no Figma
+   ("Marcaí — Painel do Dono (redesign)"), e ele não é o mesmo das telas do
+   cliente: nogueira um tom acima, âmbar mais velado, título em caixa mista
+   pesada em vez do letreiro em caixa alta, canto de 14px em vez dos 4px de
+   wireframe.
+
+   Vale como ESCOPO, e não como troca da paleta inteira, por isso mesmo: a
+   vitrine, o formulário e a confirmação continuam com a identidade que já
+   têm. Redefinir os tokens aqui dentro é o que faz cada `bg-superficie` e
+   `text-sub` já escritos nos componentes do painel virarem a cor nova sem
+   reescrever classe nenhuma — variável CSS herda, utilitária do Tailwind só
+   a lê. */
+.painel {
+  --color-fundo:      #1c1814;
+  --color-superficie: #362a1f;
+  --color-borda:      #4a3a2a;
+  --color-tinta:      #f6f0e2;
+  --color-sub:        #c2b29b;
+  --color-lbl:        #8f7e68;
+  --color-apagado:    #8f7e68;
+  --color-acento:     #d9a34a;
+  --color-mut:        #2b2118;
+  --color-mut-borda:  #3a2c1e;
+  --color-linha:      #3a2c1e;
+
+  --radius-wf: 14px;
+  /* Sem a sombra sólida de letreiro: é o gesto da identidade do cliente, e
+     no painel ela engrossaria cada cartão de uma lista longa. */
+  --shadow-sel: none;
+
+  /* Poppins no corpo também, não só nos títulos: no Figma o painel inteiro é
+     uma família só, com o peso fazendo a hierarquia. */
+  font-family: var(--font-letreiro);
+  background: var(--color-fundo);
+  color: var(--color-tinta);
+
+  /* O que o navegador pinta sozinho: a lista que abre num `select`, o
+     calendário do `input[type=date]`, o relógio do `type=time`, a barra de
+     rolagem. Nada disso é nosso CSS — sem esta linha o Chrome desenha a lista
+     do `select` com fundo branco e herda a tinta clara do painel por cima:
+     branco no branco, que foi o relatado em "fica tudo branco". */
+  color-scheme: dark;
+}
+
+/* A lista do `select` fechada em algumas plataformas usa as cores do próprio
+   `select`, e não as do esquema — por isso as opções também são pintadas à
+   mão. `background-color` e não `background`: o Firefox ignora o atalho
+   aqui. */
+.painel option,
+.painel optgroup {
+  background-color: var(--color-superficie);
+  color: var(--color-tinta);
+}
+
+/* O título de tela do painel: 30px, Black, caixa mista — o `pageHead` do
+   Figma. Fora daqui o `h1` continua o de cima. */
+.painel h1 {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+@media (min-width: 768px) {
+  .painel h1 { font-size: 34px; }
+}
+
+/* O MODO CLARO do painel.
+
+   O Figma desenha as seis telas duas vezes — a fileira escura e a clara — e
+   são a mesma interface com a paleta trocada: nenhuma medida, peso ou arranjo
+   muda entre as duas. Por isso o modo claro aqui é só este bloco de tokens, e
+   não uma segunda versão de cada componente.
+
+   Repare que o âmbar ESCURECE no claro (#a66b22 contra #d9a34a): o mesmo tom
+   que brilha sobre nogueira queimada some sobre creme. O `goldStrong`, que no
+   escuro era o âmbar mais aceso, no claro é o mais claro dos dois — ele marca
+   o DADO (a hora, a aba acesa), e sobre fundo claro quem se destaca é o tom
+   mais saturado, não o mais luminoso.
+
+   Duas entradas para o mesmo bloco: a preferência do sistema, para quem nunca
+   tocou no assunto, e o `data-tema` escrito por quem escolheu na barra de
+   topo. A escolha da pessoa ganha do sistema — é o que `:not([data-tema])`
+   garante na primeira. */
+html[data-tema="claro"] .painel {
+  color-scheme: light;
+  --color-fundo:      #faf6f0;
+  --color-superficie: #f3ebdf;
+  --color-superficie2: #ebdfce;
+  --color-borda:      #e0d0b8;
+  --color-borda-suave: #e7dac3;
+  --color-tinta:      #2b2118;
+  --color-sub:        #7a6952;
+  --color-lbl:        #a0917a;
+  --color-apagado:    #a0917a;
+  --color-acento:     #a66b22;
+  --color-acento-forte: #d9a34a;
+  --color-mut:        #f3ebdf;
+  --color-mut-borda:  #e7dac3;
+  --color-linha:      #e7dac3;
+}
+
+/* A preferência do sistema, para quem nunca escolheu na barra de topo. Só
+   vale sem `data-tema`: quem escolheu, escolheu. */
+@media (prefers-color-scheme: light) {
+  html:not([data-tema]) .painel {
+    color-scheme: light;
+    --color-fundo:      #faf6f0;
+    --color-superficie: #f3ebdf;
+    --color-superficie2: #ebdfce;
+    --color-borda:      #e0d0b8;
+    --color-borda-suave: #e7dac3;
+    --color-tinta:      #2b2118;
+    --color-sub:        #7a6952;
+    --color-lbl:        #a0917a;
+    --color-apagado:    #a0917a;
+    --color-acento:     #a66b22;
+    --color-acento-forte: #d9a34a;
+    --color-mut:        #f3ebdf;
+    --color-mut-borda:  #e7dac3;
+    --color-linha:      #e7dac3;
+  }
 }

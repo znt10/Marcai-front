@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { Box, Chip, Lbl, Sub } from '@/components/wf';
+import { Cartao, BotaoVazado, Texto } from '@/components/painel/pecas';
 import { formatar } from '@/lib/telefone';
 import {
   equipeApi, ignorarAborto, mensagemDoErro, type MembroDaEquipe,
@@ -55,56 +55,75 @@ export function Equipe({ recarregarEm, euId }: { recarregarEm?: number; euId?: s
 
   return (
     <>
-      <Lbl>equipe</Lbl>
-      {equipe === null && <Sub>carregando…</Sub>}
+      {equipe === null && <Texto>carregando…</Texto>}
 
       {equipe?.map((m) => (
-        <Box key={m.id} variante={m.ativo ? 'normal' : 'mut'}>
-          <div className="flex flex-wrap gap-2 justify-between items-baseline">
-            <span>
+        <Cartao key={m.id} variante={m.ativo ? 'normal' : 'mut'}
+                className="flex flex-col gap-2 px-3.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-[14.5px] font-bold text-tinta">
               {m.nome}
               {m.id === euId && <span className="text-lbl"> (você)</span>}
             </span>
-            <Lbl>{m.papel === 'DONO' ? 'dono' : 'barbeiro'} · {formatar(m.whatsapp)}</Lbl>
+            <span className="shrink-0 font-dado text-[11px] text-sub">
+              {m.papel === 'DONO' ? 'dono' : 'barbeiro'}
+            </span>
           </div>
 
-          {avisosDe(m).map((a) => <Sub key={a} className="text-acento">{a}</Sub>)}
-          {!m.ativo && <Sub>desativado</Sub>}
-          {m.ativo && m.agendamentosFuturos > 0 && (
-            <Sub>{m.agendamentosFuturos} horário(s) marcado(s)</Sub>
-          )}
+          <span className="text-[12px] font-medium text-sub">
+            {m.ativo && m.agendamentosFuturos > 0
+              ? `${m.agendamentosFuturos} ${m.agendamentosFuturos === 1 ? 'horário marcado' : 'horários marcados'} · `
+              : ''}
+            {formatar(m.whatsapp)}
+          </span>
 
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Chip onClick={() => agir(async () =>
-              setLink((await equipeApi.reemitirConvite(m.id)).linkConvite))}>
+          {avisosDe(m).map((a) => (
+            <span key={a} className="text-[12px] font-medium text-acento">{a}</span>
+          ))}
+          {!m.ativo && <Texto>desativado</Texto>}
+
+          {/* Os três botões dividem a linha em partes iguais, como no desenho:
+              são ações do mesmo peso, e uma delas mais larga que as outras
+              leria como a principal. */}
+          <div className="flex gap-2 pt-0.5">
+            <BotaoVazado className="flex-1"
+                         onClick={() => agir(async () =>
+                           setLink((await equipeApi.reemitirConvite(m.id)).linkConvite))}>
               novo convite
-            </Chip>
+            </BotaoVazado>
             {/* Não na própria linha: rebaixar a si mesmo é permitido pela
                 regra (havendo outro dono) e incrementa o tokenVersion — um
                 clique sem confirmação mataria a sua própria sessão. É o mesmo
                 cuidado que o servidor tem em `ehEuMesmo` para desativar. */}
             {m.id !== euId && (
-              <Chip onClick={() => agir(() => equipeApi.editar(m.id, {
-                papel: m.papel === 'DONO' ? 'BARBEIRO' : 'DONO',
-              }))}>
+              <BotaoVazado className="flex-1"
+                           onClick={() => agir(() => equipeApi.editar(m.id, {
+                             papel: m.papel === 'DONO' ? 'BARBEIRO' : 'DONO',
+                           }))}>
                 {m.papel === 'DONO' ? 'rebaixar' : 'promover'}
-              </Chip>
+              </BotaoVazado>
             )}
             {m.ativo
-              ? <Chip onClick={() => agir(() => equipeApi.desativar(m.id))}>desativar</Chip>
-              : <Chip onClick={() => agir(() => equipeApi.reativar(m.id))}>reativar</Chip>}
+              ? <BotaoVazado className="flex-1"
+                             onClick={() => agir(() => equipeApi.desativar(m.id))}>
+                  desativar
+                </BotaoVazado>
+              : <BotaoVazado className="flex-1"
+                             onClick={() => agir(() => equipeApi.reativar(m.id))}>
+                  reativar
+                </BotaoVazado>}
           </div>
-        </Box>
+        </Cartao>
       ))}
 
-      {erro && <Sub className="text-acento">{erro}</Sub>}
+      {erro && <Texto className="text-acento">{erro}</Texto>}
       {link && (
-        <Box variante="copia" className="break-all">
-          <Sub>manda esse link — ele só aparece uma vez</Sub>
-          {link}
-        </Box>
+        <Cartao className="flex flex-col gap-1 break-all">
+          <Texto>manda esse link — ele só aparece uma vez</Texto>
+          <span className="font-dado text-[11px] text-sub">{link}</span>
+        </Cartao>
       )}
-      <Sub>trocar o celular ou o papel derruba a sessão daquela pessoa</Sub>
+      <Texto>Trocar o celular ou o papel de alguém derruba a sessão dessa pessoa.</Texto>
     </>
   );
 }

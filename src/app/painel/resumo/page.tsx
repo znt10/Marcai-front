@@ -13,7 +13,7 @@ import { Resumo } from '@/components/painel/Resumo';
 /// aqui só adiantaria o mesmo "Só o dono vê o resumo." por um instante.
 export default function ResumoDoPainel() {
   return (
-    <Frame>
+    <Frame medio>
       <h1>Resumo</h1>
       <Resumo />
     </Frame>

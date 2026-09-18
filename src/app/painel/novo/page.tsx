@@ -11,7 +11,7 @@ export default function Novo() {
   const { eu } = useEu();
 
   return (
-    <Frame>
+    <Frame medio>
       <h1>Marcar na mão</h1>
       {eu ? <FormMarcar eu={eu} /> : <Sub>carregando…</Sub>}
     </Frame>

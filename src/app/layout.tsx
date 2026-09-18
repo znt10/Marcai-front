@@ -1,6 +1,7 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Poppins, Archivo, Space_Mono } from 'next/font/google';
 import './globals.css';
+import { SCRIPT_DO_TEMA } from '@/components/painel/Tema';
 
 /// Três faces, três trabalhos — expostas como variáveis CSS para que os
 /// primitivos de @/components/wf as usem sem importar next/font.
@@ -13,10 +14,11 @@ import './globals.css';
 /// na mão, como cabeçalho de tela e não como placa.
 ///
 /// Vem com pesos explícitos porque a Poppins não é variável: cada peso é um
-/// arquivo. São os quatro que o produto usa — 800 nos títulos, 600 nas abas
-/// e botões, 400 no resto.
+/// arquivo. São os seis que o produto usa — 900 no título de tela e na marca
+/// do painel, 800 nos títulos do resto, 700 e 600 nos nomes, abas e botões,
+/// 500 no corpo do painel, 400 no resto.
 const letreiro = Poppins({
-  weight: ['400', '600', '700', '800'],
+  weight: ['400', '500', '600', '700', '800', '900'],
   subsets: ['latin'], variable: '--fonte-letreiro', display: 'swap',
 });
 
@@ -32,12 +34,57 @@ const dado = Space_Mono({
   weight: ['400', '700'], subsets: ['latin'], variable: '--fonte-dado', display: 'swap',
 });
 
-export const metadata: Metadata = { title: 'Agendamento' };
+export const metadata: Metadata = {
+  title: 'Agendamento',
+  // O iPhone não lê o manifesto para decidir como abrir um app instalado: ele
+  // lê estas três coisas. Sem `capable`, o painel adicionado à tela de início
+  // abre com a barra de endereço do Safari por cima — que é justamente o que
+  // instalar queria tirar.
+  appleWebApp: {
+    capable: true,
+    title: 'Painel',
+    // A barra de status vira translúcida sobre o fundo do app, em vez de uma
+    // tira branca em cima da nogueira.
+    statusBarStyle: 'black-translucent',
+  },
+};
+
+/// A cor da barra do navegador — a mesma do fundo do painel, nos dois modos.
+///
+/// Segue a preferência do SISTEMA, e não a escolha feita no botão da barra:
+/// esta cor é lida do HTML pelo navegador antes de qualquer script rodar, e
+/// não há como um `meta` acompanhar um estado do React. Quem inverte o tema à
+/// mão fica com a barra do outro modo — o preço é uma faixa de cor no topo,
+/// e o troco seria um lampejo a cada abertura.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#1c1814' },
+    { media: '(prefers-color-scheme: light)', color: '#faf6f0' },
+  ],
+};
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="pt-BR" className={`${letreiro.variable} ${corpo.variable} ${dado.variable}`}>
-      <body>{children}</body>
+    // `suppressHydrationWarning` no `<html>`, e só nele: o script abaixo
+    // escreve `data-tema` neste elemento ANTES de o React hidratar, então o
+    // atributo que veio do servidor e o que está no navegador diferem de
+    // propósito — é exatamente o que evita o pisca. Sem esta marca o React
+    // reclama de uma diferença que é o desenho funcionando. Ela não desce
+    // para os filhos: qualquer outra divergência continua sendo avisada.
+    <html lang="pt-BR" suppressHydrationWarning
+          className={`${letreiro.variable} ${corpo.variable} ${dado.variable}`}>
+      <body>
+        {/* Antes de qualquer pintura: escreve no `<html>` o tema que a pessoa
+            escolheu no painel, para a tela não nascer escura e clarear no
+            quadro seguinte. Ver `Tema.tsx`.
+
+            No topo do `<body>`, e não num `<head>` escrito à mão: a
+            documentação desta versão do Next pede que o `<head>` do layout
+            raiz fique com a Metadata API. Aqui ele roda enquanto o HTML é
+            lido, que é antes da hidratação — que é o que importa. */}
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_DO_TEMA }} />
+        {children}
+      </body>
     </html>
   );
 }

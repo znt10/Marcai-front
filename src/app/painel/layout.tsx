@@ -9,6 +9,14 @@ import { ProvedorDaSessao } from '@/components/painel/SessaoDoPainel';
 /// barra de topo somada a uma altura de tela inteira, TODA tela do painel
 /// nasceria rolável por uns 90px de nada.
 ///
+/// `painel` é a classe que liga o redesign: ela redefine os tokens de cor,
+/// o raio e a face do corpo para toda esta subárvore (ver o bloco `.painel`
+/// em `globals.css`). Fica no elemento que envolve NavPainel E `children`
+/// porque a barra de topo é tão parte do desenho quanto as telas.
+///
+/// `min-h-dvh` aqui, e não só no `Frame`: sem ele o fundo novo terminaria
+/// junto com o conteúdo, e o resto da janela voltaria ao fundo do cliente.
+///
 /// `ProvedorDaSessao` é Client Component; este arquivo continua Server
 /// Component (React não suporta contexto em Server Component) — ele só
 /// importa o provider e o renderiza, sem precisar de `'use client'` próprio.
@@ -16,7 +24,7 @@ import { ProvedorDaSessao } from '@/components/painel/SessaoDoPainel';
 /// buscam `eu` (as páginas dentro de `children`) dependem do mesmo contexto.
 export default function LayoutDoPainel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="[&_.moldura]:min-h-0">
+    <div className="painel min-h-dvh [&_.moldura]:min-h-0">
       <ProvedorDaSessao>
         <NavPainel />
         {children}

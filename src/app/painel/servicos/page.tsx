@@ -1,5 +1,6 @@
 'use client';
-import { Frame, Sub } from '@/components/wf';
+import { Frame } from '@/components/wf';
+import { Texto, TituloDaTela } from '@/components/painel/pecas';
 import { Servicos } from '@/components/painel/Servicos';
 import { useEu } from '@/components/painel/SessaoDoPainel';
 
@@ -9,10 +10,10 @@ export default function ServicosDoPainel() {
   const { eu } = useEu();
 
   return (
-    <Frame>
-      <h1>Serviços</h1>
+    <Frame medio>
+      <TituloDaTela titulo="Serviços" />
       {/* Todos entram: cada um marca o que faz. O catálogo, embaixo, só o dono. */}
-      {eu ? <Servicos eu={eu} /> : <Sub>carregando…</Sub>}
+      {eu ? <Servicos eu={eu} /> : <Texto>carregando…</Texto>}
     </Frame>
   );
 }

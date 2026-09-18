@@ -32,7 +32,7 @@ describe('rotuloDaSecao', () => {
 });
 
 describe('SECOES', () => {
-  it('marca como de dono só equipe, resumo e whatsapp', () => {
+  it('marca como de dono equipe, resumo e whatsapp', () => {
     expect(SECOES.filter((s) => s.soDono).map((s) => s.href))
       .toEqual(['/painel/equipe', '/painel/resumo', '/painel/whatsapp']);
   });

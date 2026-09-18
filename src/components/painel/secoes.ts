@@ -20,8 +20,10 @@ export const SECOES: Secao[] = [
   // administra — e porque entrar no meio reordenaria cinco abas que a equipe
   // já sabe onde ficam. O barbeiro comum continua vendo quatro.
   { href: '/painel/resumo', rotulo: 'resumo', soDono: true },
-  // A tela do WhatsApp só se achava pela faixa de "desconectado"; com o bot
-  // ligando por ela, o dono precisa chegar sem esperar o aparelho cair.
+  // O WhatsApp fica no fim, junto das outras duas de quem administra. Ele é
+  // visitado duas vezes na vida da barbearia (o dia em que conecta e o dia em
+  // que troca de celular) — mas quem precisa dele precisa ACHAR, e a faixa de
+  // aviso só aparece quando o vínculo já caiu.
   { href: '/painel/whatsapp', rotulo: 'whatsapp', soDono: true },
 ];
 
