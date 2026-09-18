@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
-import { Frame, Sep, Sub } from '@/components/wf';
+import { Frame } from '@/components/wf';
+import { Fio, Texto, TituloDaTela } from '@/components/painel/pecas';
 import { Equipe } from '@/components/painel/Equipe';
 import { FormBarbeiro } from '@/components/painel/FormBarbeiro';
 import { useEu } from '@/components/painel/SessaoDoPainel';
@@ -15,7 +16,7 @@ export default function EquipeDoPainel() {
 
   return (
     <Frame>
-      <h1>Equipe</h1>
+      <TituloDaTela titulo="Equipe" />
 
       {/* A barreira de verdade é o 403 da rota; isto aqui é só não mostrar ao
           barbeiro uma tela que não vai carregar. Antes, com `eu` ainda
@@ -24,13 +25,13 @@ export default function EquipeDoPainel() {
           Com `carregando` disponível, não mostramos nenhum dos dois ramos
           antes de saber de verdade. */}
       {carregando
-        ? <Sub>carregando…</Sub>
+        ? <Texto>carregando…</Texto>
         : eu && eu.papel !== 'DONO'
-          ? <Sub>Só o dono mexe na equipe.</Sub>
+          ? <Texto>Só o dono mexe na equipe.</Texto>
           : (
             <>
               <Equipe recarregarEm={versao} euId={eu?.id} />
-              <Sep />
+              <Fio className="my-1" />
               <FormBarbeiro aoCriar={() => setVersao((v) => v + 1)} />
             </>
           )}

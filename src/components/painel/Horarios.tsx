@@ -1,6 +1,8 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { Box, Chip, Lbl, Sub, Sep } from '@/components/wf';
+import {
+  Cartao, Pilula, BotaoCheio, BotaoVazado, Interruptor, Titulo, Texto, Fio,
+} from '@/components/painel/pecas';
 import {
   horariosApi, painelApi, publicoApi, mensagemDoErro, ErroApi,
   type DiaDeTrabalho, type Bloqueio, type Conflito, type Eu, type Barbeiro,
@@ -127,104 +129,132 @@ export function Horarios({ eu }: { eu: Eu }) {
       {barbeiros.length > 1 && (
         <div className="flex flex-wrap gap-2">
           {barbeiros.map((b) => (
-            <Box key={b.id} variante={b.id === barbeiroId ? 'fill' : 'normal'}
-                 className="cursor-pointer" onClick={() => setBarbeiroId(b.id)}>
+            <Pilula key={b.id} ativo={b.id === barbeiroId} onClick={() => setBarbeiroId(b.id)}>
               {b.id === eu.id ? `${b.nome} (você)` : b.nome}
-            </Box>
+            </Pilula>
           ))}
         </div>
       )}
 
+      {expediente === null && <Texto>carregando…</Texto>}
+
+      {/* Os sete dias num cartão só, separados por fio — e não sete cartões.
+          Empilhados, eles eram sete molduras para uma tabela de três colunas
+          que é a mesma em todas as linhas. */}
+      {expediente && expediente.length > 0 && (
+        <Cartao className="px-2.5 py-0.5">
+          {expediente.map((d, n) => {
+            const fechado = d.minutosInicio === null;
+            return (
+              <div key={d.diaSemana}
+                   className={`flex items-center justify-between gap-2 px-1 py-3
+                               ${n < expediente.length - 1 ? 'border-b border-borda-suave' : ''}`}>
+                <span className={`w-[78px] shrink-0 text-[14.5px] font-semibold
+                                  ${fechado ? 'text-lbl' : 'text-tinta'}`}>
+                  {DIAS[d.diaSemana]}
+                </span>
+
+                {fechado ? (
+                  <span className="flex-1 text-center font-dado text-[12.5px] text-lbl">
+                    fechado
+                  </span>
+                ) : (
+                  <span className="flex flex-1 items-center justify-center gap-1
+                                   font-dado text-[12.5px] text-sub">
+                    <input type="time" className="bg-transparent outline-none"
+                           aria-label={`abre ${DIAS[d.diaSemana]}`}
+                           defaultValue={hhmm(d.minutosInicio!)}
+                           onBlur={(e) => {
+                             const min = paraMinutos(e.target.value);
+                             if (min === null || min === d.minutosInicio) return;
+                             void agir(() => horariosApi.definirDia({
+                               barbeiroId: alvo, diaSemana: d.diaSemana,
+                               minutosInicio: min, minutosFim: d.minutosFim!,
+                             }));
+                           }} />
+                    <span aria-hidden>–</span>
+                    <input type="time" className="bg-transparent outline-none"
+                           aria-label={`fecha ${DIAS[d.diaSemana]}`}
+                           defaultValue={hhmm(d.minutosFim!)}
+                           onBlur={(e) => {
+                             const min = paraMinutos(e.target.value);
+                             if (min === null || min === d.minutosFim) return;
+                             void agir(() => horariosApi.definirDia({
+                               barbeiroId: alvo, diaSemana: d.diaSemana,
+                               minutosInicio: d.minutosInicio!, minutosFim: min,
+                             }));
+                           }} />
+                  </span>
+                )}
+
+                {/* O interruptor no lugar do par "abrir/fechar": o estado passa
+                    a estar no controle, e a linha deixa de precisar de um
+                    botão que diz o contrário do que ela mostra. */}
+                <Interruptor ligado={!fechado} rotulo={`atender ${DIAS[d.diaSemana]}`}
+                             onClick={() => agir(() => fechado
+                               ? horariosApi.definirDia({
+                                   barbeiroId: alvo, diaSemana: d.diaSemana,
+                                   minutosInicio: 9 * 60, minutosFim: 19 * 60,
+                                 })
+                               : horariosApi.fecharDia(d.diaSemana, alvo))} />
+              </div>
+            );
+          })}
+        </Cartao>
+      )}
+
+      <Fio className="my-1" />
       {/* "Expediente" e' palavra de escritorio. E a tela nunca disse o que
           esta parte faz: sao os horarios que se repetem TODA semana, contra a
           secao de baixo, que sao os buracos dentro deles. */}
-      <Lbl>{alvo ? 'dias de trabalho dele' : 'seus dias de trabalho'}</Lbl>
-      <Sub>
-        As horas que você atende, toda semana. É dentro delas que o cliente
-        consegue marcar.
-      </Sub>
-      {expediente === null && <Sub>carregando…</Sub>}
-      {expediente?.map((d) => (
-        <Box key={d.diaSemana} variante={d.minutosInicio === null ? 'mut' : 'normal'}>
-          <div className="flex flex-wrap gap-2 items-center justify-between">
-            <span className="w-20">{DIAS[d.diaSemana]}</span>
-            {d.minutosInicio === null ? <Sub>fechado</Sub> : (
-              <div className="flex gap-1 items-center">
-                <input type="time" className="bg-transparent outline-none"
-                       defaultValue={hhmm(d.minutosInicio)}
-                       onBlur={(e) => {
-                         const min = paraMinutos(e.target.value);
-                         if (min === null || min === d.minutosInicio) return;
-                         void agir(() => horariosApi.definirDia({
-                           barbeiroId: alvo, diaSemana: d.diaSemana,
-                           minutosInicio: min, minutosFim: d.minutosFim!,
-                         }));
-                       }} />
-                <span>–</span>
-                <input type="time" className="bg-transparent outline-none"
-                       defaultValue={hhmm(d.minutosFim!)}
-                       onBlur={(e) => {
-                         const min = paraMinutos(e.target.value);
-                         if (min === null || min === d.minutosFim) return;
-                         void agir(() => horariosApi.definirDia({
-                           barbeiroId: alvo, diaSemana: d.diaSemana,
-                           minutosInicio: d.minutosInicio!, minutosFim: min,
-                         }));
-                       }} />
-              </div>
-            )}
-            {d.minutosInicio === null
-              ? <Chip onClick={() => agir(() => horariosApi.definirDia({
-                  barbeiroId: alvo, diaSemana: d.diaSemana,
-                  minutosInicio: 9 * 60, minutosFim: 19 * 60,
-                }))}>abrir</Chip>
-              : <Chip onClick={() => agir(() =>
-                  horariosApi.fecharDia(d.diaSemana, alvo))}>fechar</Chip>}
-          </div>
-        </Box>
+      <Titulo className="text-[14px]">Folgas e pausas</Titulo>
+      <Texto>
+        Os intervalos dentro dos seus dias — almoço, médico, o que for. O
+        cliente não consegue marcar nesses horários.
+      </Texto>
+      {bloqueios.length === 0 && <Texto>nenhuma por enquanto</Texto>}
+
+      {agrupar(bloqueios).semanais.map((g) => (
+        <Cartao key={g.chave} className="flex items-center justify-between gap-3">
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="truncate text-[13.5px] font-bold text-tinta">
+              {diasEmTexto(g.dias)} · <span className="font-dado">{hhmm(g.inicio)}–{hhmm(g.fim)}</span>
+            </span>
+            <span className="text-[11.5px] font-medium text-lbl">
+              toda semana · {MOTIVOS[g.motivo]}
+            </span>
+          </span>
+          {/* Cinza, e não `acento`: eram seis botões âmbar numa tela só, e o
+              âmbar deste produto é o que CONCLUI. Apagar não conclui nada. */}
+          <BotaoVazado className="text-sub" onClick={() => {
+            // O toque apaga a regra inteira, então ele precisa dizer quantos
+            // dias leva junto — a linha diz "seg a sáb", mas o banco tem seis.
+            if (g.ids.length > 1 &&
+                !confirm(`Apagar ${MOTIVOS[g.motivo]} de ${diasEmTexto(g.dias)}? São ${g.ids.length} dias.`)) return;
+            void agir(async () => {
+              for (const id of g.ids) await horariosApi.apagarBloqueio(id);
+            });
+          }}>
+            apagar
+          </BotaoVazado>
+        </Cartao>
       ))}
 
-      <Sep />
-      <Lbl>folgas e pausas</Lbl>
-      <Sub>
-        Os buracos dentro dos seus dias de trabalho — almoço, médico, o que
-        for. O cliente não consegue marcar nesses horários.
-      </Sub>
-      {bloqueios.length === 0 && <Sub>nenhuma por enquanto</Sub>}
-      {agrupar(bloqueios).semanais.map((g) => (
-        <Box key={g.chave}>
-          <div className="flex flex-wrap gap-2 items-center justify-between">
-            <span>
-              <span className="font-dado tracking-tight">{hhmm(g.inicio)}–{hhmm(g.fim)}</span>
-              {' · '}{MOTIVOS[g.motivo]}
-            </span>
-            {/* Cinza, e não `acento`: eram seis botões âmbar numa tela só, e o
-                âmbar deste produto é o que CONCLUI. Apagar não conclui nada. */}
-            <Chip onClick={() => {
-              // O toque apaga a regra inteira, então ele precisa dizer quantos
-              // dias leva junto — a linha diz "seg a sáb", mas o banco tem seis.
-              if (g.ids.length > 1 &&
-                  !confirm(`Apagar ${MOTIVOS[g.motivo]} de ${diasEmTexto(g.dias)}? São ${g.ids.length} dias.`)) return;
-              void agir(async () => {
-                for (const id of g.ids) await horariosApi.apagarBloqueio(id);
-              });
-            }}>
-              apagar
-            </Chip>
-          </div>
-          <Sub>toda semana · {diasEmTexto(g.dias)}</Sub>
-        </Box>
-      ))}
       {agrupar(bloqueios).avulsos.map((b) => (
-        <Box key={b.id}>
-          <div className="flex flex-wrap gap-2 items-center justify-between">
-            <span>
-              <span className="font-dado tracking-tight">{quando(b.inicio!)} → {quando(b.fim!)}</span>
-              {' · '}{MOTIVOS[b.motivo]}
+        <Cartao key={b.id} className="flex items-center justify-between gap-3">
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="truncate font-dado text-[13px] text-tinta">
+              {quando(b.inicio!)} → {quando(b.fim!)}
             </span>
-            <Chip onClick={() => agir(() => horariosApi.apagarBloqueio(b.id))}>apagar</Chip>
-          </div>
-        </Box>
+            <span className="text-[11.5px] font-medium text-lbl">
+              uma vez · {MOTIVOS[b.motivo]}
+            </span>
+          </span>
+          <BotaoVazado className="text-sub"
+                       onClick={() => agir(() => horariosApi.apagarBloqueio(b.id))}>
+            apagar
+          </BotaoVazado>
+        </Cartao>
       ))}
 
       <NovoBloqueio aoCriar={(dados) => agir(async () => {
@@ -257,35 +287,39 @@ export function Horarios({ eu }: { eu: Eu }) {
 
       {conflitos.length > 0 && (
         <>
-          <Sep />
+          <Fio className="my-1" />
           {/* "horario(s) marcado(s)" e' plural de maquina, e "fora do
               expediente" repetia a palavra que saiu la de cima. */}
-          <Lbl className="text-acento">
+          <Titulo className="text-acento">
             {conflitos.length === 1
               ? 'um cliente ficou de fora'
               : `${conflitos.length} clientes ficaram de fora`}
-          </Lbl>
-          <Sub>
+          </Titulo>
+          <Texto>
             A mudança de horário valeu, mas {conflitos.length === 1 ? 'este' : 'estes'}
             {' '}já {conflitos.length === 1 ? 'estava' : 'estavam'} marcado
             {conflitos.length === 1 ? '' : 's'} num horário que agora está fechado.
             Se cancelar, o cliente é avisado no WhatsApp.
-          </Sub>
+          </Texto>
           {conflitos.map((c) => (
-            <Box key={c.id} variante="alerta">
-              <div className="flex flex-wrap gap-2 items-center justify-between">
-                <span>{quando(c.inicio)} · {c.clienteNome}</span>
-                <Chip acento onClick={() => agir(() => painelApi.cancelar(c.id))}>
-                  cancelar
-                </Chip>
-              </div>
-              <Sub>{c.servicoNome}</Sub>
-            </Box>
+            <Cartao key={c.id} variante="sel"
+                    className="flex items-center justify-between gap-3">
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="truncate text-[13.5px] font-bold text-tinta">
+                  <span className="font-dado">{quando(c.inicio)}</span> · {c.clienteNome}
+                </span>
+                <span className="text-[11.5px] font-medium text-lbl">{c.servicoNome}</span>
+              </span>
+              <BotaoVazado className="border-acento text-acento"
+                           onClick={() => agir(() => painelApi.cancelar(c.id))}>
+                cancelar
+              </BotaoVazado>
+            </Cartao>
           ))}
         </>
       )}
 
-      {erro && <Sub className="text-acento">{erro}</Sub>}
+      {erro && <Texto className="text-acento">{erro}</Texto>}
     </>
   );
 }
@@ -322,55 +356,54 @@ function NovoBloqueio({ aoCriar }: {
 
   return (
     <>
-      <Lbl>nova folga ou pausa</Lbl>
+      <Titulo>Nova folga ou pausa</Titulo>
       <div className="flex flex-wrap gap-2">
-        <Box variante={semanal ? 'fill' : 'normal'} className="cursor-pointer"
-             onClick={() => setSemanal(true)}>toda semana</Box>
-        <Box variante={semanal ? 'normal' : 'fill'} className="cursor-pointer"
-             onClick={() => setSemanal(false)}>uma vez</Box>
+        <Pilula ativo={semanal} onClick={() => setSemanal(true)}>toda semana</Pilula>
+        <Pilula ativo={!semanal} onClick={() => setSemanal(false)}>uma vez</Pilula>
       </div>
 
       <div className="flex flex-wrap gap-2">
         {(['ALMOCO', 'FOLGA', 'PESSOAL', 'OUTRO'] as const).map((m) => (
-          <Box key={m} variante={m === motivo ? 'fill' : 'normal'}
-               className="cursor-pointer" onClick={() => setMotivo(m)}>
+          <Pilula key={m} ativo={m === motivo} onClick={() => setMotivo(m)}>
             {MOTIVOS[m]}
-          </Box>
+          </Pilula>
         ))}
       </div>
 
       {/* Eram tres controles soltos numa linha — "segunda 12:00 – 13:00" — sem
-          uma palavra dizendo o que cada um era. As palavras entram no meio. */}
-      <Box>
-        <div className="flex flex-wrap gap-2 items-center">
-          <Sub>{semanal ? 'toda' : 'no dia'}</Sub>
+          uma palavra dizendo o que cada um era. As palavras entram no meio, e
+          a linha inteira lê como a frase que o desenho mostra no cartão. */}
+      <Cartao>
+        <div className="flex flex-wrap items-center gap-2 text-[13px] font-medium text-tinta">
+          <span className="text-sub">{semanal ? 'toda' : 'no dia'}</span>
           {semanal
             ? (
               <select className="bg-transparent outline-none" value={diaSemana}
+                      aria-label="dia da semana"
                       onChange={(e) => setDiaSemana(Number(e.target.value))}>
                 {DIAS.map((d, i) => <option key={d} value={i}>{d}</option>)}
               </select>
             )
             : (
-              <input type="date" className="bg-transparent outline-none"
+              <input type="date" className="bg-transparent outline-none" aria-label="dia"
                      value={dia} onChange={(e) => setDia(e.target.value)} />
             )}
-          <Sub>das</Sub>
-          <input type="time" className="bg-transparent outline-none font-dado"
+          <span className="text-sub">das</span>
+          <input type="time" className="bg-transparent font-dado outline-none" aria-label="de"
                  value={de} onChange={(e) => setDe(e.target.value)} />
-          <Sub>às</Sub>
-          <input type="time" className="bg-transparent outline-none font-dado"
+          <span className="text-sub">às</span>
+          <input type="time" className="bg-transparent font-dado outline-none" aria-label="até"
                  value={ate} onChange={(e) => setAte(e.target.value)} />
         </div>
-      </Box>
+      </Cartao>
 
       {/* "bloquear" e' o nome que o banco da' pra isto; quem usa a tela esta
           guardando uma folga. E o botao nomeia O QUE se cria, nao quando: o
           "quando" ja' esta escrito por extenso na linha logo acima, e repetir
           "toda semana" no botao so' ecoava o botao de cima. */}
-      <Box variante="fill" className="cursor-pointer" onClick={criar}>
+      <BotaoCheio largura="cheia" onClick={criar}>
         + guardar {MOTIVOS[motivo]}
-      </Box>
+      </BotaoCheio>
     </>
   );
 }

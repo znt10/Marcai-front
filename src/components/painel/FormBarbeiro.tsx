@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Box, Lbl, Sub } from '@/components/wf';
+import { Cartao, Pilula, BotaoCheio, Titulo, Texto } from '@/components/painel/pecas';
 import { equipeApi, mensagemDoErro, type NovoBarbeiro } from '@/lib/api';
 
 export function FormBarbeiro({ aoCriar }: { aoCriar?: () => void }) {
@@ -32,39 +32,43 @@ export function FormBarbeiro({ aoCriar }: { aoCriar?: () => void }) {
 
   return (
     <>
-      <Lbl>novo na equipe</Lbl>
-      <Box variante={nome ? 'normal' : 'dash'}>
-        <input className="w-full outline-none bg-transparent" placeholder="nome"
+      <Titulo>Novo na equipe</Titulo>
+      <Cartao variante={nome ? 'normal' : 'dash'}>
+        <input className="w-full bg-transparent text-[13.5px] font-medium outline-none
+                          placeholder:text-lbl"
+               placeholder="nome"
                value={nome} onChange={(e) => setNome(e.target.value)} />
-      </Box>
-      <Box variante={whatsapp ? 'normal' : 'dash'}>
-        <input className="w-full outline-none bg-transparent" placeholder="celular"
-               inputMode="numeric"
+      </Cartao>
+      <Cartao variante={whatsapp ? 'normal' : 'dash'}>
+        <input className="w-full bg-transparent text-[13.5px] font-medium outline-none
+                          placeholder:text-lbl"
+               placeholder="celular" inputMode="numeric"
                value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
-      </Box>
+      </Cartao>
 
       <div className="flex gap-2">
-        {(['BARBEIRO', 'DONO'] as const).map((p) => (
-          <Box key={p} variante={p === papel ? 'fill' : 'normal'}
-               className="cursor-pointer" onClick={() => setPapel(p)}>
+        {(['DONO', 'BARBEIRO'] as const).map((p) => (
+          <Pilula key={p} ativo={p === papel} onClick={() => setPapel(p)}>
             {p === 'DONO' ? 'dono' : 'barbeiro'}
-          </Box>
+          </Pilula>
         ))}
       </div>
 
-      {erro && <Sub className="text-acento">{erro}</Sub>}
-      <Box variante={pronto ? 'fill' : 'mut'}
-           className={pronto ? 'cursor-pointer' : ''} onClick={cadastrar}>
+      {erro && <Texto className="text-acento">{erro}</Texto>}
+      <BotaoCheio className="self-start" disabled={!pronto} onClick={cadastrar}>
         {enviando ? 'cadastrando…' : 'cadastrar e convidar'}
-      </Box>
+      </BotaoCheio>
 
       {link && (
-        <Box variante="copia" className="break-all">
-          <Sub>link do convite — mandamos no WhatsApp, e ele só aparece aqui uma vez</Sub>
-          {link}
-        </Box>
+        <Cartao className="flex flex-col gap-1 break-all">
+          <Texto>link do convite — mandamos no WhatsApp, e ele só aparece aqui uma vez</Texto>
+          <span className="font-dado text-[11px] text-sub">{link}</span>
+        </Cartao>
       )}
-      <Sub>quem entra agora não aparece para o cliente até ter serviço e expediente</Sub>
+      <Texto>
+        Quem entra agora não aparece para o cliente até ter serviço e
+        expediente.
+      </Texto>
     </>
   );
 }

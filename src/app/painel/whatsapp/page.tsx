@@ -6,11 +6,11 @@ import { mensagemDoErro, whatsappApi, type WhatsappDaBarbearia } from '@/lib/api
 
 /// A tela de conectar o WhatsApp da barbearia — só do dono.
 ///
-/// **Fora da lista de abas de propósito.** Ela é visitada duas vezes na vida
-/// da barbearia (no dia em que conecta e no dia em que troca de celular), e
-/// uma aba permanente para isso disputaria espaço com agenda, equipe e
-/// serviços, que são o trabalho de todo dia. Quem traz o dono para cá é a
-/// faixa, que só existe quando há o que fazer.
+/// Está na barra de seções, no fim, junto de equipe e resumo — as de quem
+/// administra. Ficou fora dela por um tempo, com o argumento de que é visitada
+/// duas vezes na vida da barbearia; o que decidiu a volta foi o contrário
+/// disso: justamente por ser rara, ninguém lembra onde ela fica, e a faixa que
+/// leva até aqui só aparece depois que o vínculo caiu.
 ///
 /// O QR expira em segundos e a Evolution gera um novo a cada ~40s, então a
 /// tela confere de 3 em 3 — bem mais rápido que o resto do painel. É o único

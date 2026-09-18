@@ -3,29 +3,30 @@ import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { painelApi, mensagemDoErro } from '@/lib/api';
-import { Avatar } from '@/components/wf';
 import { prepararFoto, ErroDeFoto } from '@/lib/foto';
 import { useEu } from '@/components/painel/SessaoDoPainel';
 import { lembrar, esquecer } from '@/lib/eu-lembrado';
 import { SECOES } from '@/components/painel/secoes';
 import { SeletorDeSecao } from '@/components/painel/SeletorDeSecao';
 import { FaixaDoWhatsapp } from '@/components/painel/FaixaDoWhatsapp';
+import { BotaoDeTema } from '@/components/painel/Tema';
 
-/// A navegação do painel, uma só para as cinco telas.
+/// A navegação do painel, uma só para as seis telas.
 ///
 /// Antes cada tela terminava em "← voltar para a agenda" e a agenda carregava
 /// quatro caixas iguais às dos agendamentos. Ir de Horários a Serviços custava
 /// três carregamentos de página, e a lista de links descia junto com a agenda:
 /// num sábado cheio, "meus horários" ficava abaixo de doze clientes.
 ///
-/// No desktop são abas no topo, lidas antes do conteúdo. No celular não cabem
-/// seis abas de `flex-1` numa linha de 360px, e a barra fixa do rodapé que
-/// fazia esse papel cobria a última linha de toda tela — virou um botão com a
-/// seção atual, em `SeletorDeSecao`.
+/// No desktop são abas no topo, lidas antes do conteúdo. No celular a barra
+/// fixa do rodapé que fazia esse papel cobria a última linha de toda tela —
+/// virou um botão com a seção atual, em `SeletorDeSecao`. O Figma desenha as
+/// seis abas também no celular; o dropdown fica por decisão de quem usa o
+/// painel no balcão, e é a única parte desta barra que não segue o desenho.
 ///
-/// O item ativo ganha a barra sólida de latão, não uma pílula nem um brilho: é
-/// o mesmo gesto de letreiro pintado que `--shadow-sel` já usa no resto do
-/// produto — sombra sólida, sem desfoque.
+/// A aba acesa é âmbar com um traço curto de 16px por baixo — no redesign o
+/// traço não atravessa mais a aba inteira: encurtado, ele marca o rótulo em
+/// vez de sublinhar a coluna.
 ///
 /// Cada seção é `<Link>` do Next, não `<a>`: preserva o layout ao trocar de
 /// tela, não remonta o cabeçalho, reduz `eu()` a uma sessão só.
@@ -36,15 +37,15 @@ function Abas({ caminho, dono }: { caminho: string; dono: boolean }) {
         const ativo = caminho === s.href;
         return (
           <Link key={s.href} href={s.href} aria-current={ativo ? 'page' : undefined}
-             className={`relative min-w-0 flex-1 py-2.5 text-center font-letreiro text-sm
-                         uppercase tracking-[0.06em]
-                         ${ativo ? 'text-acento' : 'text-sub hover:text-tinta'}`}>
+             className="flex w-[65px] flex-col items-center justify-center gap-1 py-2.5">
             {/* Reforço, nunca o único sinal: quem não distingue o âmbar do
-                cinza tem o `aria-current` e a própria barra. */}
-            {ativo && (
-              <span aria-hidden className="absolute inset-x-3 bottom-0 h-[3px] bg-latao" />
-            )}
-            {s.rotulo}
+                cinza tem o `aria-current` e o próprio traço. */}
+            <span className={`text-[9.5px] font-semibold capitalize
+                              ${ativo ? 'text-acento-forte' : 'text-lbl hover:text-sub'}`}>
+              {s.rotulo}
+            </span>
+            <span aria-hidden className={`h-[2.5px] w-4 rounded-[2px]
+                                          ${ativo ? 'bg-acento-forte' : 'bg-transparent'}`} />
           </Link>
         );
       })}
@@ -57,7 +58,7 @@ function Abas({ caminho, dono }: { caminho: string; dono: boolean }) {
 /// (`py`/`text` iguais), conteúdo invisível: a barra reserva o espaço sem
 /// desenhar nada que possa estar errado.
 function Espaco() {
-  return <span aria-hidden className="flex-1 invisible py-2.5 text-sm">·</span>;
+  return <span aria-hidden className="invisible w-[65px] py-2.5 text-[9.5px]">·</span>;
 }
 
 export function NavPainel() {
@@ -109,47 +110,61 @@ export function NavPainel() {
   // Centrar num `max-w` menor faria a barra brigar com a largura do conteúdo,
   // que muda de tela para tela (560, e 1100 no quadro do dia).
   return (
-    <div className="border-b border-borda bg-superficie">
+    <div className="bg-fundo">
       <div className="mx-auto max-w-[1100px] px-5 sm:px-7 md:px-10">
-        <div className="flex items-baseline justify-between gap-3 py-3">
-          <div className="min-w-0 flex items-center gap-2">
-            {/* O círculo É o botão: não há tela de perfil no painel, e criar
+        <div className="flex h-14 items-center justify-between gap-3 border-b border-borda-suave">
+          <div className="flex min-w-0 items-center gap-2.5">
+            {/* A marca do Figma é um quadrado âmbar com a inicial. Aqui ela
+                É o botão da foto: não há tela de perfil no painel, e criar
                 uma para um campo só seria mais uma seção para quem já achou
-                o produto confuso. */}
+                o produto confuso. Com foto, o quadrado vira a foto — mesmo
+                lugar, mesmo tamanho, mesmo canto. */}
             {eu && (
               <>
                 <input ref={seletor} type="file" accept="image/*" className="sr-only"
                        onChange={(e) => { void trocarFoto(e.target.files?.[0]); e.target.value = ''; }} />
-                <button onClick={() => seletor.current?.click()} className="shrink-0 rounded-full"
+                <button onClick={() => seletor.current?.click()}
+                        className="size-[30px] shrink-0 overflow-hidden rounded-[8px] bg-acento"
                         aria-label={eu.fotoUrl ? 'Trocar sua foto' : 'Pôr sua foto'}>
-                  <Avatar tamanho={30} fotoUrl={eu.fotoUrl} nome={eu.nome} />
+                  {eu.fotoUrl
+                    ? <img src={eu.fotoUrl} alt="" className="size-full object-cover" />
+                    : <span className="flex size-full items-center justify-center text-[15px]
+                                       font-black text-no-acento">
+                        {eu.nome.trim().charAt(0).toUpperCase() || 'M'}
+                      </span>}
                 </button>
               </>
             )}
-            <span className="font-letreiro uppercase tracking-[0.08em] text-sm md:text-base truncate">
-              {eu?.nome ?? ' '}
+            <span className="truncate text-[14px] font-bold text-tinta">
+              {eu?.nome ?? ' '}
             </span>
             {eu && (
-              <span className="text-[10px] md:text-[11px] text-lbl uppercase tracking-[0.12em] shrink-0">
-                {dono ? 'dono' : 'barbeiro'}
+              <span className="shrink-0 rounded-[5px] border border-borda px-[7px] py-[3px]
+                               text-[9.5px] font-semibold tracking-[0.57px] text-lbl">
+                {dono ? 'Dono' : 'Barbeiro'}
               </span>
             )}
           </div>
-          <button onClick={sair} className="text-[11px] md:text-xs text-lbl hover:text-acento shrink-0">
-            sair
-          </button>
+          <div className="flex shrink-0 items-center gap-3">
+            {/* Claro ou escuro. Ao lado do "sair" e na mesma voz dele: são as
+                duas coisas da barra que não são navegação, e nenhuma das duas
+                merece mais peso que o nome da pessoa. */}
+            <BotaoDeTema />
+            <button onClick={sair} className="text-[12.5px] font-medium text-sub hover:text-acento">
+              sair
+            </button>
+          </div>
         </div>
-        {erroFoto && <div className="text-[12px] text-acento pb-2">{erroFoto}</div>}
+        {erroFoto && <div className="py-2 text-[12px] text-acento">{erroFoto}</div>}
         {/* Enquanto `carregando`, `dono` seria um palpite (sempre `false`,
             porque `eu` ainda é `null`) — e a aba "equipe" (`soDono: true`)
             sumia da lista até a resposta chegar. A barra nascia com 4 abas
-            e virava 5 quando `painelApi.eu()` respondia; como cada aba é
-            `flex-1`, a largura de TODAS mudava junto, e a barra sólida do
-            item ativo saltava de posição — o "pulo" relatado como "foi
-            para outra aba e voltou". Aqui a lista só desenha depois de
-            saber `dono` de verdade; `Espaco` reserva a altura antes disso,
-            para a página não pular por baixo. */}
-        <nav aria-label="Seções do painel" className="hidden md:flex">
+            e virava 6 quando `painelApi.eu()` respondia, e o traço do item
+            ativo saltava de posição — o "pulo" relatado como "foi para outra
+            aba e voltou". Aqui a lista só desenha depois de saber `dono` de
+            verdade; `Espaco` reserva a altura antes disso. */}
+        <nav aria-label="Seções do painel"
+             className="hidden justify-center border-b border-borda-suave md:flex">
           {carregando ? <Espaco /> : <Abas caminho={caminho} dono={dono} />}
         </nav>
         <SeletorDeSecao caminho={caminho} dono={dono} carregando={carregando} />
