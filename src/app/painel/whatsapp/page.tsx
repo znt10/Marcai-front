@@ -65,7 +65,7 @@ export default function WhatsappDoPainel() {
   }
 
   if (carregando) {
-    return <Frame><h1>WhatsApp</h1><Sub>carregando…</Sub></Frame>;
+    return <Frame medio><h1>WhatsApp</h1><Sub>carregando…</Sub></Frame>;
   }
 
   // A barreira de verdade é o `qrBase64: null` que a rota devolve para quem

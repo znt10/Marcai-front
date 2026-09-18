@@ -324,6 +324,18 @@ export function Horarios({ eu }: { eu: Eu }) {
   );
 }
 
+/// Nova folga ou pausa — UMA frase, e não três fileiras de botões.
+///
+/// A versão anterior pedia quatro decisões em quatro controles diferentes
+/// (repetição, motivo, dia, horas), cada um numa fileira, e só a última linha
+/// mostrava o que sairia dali. Eram doze alvos de toque para guardar "almoço,
+/// segunda, meio-dia" — e, pior, nada na tela dizia que as fileiras eram
+/// partes da mesma frase: cada uma parecia uma configuração à parte.
+///
+/// Aqui a frase É o formulário. Cada palavra sublinhada é o próprio controle,
+/// na ordem em que se fala: "folga toda semana na segunda das 12:00 às 13:00".
+/// Quem lê já sabe o que vai guardar, porque leu a frase inteira — não há um
+/// resumo separado para conferir depois.
 function NovoBloqueio({ aoCriar }: {
   aoCriar: (d: {
     motivo: Bloqueio['motivo']; repeteSemanalmente: boolean;
@@ -357,53 +369,81 @@ function NovoBloqueio({ aoCriar }: {
   return (
     <>
       <Titulo>Nova folga ou pausa</Titulo>
-      <div className="flex flex-wrap gap-2">
-        <Pilula ativo={semanal} onClick={() => setSemanal(true)}>toda semana</Pilula>
-        <Pilula ativo={!semanal} onClick={() => setSemanal(false)}>uma vez</Pilula>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {(['ALMOCO', 'FOLGA', 'PESSOAL', 'OUTRO'] as const).map((m) => (
-          <Pilula key={m} ativo={m === motivo} onClick={() => setMotivo(m)}>
-            {MOTIVOS[m]}
-          </Pilula>
-        ))}
-      </div>
-
-      {/* Eram tres controles soltos numa linha — "segunda 12:00 – 13:00" — sem
-          uma palavra dizendo o que cada um era. As palavras entram no meio, e
-          a linha inteira lê como a frase que o desenho mostra no cartão. */}
       <Cartao>
-        <div className="flex flex-wrap items-center gap-2 text-[13px] font-medium text-tinta">
-          <span className="text-sub">{semanal ? 'toda' : 'no dia'}</span>
-          {semanal
-            ? (
-              <select className="bg-transparent outline-none" value={diaSemana}
-                      aria-label="dia da semana"
-                      onChange={(e) => setDiaSemana(Number(e.target.value))}>
-                {DIAS.map((d, i) => <option key={d} value={i}>{d}</option>)}
-              </select>
-            )
-            : (
-              <input type="date" className="bg-transparent outline-none" aria-label="dia"
-                     value={dia} onChange={(e) => setDia(e.target.value)} />
-            )}
-          <span className="text-sub">das</span>
-          <input type="time" className="bg-transparent font-dado outline-none" aria-label="de"
-                 value={de} onChange={(e) => setDe(e.target.value)} />
-          <span className="text-sub">às</span>
-          <input type="time" className="bg-transparent font-dado outline-none" aria-label="até"
-                 value={ate} onChange={(e) => setAte(e.target.value)} />
-        </div>
+        {/* `leading-loose` e o `items-baseline`: os controles sublinhados
+            entram no meio do texto, e sem a entrelinha folgada duas linhas da
+            frase encostariam uma na outra quando ela quebra no celular. */}
+        <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-[13.5px]
+                      font-medium leading-loose text-sub md:text-[15px]">
+          <CampoNaFrase>
+            <select value={motivo} aria-label="o que é"
+                    onChange={(e) => setMotivo(e.target.value as Bloqueio['motivo'])}>
+              {(['FOLGA', 'ALMOCO', 'PESSOAL', 'OUTRO'] as const).map((m) => (
+                <option key={m} value={m}>{MOTIVOS[m]}</option>
+              ))}
+            </select>
+          </CampoNaFrase>
+
+          <CampoNaFrase>
+            <select value={semanal ? 'semana' : 'uma'} aria-label="com que frequência"
+                    onChange={(e) => setSemanal(e.target.value === 'semana')}>
+              <option value="semana">toda semana</option>
+              <option value="uma">uma vez</option>
+            </select>
+          </CampoNaFrase>
+
+          {semanal ? (
+            <>
+              na
+              <CampoNaFrase>
+                <select value={diaSemana} aria-label="dia da semana"
+                        onChange={(e) => setDiaSemana(Number(e.target.value))}>
+                  {DIAS.map((d, i) => <option key={d} value={i}>{d}</option>)}
+                </select>
+              </CampoNaFrase>
+            </>
+          ) : (
+            <>
+              no dia
+              <CampoNaFrase>
+                <input type="date" value={dia} aria-label="dia"
+                       onChange={(e) => setDia(e.target.value)} />
+              </CampoNaFrase>
+            </>
+          )}
+
+          das
+          <CampoNaFrase>
+            <input type="time" className="font-dado" value={de} aria-label="a partir das"
+                   onChange={(e) => setDe(e.target.value)} />
+          </CampoNaFrase>
+          às
+          <CampoNaFrase>
+            <input type="time" className="font-dado" value={ate} aria-label="até as"
+                   onChange={(e) => setAte(e.target.value)} />
+          </CampoNaFrase>
+        </p>
       </Cartao>
 
       {/* "bloquear" e' o nome que o banco da' pra isto; quem usa a tela esta
           guardando uma folga. E o botao nomeia O QUE se cria, nao quando: o
-          "quando" ja' esta escrito por extenso na linha logo acima, e repetir
-          "toda semana" no botao so' ecoava o botao de cima. */}
-      <BotaoCheio largura="cheia" onClick={criar}>
+          "quando" ja' esta escrito por extenso na frase logo acima. */}
+      <BotaoCheio className="self-start" onClick={criar}>
         + guardar {MOTIVOS[motivo]}
       </BotaoCheio>
     </>
   );
 }
+
+/// Uma palavra da frase que, por acaso, é um controle. O sublinhado é o que
+/// diz isso: numa frase corrida, um `select` sem moldura nenhuma não se
+/// oferece para ser tocado, e um `select` com moldura de campo quebraria a
+/// frase em caixinhas — que é justamente o que esta tela deixou de ser.
+const CampoNaFrase = ({ children }: { children: React.ReactNode }) => (
+  <span className="inline-flex items-baseline border-b border-borda pb-0.5 font-semibold
+                   text-tinta transition-colors focus-within:border-acento
+                   [&>select]:cursor-pointer [&>select]:bg-transparent [&>select]:outline-none
+                   [&>input]:bg-transparent [&>input]:outline-none">
+    {children}
+  </span>
+);

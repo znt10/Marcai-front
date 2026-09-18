@@ -12,6 +12,12 @@
 /// As cores vêm todas de token (ver o bloco `.painel` em `globals.css`), e a
 /// única medida literal aqui são os raios: 14px no cartão, 11px no botão que
 /// conclui, 10px no botão pequeno. São o desenho, não um tema.
+///
+/// A ESCALA. O Figma desenha um aparelho de 390px, e transplantar aquelas
+/// medidas para um monitor de 27 polegadas dá uma tira de letra miúda no meio
+/// da tela — proporção de celular, tamanho de celular. Por isso cada peça tem
+/// um degrau em `md:`: o arranjo é o mesmo, tudo cresce junto, e a tela grande
+/// fica com a mesma proporção em vez do mesmo tamanho.
 
 /// O cartão. Tudo que é lista no painel — horário, barbeiro, serviço, membro
 /// da equipe — é uma fileira destes.
@@ -32,7 +38,7 @@ export function Cartao({
     dash: 'bg-superficie border-acento-forte border-dashed',
   }[variante];
   return (
-    <div className={`border rounded-[14px] p-4 ${estilo} ${className}`} {...props}>
+    <div className={`border rounded-[14px] p-4 md:rounded-[18px] md:p-5 ${estilo} ${className}`} {...props}>
       {children}
     </div>
   );
@@ -44,7 +50,9 @@ export function Cartao({
 export const CartaoInterno = ({ className = '', children }: {
   className?: string; children: React.ReactNode;
 }) => (
-  <div className={`bg-superficie2 rounded-[14px] p-3 ${className}`}>{children}</div>
+  <div className={`bg-superficie2 rounded-[14px] p-3 md:rounded-[18px] md:p-4 ${className}`}>
+    {children}
+  </div>
 );
 
 /// A pastilha de escolher: barbeiro, motivo da folga, papel. Uma da fileira
@@ -61,7 +69,7 @@ export function Pilula({
     <button
       type="button"
       className={`shrink-0 rounded-full px-3.5 py-2 text-[12px] font-semibold transition-colors
-                  disabled:opacity-40
+                  md:px-4 md:py-2.5 md:text-[13.5px] disabled:opacity-40
                   ${ativo
                     ? 'bg-acento text-no-acento'
                     : 'border border-borda text-sub hover:text-tinta'}
@@ -91,6 +99,7 @@ export function BotaoCheio({
       type="button"
       className={`rounded-[11px] bg-acento px-6 py-[15px] text-center text-[14.5px] font-bold
                   text-no-acento transition-opacity hover:opacity-90
+                  md:rounded-[13px] md:px-7 md:py-[17px] md:text-[16px]
                   disabled:bg-mut disabled:text-lbl disabled:hover:opacity-100
                   ${largura === 'cheia' ? 'w-full' : ''} ${className}`}
       {...props}
@@ -114,6 +123,7 @@ export function BotaoVazado({
       type="button"
       className={`shrink-0 rounded-[10px] border border-borda px-3 py-2 text-[11.5px]
                   font-semibold text-tinta transition-colors hover:border-acento
+                  md:rounded-[12px] md:px-4 md:py-2.5 md:text-[13px]
                   disabled:opacity-40 ${className}`}
       {...props}
     >
@@ -140,7 +150,7 @@ export function Interruptor({
       aria-checked={ligado}
       aria-label={rotulo}
       className={`flex h-6 w-[42px] shrink-0 items-center rounded-full border p-[3px]
-                  transition-colors
+                  transition-colors md:h-7 md:w-[50px] md:p-1
                   ${ligado
                     ? 'justify-end border-acento bg-superficie2'
                     : 'justify-start border-borda bg-superficie2'}`}
@@ -148,7 +158,7 @@ export function Interruptor({
     >
       <span
         aria-hidden
-        className={`size-4 rounded-full transition-colors
+        className={`size-4 rounded-full transition-colors md:size-5
                     ${ligado ? 'bg-acento-forte' : 'bg-lbl'}`}
       />
     </button>
@@ -162,9 +172,13 @@ export function Interruptor({
 export const TituloDaTela = ({ titulo, children }: {
   titulo: string; children?: React.ReactNode;
 }) => (
-  <div className="flex flex-col gap-1.5 pb-1">
+  <div className="flex flex-col gap-1.5 pb-1 md:gap-2 md:pb-2">
     <h1>{titulo}</h1>
-    {children && <p className="max-w-[350px] text-[13px] font-medium text-sub">{children}</p>}
+    {children && (
+      <p className="max-w-[350px] text-[13px] font-medium text-sub md:max-w-[520px] md:text-[15px]">
+        {children}
+      </p>
+    )}
   </div>
 );
 
@@ -174,7 +188,7 @@ export const TituloDaTela = ({ titulo, children }: {
 export const Titulo = ({ className = '', children }: {
   className?: string; children: React.ReactNode;
 }) => (
-  <h2 className={`text-[13.5px] font-bold text-tinta ${className}`}>{children}</h2>
+  <h2 className={`text-[13.5px] font-bold text-tinta md:text-[16px] ${className}`}>{children}</h2>
 );
 
 /// O rótulo de um dado — "duração", "próximo livre". Pequeno, semibold, na
@@ -183,14 +197,14 @@ export const Titulo = ({ className = '', children }: {
 export const Etiqueta = ({ className = '', children }: {
   className?: string; children: React.ReactNode;
 }) => (
-  <span className={`text-[10.5px] font-semibold text-lbl ${className}`}>{children}</span>
+  <span className={`text-[10.5px] font-semibold text-lbl md:text-[12px] ${className}`}>{children}</span>
 );
 
 /// A frase de apoio. Mesmo papel do `Sub` do wireframe, na tipografia daqui.
 export const Texto = ({ className = '', children }: {
   className?: string; children: React.ReactNode;
 }) => (
-  <p className={`text-[12.5px] font-medium text-sub ${className}`}>{children}</p>
+  <p className={`text-[12.5px] font-medium text-sub md:text-[14px] ${className}`}>{children}</p>
 );
 
 /// O fio que separa duas partes da tela.

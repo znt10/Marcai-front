@@ -38,14 +38,26 @@ export const metadata: Metadata = { title: 'Agendamento' };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="pt-BR" className={`${letreiro.variable} ${corpo.variable} ${dado.variable}`}>
-      <head>
+    // `suppressHydrationWarning` no `<html>`, e só nele: o script abaixo
+    // escreve `data-tema` neste elemento ANTES de o React hidratar, então o
+    // atributo que veio do servidor e o que está no navegador diferem de
+    // propósito — é exatamente o que evita o pisca. Sem esta marca o React
+    // reclama de uma diferença que é o desenho funcionando. Ela não desce
+    // para os filhos: qualquer outra divergência continua sendo avisada.
+    <html lang="pt-BR" suppressHydrationWarning
+          className={`${letreiro.variable} ${corpo.variable} ${dado.variable}`}>
+      <body>
         {/* Antes de qualquer pintura: escreve no `<html>` o tema que a pessoa
             escolheu no painel, para a tela não nascer escura e clarear no
-            quadro seguinte. Ver `Tema.tsx`. */}
+            quadro seguinte. Ver `Tema.tsx`.
+
+            No topo do `<body>`, e não num `<head>` escrito à mão: a
+            documentação desta versão do Next pede que o `<head>` do layout
+            raiz fique com a Metadata API. Aqui ele roda enquanto o HTML é
+            lido, que é antes da hidratação — que é o que importa. */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_DO_TEMA }} />
-      </head>
-      <body>{children}</body>
+        {children}
+      </body>
     </html>
   );
 }

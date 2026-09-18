@@ -15,7 +15,7 @@ export default function EquipeDoPainel() {
   const [versao, setVersao] = useState(0);
 
   return (
-    <Frame>
+    <Frame medio>
       <TituloDaTela titulo="Equipe" />
 
       {/* A barreira de verdade é o 403 da rota; isto aqui é só não mostrar ao

@@ -10,7 +10,7 @@ export default function ServicosDoPainel() {
   const { eu } = useEu();
 
   return (
-    <Frame>
+    <Frame medio>
       <TituloDaTela titulo="Serviços" />
       {/* Todos entram: cada um marca o que faz. O catálogo, embaixo, só o dono. */}
       {eu ? <Servicos eu={eu} /> : <Texto>carregando…</Texto>}

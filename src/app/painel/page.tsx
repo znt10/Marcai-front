@@ -7,7 +7,7 @@ import { AgendaDoDia } from '@/components/painel/AgendaDoDia';
 
 export default function Painel() {
   return (
-    <Frame>
+    <Frame medio>
       <AgendaDoDia />
     </Frame>
   );

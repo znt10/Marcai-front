@@ -10,7 +10,7 @@ export default function HorariosDoPainel() {
   const { eu } = useEu();
 
   return (
-    <Frame>
+    <Frame medio>
       <TituloDaTela titulo="Horários">
         As horas que você atende toda semana. É dentro delas que o cliente
         consegue marcar.
