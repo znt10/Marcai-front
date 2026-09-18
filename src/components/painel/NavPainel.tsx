@@ -10,6 +10,7 @@ import { SECOES } from '@/components/painel/secoes';
 import { SeletorDeSecao } from '@/components/painel/SeletorDeSecao';
 import { FaixaDoWhatsapp } from '@/components/painel/FaixaDoWhatsapp';
 import { BotaoDeTema } from '@/components/painel/Tema';
+import { AppDoBarbeiro } from '@/components/painel/AppDoBarbeiro';
 
 /// A navegação do painel, uma só para as seis telas.
 ///
@@ -146,6 +147,10 @@ export function NavPainel() {
             )}
           </div>
           <div className="flex shrink-0 items-center gap-3">
+            {/* Só aparece quando o navegador diz que dá para instalar, e some
+                depois de instalado. Aqui em cima porque é onde a pessoa já
+                olha para sair — e porque no meio da agenda seria propaganda. */}
+            <AppDoBarbeiro />
             {/* Claro ou escuro. Ao lado do "sair" e na mesma voz dele: são as
                 duas coisas da barra que não são navegação, e nenhuma das duas
                 merece mais peso que o nome da pessoa. */}

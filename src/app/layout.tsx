@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Poppins, Archivo, Space_Mono } from 'next/font/google';
 import './globals.css';
 import { SCRIPT_DO_TEMA } from '@/components/painel/Tema';
@@ -34,7 +34,34 @@ const dado = Space_Mono({
   weight: ['400', '700'], subsets: ['latin'], variable: '--fonte-dado', display: 'swap',
 });
 
-export const metadata: Metadata = { title: 'Agendamento' };
+export const metadata: Metadata = {
+  title: 'Agendamento',
+  // O iPhone não lê o manifesto para decidir como abrir um app instalado: ele
+  // lê estas três coisas. Sem `capable`, o painel adicionado à tela de início
+  // abre com a barra de endereço do Safari por cima — que é justamente o que
+  // instalar queria tirar.
+  appleWebApp: {
+    capable: true,
+    title: 'Painel',
+    // A barra de status vira translúcida sobre o fundo do app, em vez de uma
+    // tira branca em cima da nogueira.
+    statusBarStyle: 'black-translucent',
+  },
+};
+
+/// A cor da barra do navegador — a mesma do fundo do painel, nos dois modos.
+///
+/// Segue a preferência do SISTEMA, e não a escolha feita no botão da barra:
+/// esta cor é lida do HTML pelo navegador antes de qualquer script rodar, e
+/// não há como um `meta` acompanhar um estado do React. Quem inverte o tema à
+/// mão fica com a barra do outro modo — o preço é uma faixa de cor no topo,
+/// e o troco seria um lampejo a cada abertura.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#1c1814' },
+    { media: '(prefers-color-scheme: light)', color: '#faf6f0' },
+  ],
+};
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
