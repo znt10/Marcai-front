@@ -98,6 +98,25 @@
 
   a { text-decoration: none; }
   a:hover { color: var(--color-acento); }
+
+  /* O ZOOM AO TOCAR NUM CAMPO.
+
+     O Safari do iPhone dá zoom sozinho quando o campo que recebe o foco tem
+     letra menor que 16px — e o produto inteiro escreve em 12,5 ou 13,5. Tocar
+     na hora de um dia, no preço de um serviço ou no nome de quem marca fazia
+     a tela saltar para perto e ficar lá, com o resto do painel fora de vista.
+
+     O atalho conhecido para isso é `maximum-scale=1` na viewport, e ele é a
+     saída errada: tira o zoom de pinça da página inteira, para todo mundo,
+     para sempre — inclusive de quem precisa dele para ler. Aqui é o contrário:
+     o campo é que cresce, e só onde o dedo é o ponteiro. No monitor, onde
+     nenhum navegador dá esse zoom, a letra segue a do desenho.
+
+     `pointer: coarse` e não largura de tela: um tablet de 1024px com dedo tem
+     o mesmo problema, e uma janela estreita no notebook não tem. */
+  @media (pointer: coarse) {
+    input, select, textarea { font-size: 16px; }
+  }
 }
 
 /* O PAINEL — o redesign.

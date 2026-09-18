@@ -153,10 +153,10 @@ export function Horarios({ eu }: { eu: Eu }) {
             // dividem a do meio em partes iguais.
             return (
               <div key={d.diaSemana}
-                   className={`grid grid-cols-[78px_1fr_42px] items-center gap-2 px-1 py-3
-                               md:grid-cols-[92px_1fr_50px]
+                   className={`grid grid-cols-[minmax(62px,78px)_1fr_42px] items-center gap-2
+                               px-1 py-3 md:grid-cols-[92px_1fr_50px]
                                ${n < expediente.length - 1 ? 'border-b border-borda-suave' : ''}`}>
-                <span className={`text-[14.5px] font-semibold md:text-[16px]
+                <span className={`truncate text-[14.5px] font-semibold md:text-[16px]
                                   ${fechado ? 'text-lbl' : 'text-tinta'}`}>
                   {DIAS[d.diaSemana]}
                 </span>
@@ -168,7 +168,7 @@ export function Horarios({ eu }: { eu: Eu }) {
                 ) : (
                   <span className="grid grid-cols-[1fr_auto_1fr] items-center gap-1 font-dado
                                    text-[12.5px] text-sub md:text-[14px]
-                                   [&_input]:w-full [&_input]:bg-transparent
+                                   [&_input]:w-full [&_input]:min-w-0 [&_input]:bg-transparent
                                    [&_input]:text-center [&_input]:outline-none
                                    [&_input::-webkit-calendar-picker-indicator]:opacity-45">
                     <input type="time"
