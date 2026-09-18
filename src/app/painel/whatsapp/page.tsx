@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Box, Frame, Lbl, Sep, Sub } from '@/components/wf';
 import { useEu } from '@/components/painel/SessaoDoPainel';
 import { mensagemDoErro, whatsappApi, type WhatsappDaBarbearia } from '@/lib/api';
+import { textoDoInterruptorBot } from '@/lib/whatsapp-estado';
 
 /// A tela de conectar o WhatsApp da barbearia — só do dono.
 ///
@@ -23,6 +24,7 @@ export default function WhatsappDoPainel() {
   const [dados, setDados] = useState<WhatsappDaBarbearia | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [trocando, setTrocando] = useState(false);
+  const [mudandoBot, setMudandoBot] = useState(false);
 
   const carregar = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -64,6 +66,25 @@ export default function WhatsappDoPainel() {
     }
   }
 
+  async function mudarBot(ativo: boolean) {
+    // Ligar pergunta; desligar não. Ligar faz as mensagens do número passarem
+    // pelo Marcaí — o dono precisa saber disso ANTES, não descobrir depois.
+    if (ativo && !confirm(
+      'Ligar o atendimento automático? As mensagens que chegarem neste número '
+      + 'passam pelo Marcaí para o robô responder. Nada da conversa fica guardado.',
+    )) return;
+    setMudandoBot(true);
+    setErro(null);
+    try {
+      await whatsappApi.ligarBot(ativo);
+      await carregar();
+    } catch (e) {
+      setErro(mensagemDoErro(e) || 'Não deu para mudar agora.');
+    } finally {
+      setMudandoBot(false);
+    }
+  }
+
   if (carregando) {
     return <Frame medio><h1>WhatsApp</h1><Sub>carregando…</Sub></Frame>;
   }
@@ -84,17 +105,24 @@ export default function WhatsappDoPainel() {
     <Frame>
       <h1>WhatsApp</h1>
       {erro && <Box variante="alerta">{erro}</Box>}
-      {!dados ? <Sub>carregando…</Sub> : <Miolo dados={dados} trocando={trocando} aoTrocar={trocarDeCelular} />}
+      {!dados ? <Sub>carregando…</Sub> : (
+        <Miolo
+          dados={dados} trocando={trocando} aoTrocar={trocarDeCelular}
+          mudandoBot={mudandoBot} aoMudarBot={mudarBot}
+        />
+      )}
     </Frame>
   );
 }
 
 function Miolo({
-  dados, trocando, aoTrocar,
+  dados, trocando, aoTrocar, mudandoBot, aoMudarBot,
 }: {
   dados: WhatsappDaBarbearia;
   trocando: boolean;
   aoTrocar: () => void;
+  mudandoBot: boolean;
+  aoMudarBot: (ativo: boolean) => void;
 }) {
   if (dados.plano !== 'COM_ZAP') {
     return (
@@ -118,6 +146,20 @@ function Miolo({
         <button type="button" onClick={aoTrocar} disabled={trocando} className="text-left">
           <Box variante="normal">{trocando ? 'desconectando…' : 'Trocar de celular'}</Box>
         </button>
+        <Sep />
+        <Lbl>Atendimento automático</Lbl>
+        {/* Só com o WhatsApp conectado: ligar um robô num número que não
+            recebe nada seria um interruptor que não faz coisa nenhuma. */}
+        <button
+          type="button" role="switch" aria-checked={dados.botAtivo}
+          onClick={() => aoMudarBot(!dados.botAtivo)} disabled={mudandoBot}
+          className="text-left"
+        >
+          <Box variante={dados.botAtivo ? 'sel' : 'normal'}>
+            {mudandoBot ? 'mudando…' : dados.botAtivo ? 'Ligado' : 'Desligado'}
+          </Box>
+        </button>
+        <Sub>{textoDoInterruptorBot(dados.botAtivo)}</Sub>
       </>
     );
   }
