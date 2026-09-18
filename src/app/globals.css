@@ -137,6 +137,23 @@
   font-family: var(--font-letreiro);
   background: var(--color-fundo);
   color: var(--color-tinta);
+
+  /* O que o navegador pinta sozinho: a lista que abre num `select`, o
+     calendário do `input[type=date]`, o relógio do `type=time`, a barra de
+     rolagem. Nada disso é nosso CSS — sem esta linha o Chrome desenha a lista
+     do `select` com fundo branco e herda a tinta clara do painel por cima:
+     branco no branco, que foi o relatado em "fica tudo branco". */
+  color-scheme: dark;
+}
+
+/* A lista do `select` fechada em algumas plataformas usa as cores do próprio
+   `select`, e não as do esquema — por isso as opções também são pintadas à
+   mão. `background-color` e não `background`: o Firefox ignora o atalho
+   aqui. */
+.painel option,
+.painel optgroup {
+  background-color: var(--color-superficie);
+  color: var(--color-tinta);
 }
 
 /* O título de tela do painel: 30px, Black, caixa mista — o `pageHead` do
@@ -168,6 +185,7 @@
    topo. A escolha da pessoa ganha do sistema — é o que `:not([data-tema])`
    garante na primeira. */
 html[data-tema="claro"] .painel {
+  color-scheme: light;
   --color-fundo:      #faf6f0;
   --color-superficie: #f3ebdf;
   --color-superficie2: #ebdfce;
@@ -188,6 +206,7 @@ html[data-tema="claro"] .painel {
    vale sem `data-tema`: quem escolheu, escolheu. */
 @media (prefers-color-scheme: light) {
   html:not([data-tema]) .painel {
+    color-scheme: light;
     --color-fundo:      #faf6f0;
     --color-superficie: #f3ebdf;
     --color-superficie2: #ebdfce;
