@@ -58,7 +58,7 @@ export function FaixaDoWhatsapp() {
   return (
     <div role="status"
          className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-borda
-                    py-2 text-[12px] md:text-[13px] text-acento">
+                    py-2 text-[12px] md:text-[13px] lg:py-2.5 lg:text-[15px] text-acento">
       <span aria-hidden>⚠</span>
       <span className="min-w-0">{faixa.texto}</span>
       {faixa.link && (

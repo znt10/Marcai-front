@@ -38,14 +38,15 @@ function Abas({ caminho, dono }: { caminho: string; dono: boolean }) {
         const ativo = caminho === s.href;
         return (
           <Link key={s.href} href={s.href} aria-current={ativo ? 'page' : undefined}
-             className="flex w-[65px] flex-col items-center justify-center gap-1 py-2.5">
+             className="flex w-[65px] flex-col items-center justify-center gap-1 py-2.5
+                        lg:w-[96px] lg:gap-1.5 lg:py-3.5">
             {/* Reforço, nunca o único sinal: quem não distingue o âmbar do
                 cinza tem o `aria-current` e o próprio traço. */}
-            <span className={`text-[9.5px] font-semibold capitalize
+            <span className={`text-[9.5px] lg:text-[13.5px] font-semibold capitalize
                               ${ativo ? 'text-acento-forte' : 'text-lbl hover:text-sub'}`}>
               {s.rotulo}
             </span>
-            <span aria-hidden className={`h-[2.5px] w-4 rounded-[2px]
+            <span aria-hidden className={`h-[2.5px] w-4 lg:h-[3px] lg:w-6 rounded-[2px]
                                           ${ativo ? 'bg-acento-forte' : 'bg-transparent'}`} />
           </Link>
         );
@@ -59,7 +60,8 @@ function Abas({ caminho, dono }: { caminho: string; dono: boolean }) {
 /// (`py`/`text` iguais), conteúdo invisível: a barra reserva o espaço sem
 /// desenhar nada que possa estar errado.
 function Espaco() {
-  return <span aria-hidden className="invisible w-[65px] py-2.5 text-[9.5px]">·</span>;
+  return <span aria-hidden className="invisible w-[65px] py-2.5 text-[9.5px]
+                                        lg:w-[96px] lg:py-3.5 lg:text-[13.5px]">·</span>;
 }
 
 export function NavPainel() {
@@ -113,8 +115,9 @@ export function NavPainel() {
   return (
     <div className="bg-fundo">
       <div className="mx-auto max-w-[1100px] px-5 sm:px-7 md:px-10">
-        <div className="flex h-14 items-center justify-between gap-3 border-b border-borda-suave">
-          <div className="flex min-w-0 items-center gap-2.5">
+        <div className="flex h-14 items-center justify-between gap-3 border-b border-borda-suave
+                        lg:h-[76px]">
+          <div className="flex min-w-0 items-center gap-2.5 lg:gap-3.5">
             {/* A marca do Figma é um quadrado âmbar com a inicial. Aqui ela
                 É o botão da foto: não há tela de perfil no painel, e criar
                 uma para um campo só seria mais uma seção para quem já achou
@@ -125,28 +128,30 @@ export function NavPainel() {
                 <input ref={seletor} type="file" accept="image/*" className="sr-only"
                        onChange={(e) => { void trocarFoto(e.target.files?.[0]); e.target.value = ''; }} />
                 <button onClick={() => seletor.current?.click()}
-                        className="size-[30px] shrink-0 overflow-hidden rounded-[8px] bg-acento"
+                        className="size-[30px] shrink-0 overflow-hidden rounded-[8px] bg-acento
+                                   lg:size-[42px] lg:rounded-[10px]"
                         aria-label={eu.fotoUrl ? 'Trocar sua foto' : 'Pôr sua foto'}>
                   {eu.fotoUrl
                     ? <img src={eu.fotoUrl} alt="" className="size-full object-cover" />
-                    : <span className="flex size-full items-center justify-center text-[15px]
+                    : <span className="flex size-full items-center justify-center text-[15px] lg:text-[20px]
                                        font-black text-no-acento">
                         {eu.nome.trim().charAt(0).toUpperCase() || 'M'}
                       </span>}
                 </button>
               </>
             )}
-            <span className="truncate text-[14px] font-bold text-tinta">
+            <span className="truncate text-[14px] lg:text-[19px] font-bold text-tinta">
               {eu?.nome ?? ' '}
             </span>
             {eu && (
               <span className="shrink-0 rounded-[5px] border border-borda px-[7px] py-[3px]
-                               text-[9.5px] font-semibold tracking-[0.57px] text-lbl">
+                               text-[9.5px] font-semibold tracking-[0.57px] text-lbl
+                               lg:rounded-[6px] lg:px-[9px] lg:py-[4px] lg:text-[12px]">
                 {dono ? 'Dono' : 'Barbeiro'}
               </span>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3 lg:gap-5">
             {/* Só aparece quando o navegador diz que dá para instalar, e some
                 depois de instalado. Aqui em cima porque é onde a pessoa já
                 olha para sair — e porque no meio da agenda seria propaganda. */}
@@ -155,7 +160,7 @@ export function NavPainel() {
                 duas coisas da barra que não são navegação, e nenhuma das duas
                 merece mais peso que o nome da pessoa. */}
             <BotaoDeTema />
-            <button onClick={sair} className="text-[12.5px] font-medium text-sub hover:text-acento">
+            <button onClick={sair} className="text-[12.5px] lg:text-[16px] font-medium text-sub hover:text-acento">
               sair
             </button>
           </div>
