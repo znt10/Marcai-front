@@ -66,6 +66,7 @@ export function AppDoBarbeiro() {
         setPedido(null);
       }}
       className="shrink-0 rounded-[8px] border border-borda px-2 py-1 text-[11.5px]
+                 lg:rounded-[10px] lg:px-3 lg:py-1.5 lg:text-[14.5px]
                  font-semibold text-sub hover:border-acento hover:text-acento"
     >
       instalar

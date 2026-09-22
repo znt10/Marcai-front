@@ -186,27 +186,6 @@
   .painel h1 { font-size: 34px; }
 }
 
-/* O painel maior no computador.
-
-   As medidas do Figma são de quem segura o celular: aba de 11px, selo de
-   9,5px. No monitor, a meio metro do rosto, a tela inteira ficava miúda —
-   "muito pequeno" foi o relato. `zoom` no escopo, e não tamanho por tamanho:
-   escala texto, espaçamento e as larguras máximas juntos, então a proporção
-   do desenho continua a mesma, só maior. As media queries seguem lendo a
-   largura real da janela, então celular e tablet não mudam.
-
-   O `min-height` desconta o zoom: o `min-h-dvh` do layout também é
-   multiplicado, e sem isto toda tela nasceria rolável pelo excedente. */
-@media (min-width: 1024px) {
-  .painel { zoom: 1.15; min-height: calc(100dvh / 1.15); }
-}
-@media (min-width: 1280px) {
-  .painel { zoom: 1.25; min-height: calc(100dvh / 1.25); }
-}
-@media (min-width: 1600px) {
-  .painel { zoom: 1.4; min-height: calc(100dvh / 1.4); }
-}
-
 /* O MODO CLARO do painel.
 
    O Figma desenha as seis telas duas vezes — a fileira escura e a clara — e

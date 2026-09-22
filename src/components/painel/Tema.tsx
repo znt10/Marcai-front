@@ -50,7 +50,7 @@ export function BotaoDeTema() {
       onClick={trocar}
       // Enquanto não sabe o tema, o botão já existe e ocupa o lugar dele — o
       // rótulo é que espera. Sem isto o "sair" saltaria de lugar ao montar.
-      className="shrink-0 text-[12.5px] font-medium text-sub hover:text-acento"
+      className="shrink-0 text-[12.5px] lg:text-[16px] font-medium text-sub hover:text-acento"
       aria-label={tema === 'claro' ? 'Mudar para o modo escuro' : 'Mudar para o modo claro'}
     >
       {tema === null ? ' ' : tema === 'claro' ? 'escuro' : 'claro'}
