@@ -33,10 +33,7 @@ describe('barbeariaAtual', () => {
       { status: 200, headers: { 'content-type': 'application/json' } },
     ));
     vi.stubGlobal('fetch', fetchFalso);
-    headersMock.mockReturnValue(new Headers({
-      host: 'brutus.usemarcai.online',
-      'x-forwarded-for': '6.6.6.6, 167.249.51.42',
-    }));
+    headersMock.mockReturnValue(new Headers({ host: 'brutus.usemarcai.online' }));
 
     const { barbeariaAtual } = await import('@/lib/tenant');
     await barbeariaAtual();
@@ -48,9 +45,6 @@ describe('barbeariaAtual', () => {
     const enviados = new Headers(fetchFalso.mock.calls[0][1]?.headers);
     expect(enviados.get('x-marcai-host')).toBe('brutus.usemarcai.online');
     expect(enviados.get('x-marcai-proxy')).toBe('s3gredo');
-    // O IP do visitante, e não o deste contêiner: sem ele o site inteiro
-    // dividiria um só limite por IP no Django.
-    expect(enviados.get('x-marcai-ip')).toBe('167.249.51.42');
   });
 
   // Espelha o `proxy.ts`: sem segredo, nenhum cabeçalho — um `x-marcai-host`

@@ -1,7 +1,6 @@
 import { cache } from 'react';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
-import { ipDoCliente } from '@/lib/ip-do-cliente';
 
 /// A vitrine do tenant, servida pelo Django desde a fatia 8. Este modulo era
 /// o ultimo do front a tocar o banco; o Prisma saiu com ele.
@@ -60,8 +59,7 @@ const PORTA_API = process.env.NEXT_PUBLIC_API_URL || '8000';
 /// painel e precisa ver o resultado. O `cache()` do React de quem chama ja
 /// resolve a repeticao dentro de UMA requisicao.
 export async function buscarNoDjango(caminho: string): Promise<Response> {
-  const recebidos = await headers();
-  const host = recebidos.get('host');
+  const host = (await headers()).get('host');
   if (!host) notFound();
 
   const interna = process.env.API_INTERNA_URL?.trim().replace(/\/+$/, '');
@@ -73,11 +71,6 @@ export async function buscarNoDjango(caminho: string): Promise<Response> {
     if (segredo) {
       cabecalhos.set('x-marcai-host', host);
       cabecalhos.set('x-marcai-proxy', segredo);
-      // Sem isto toda página renderizada aqui chegaria ao Django com o IP
-      // deste contêiner, e os visitantes do site inteiro dividiriam um só
-      // limite por IP: um pico de acesso viraria 429 para todo mundo.
-      const ip = ipDoCliente(recebidos);
-      if (ip) cabecalhos.set('x-marcai-ip', ip);
     }
     return fetch(`${interna}${caminho}`, { cache: 'no-store', headers: cabecalhos });
   }
