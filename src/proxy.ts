@@ -3,6 +3,7 @@ import { extrairSlug, ehHostAdmin } from '@/lib/slug';
 import { semSubdominio } from '@/lib/config';
 import { lerSessao, COOKIE_ADMIN } from '@/lib/admin-sessao';
 import { lerSessao as lerSessaoBarbeiro, COOKIE_SESSAO } from '@/lib/auth';
+import { ipDoCliente } from '@/lib/ip-do-cliente';
 
 /// Next 16 aposentou `middleware.ts`: o arquivo se chama `proxy.ts` e a
 /// função exportada, `proxy`. A API (NextRequest/NextResponse, matcher)
@@ -53,10 +54,10 @@ function destinoNoDjango(req: NextRequest): URL | null {
 /// É o host, o Django precisa do original: vai em `x-marcai-host`, com o
 /// segredo em `x-marcai-proxy`. Quem confere é o `HostDoProxyMiddleware`.
 ///
-/// O IP do cliente vai junto, em `x-marcai-ip`: no salto até o Railway o
-/// `x-forwarded-for` passa a começar pelo IP da Vercel, e a trava de login do
-/// admin contaria as falhas de todo mundo num balde só. Aqui, na borda, ele
-/// ainda é o de quem chamou.
+/// O IP do cliente vai junto, em `x-marcai-ip`: no salto até o Django o
+/// endereço da conexão passa a ser o deste contêiner, e o limite por IP e a
+/// trava de login do admin contariam todo mundo num balde só. Qual IP da
+/// lista vale está em `ipDoCliente`.
 ///
 /// Os três são APAGADOS antes de tudo, venham de onde vierem: chegando de
 /// fora, é alguém tentando se passar por este proxy. O segredo barraria o
@@ -79,7 +80,7 @@ function cabecalhosParaODjango(req: NextRequest, host: string, caminho: string):
   if (segredo && vaiParaODjango(caminho)) {
     headers.set('x-marcai-host', host);
     headers.set('x-marcai-proxy', segredo);
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const ip = ipDoCliente(req.headers);
     if (ip) headers.set('x-marcai-ip', ip);
   }
   return headers;
