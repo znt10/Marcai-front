@@ -36,11 +36,23 @@ describe('proxy.ts → cabeçalhos para o Django', () => {
   it('em /api de barbearia, repassa host, segredo e IP do cliente', async () => {
     const res = await proxy(
       pedido('https://brutus.usemarcai.online/api/servicos', {
-        'x-forwarded-for': '167.249.51.42, 10.0.0.1',
+        'x-forwarded-for': '167.249.51.42',
       }),
     );
     expect(repassado(res, 'x-marcai-host')).toBe('brutus.usemarcai.online');
     expect(repassado(res, 'x-marcai-proxy')).toBe(SEGREDO);
+    expect(repassado(res, 'x-marcai-ip')).toBe('167.249.51.42');
+  });
+
+  it('repassa o ÚLTIMO IP de x-forwarded-for, não o que o cliente escreveu', async () => {
+    // O cliente manda `x-forwarded-for: 6.6.6.6`; o Traefik acrescenta o IP
+    // que ele viu de verdade. Se o primeiro valesse, trocar de IP a cada
+    // pedido driblaria o limite do Django.
+    const res = await proxy(
+      pedido('https://brutus.usemarcai.online/api/auth/login', {
+        'x-forwarded-for': '6.6.6.6, 167.249.51.42',
+      }),
+    );
     expect(repassado(res, 'x-marcai-ip')).toBe('167.249.51.42');
   });
 
