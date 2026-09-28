@@ -1,11 +1,15 @@
 import Link from 'next/link';
 import { barbeariaAtual } from '@/lib/tenant';
+import { cartaoDestaPagina } from '@/lib/miniatura';
 import { Frame, Sub, Sep } from '@/components/wf';
 import { FormAgendamento } from '@/components/FormAgendamento';
 
 export async function generateMetadata() {
   const b = await barbeariaAtual();
-  return { title: `Marcar horário · ${b.nome}` };
+  return {
+    title: `Marcar horário · ${b.nome}`,
+    ...(await cartaoDestaPagina(b.nome, `Escolha o serviço, o barbeiro e o horário. ${b.endereco}.`)),
+  };
 }
 
 export default async function Agendar({
