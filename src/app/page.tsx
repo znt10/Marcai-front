@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { barbeariaAtual } from '@/lib/tenant';
+import { cartaoDestaPagina } from '@/lib/miniatura';
 import { cardapioPorBarbeiro } from '@/lib/vitrine';
 import { Vitrine } from '@/components/Vitrine';
 import { Frame, Box } from '@/components/wf';
@@ -78,8 +79,10 @@ export default async function Barbearia() {
 /// chamada e a do componente viram uma só dentro da mesma requisição.
 export async function generateMetadata() {
   const b = await barbeariaAtual();
+  const descricao = `Marque seu horário na ${b.nome}. ${b.endereco}.`;
   return {
     title: `${b.nome} · barbearia`,
-    description: `Marque seu horário na ${b.nome}. ${b.endereco}.`,
+    description: descricao,
+    ...(await cartaoDestaPagina(b.nome, descricao)),
   };
 }

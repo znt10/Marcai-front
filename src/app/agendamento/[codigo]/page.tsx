@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
-import { buscarNoDjango } from '@/lib/tenant';
+import { barbeariaAtual, buscarNoDjango } from '@/lib/tenant';
+import { cartaoDestaPagina } from '@/lib/miniatura';
 import { Frame } from '@/components/wf';
 import { Confirmado } from '@/components/Confirmado';
 
@@ -21,6 +22,17 @@ type Detalhe = {
   endereco: string;
   whatsappBarbearia: string;
 };
+
+/// O link que a confirmação (e o bot) manda. O cartão fala da barbearia e não
+/// do cliente: o nome dele não precisa aparecer num preview que pode ser
+/// encaminhado.
+export async function generateMetadata() {
+  const b = await barbeariaAtual();
+  return {
+    title: `Seu horário · ${b.nome}`,
+    ...(await cartaoDestaPagina(b.nome, 'Veja os detalhes do seu horário, ou cancele se precisar.')),
+  };
+}
 
 export default async function Pagina({ params }: { params: Promise<{ codigo: string }> }) {
   const { codigo } = await params;
