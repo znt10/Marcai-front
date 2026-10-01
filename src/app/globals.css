@@ -242,3 +242,17 @@ html[data-tema="claro"] .painel {
     --color-linha:      #e7dac3;
   }
 }
+
+/* A TELA DE MARCAR — o redesign do fluxo do cliente.
+
+   Escopo, como o `.painel`, e pela mesma razão: a vitrine e a confirmação
+   seguem com a identidade de cima até ganharem desenho novo. A paleta quase
+   não muda — a nogueira e o âmbar são os mesmos —, então só entram aqui as
+   duas coisas que o desenho troca de fato: a Poppins no corpo, e um degrau de
+   superfície para o que está aceso (o serviço escolhido, o resumo antes do
+   botão). O `superficie2` de fora é o do painel, claro demais para isto. */
+.fluxo {
+  --color-superficie2: #241b15;
+
+  font-family: var(--font-letreiro);
+}
