@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Box, Chip, Row, Lbl, Sub, Avatar } from '@/components/wf';
+import { Avatar } from '@/components/wf';
 import { formatar } from '@/lib/telefone';
 import { formatarPreco } from '@/lib/dinheiro';
 import {
@@ -32,6 +32,10 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
   const [barbeiroId, setBarbeiroId] = useState<string>(inicial.barbeiroId ?? '');
   const [servicoId, setServicoId] = useState<string>(inicial.servicoId ?? '');
   const [slot, setSlot] = useState<Slot | null>(null);
+  // O chip aceso acima da grade. Pode apontar para um dia que a lista nova não
+  // tem mais (trocou o serviço, voltou do calendário) — por isso a tela não o
+  // lê direto, e sim `diaVisto`, que cai num dia que exista.
+  const [diaAtivo, setDiaAtivo] = useState('');
   // REF, e não estado, e isso é a correção de um bug real: consumi-lo não pode
   // disparar de novo o efeito que busca a grade. Como estado, ele era
   // dependência daquele efeito — e o efeito começa com `setSlot(null)`. A
@@ -114,6 +118,12 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
 
   const servico = servicos.find(s => s.id === servicoId);
   const pronto = !!servicoId && !!slot && nome.trim().length >= 2 && whats.replace(/\D/g, '').length >= 10;
+  // Sem chip escolhido, abre no primeiro dia COM vaga: num fim de tarde de
+  // agenda cheia, acender "Hoje" vazio por padrão faria a tela começar
+  // dizendo não, com o amanhã livre a um toque de distância.
+  const diaVisto = dias.find(d => d.data === diaAtivo)
+    ?? dias.find(d => d.slots.length > 0) ?? dias[0];
+  const diaDoSlot = slot ? dias.find(d => d.slots.some(s => s.inicio === slot.inicio)) : undefined;
 
   async function confirmar() {
     if (!pronto || enviando) return;
@@ -140,103 +150,217 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
     }
   }
 
-  // As quatro etapas são irmãs na marcação, na ordem do wireframe — é assim
+  // As quatro etapas são irmãs na marcação, na ordem do desenho — é assim
   // que o celular as empilha, 1, 2, 3, 4. No desktop o grid as recoloca em
   // duas colunas SEM mexer na ordem do DOM: fossem dois <div> de coluna, o
-  // celular receberia "4. Seus dados" antes de "3. Horários".
+  // celular receberia "04 Seus dados" antes de "03 Horário".
   return (
-    <div className="grid gap-2.5 md:grid-cols-2 md:gap-x-8 md:gap-y-5 md:items-start">
-      <section className="flex flex-col gap-2.5 md:col-start-1 md:row-start-1">
-        <Lbl>1. Barbeiro</Lbl>
-        <Row wrap>
-          {barbeiros.map(b => (
-            <Box key={b.id} variante={barbeiroId === b.id ? 'sel' : 'normal'}
-                 className="flex gap-1.5 items-center cursor-pointer"
-                 onClick={() => setBarbeiroId(b.id)}>
-              {/* A foto vinha sendo descartada aqui: `Barbeiro` carrega
-                  `fotoUrl` desde a fatia 8 e esta tela renderizava o círculo
-                  vazio de qualquer jeito. A vitrine (`app/page.tsx`) já
-                  passava — eram duas telas discordando sobre o mesmo dado. */}
-              <Avatar tamanho={40} fotoUrl={b.fotoUrl} nome={b.nome} />{b.nome}
-            </Box>
-          ))}
-        </Row>
-      </section>
+    <div className="grid gap-[22px] md:grid-cols-2 md:gap-x-10 md:gap-y-8 md:items-start">
+      <Etapa n="01" titulo="Barbeiro" className="md:col-start-1 md:row-start-1">
+        <div className="flex flex-col gap-2">
+          {barbeiros.map(b => {
+            const ativo = barbeiroId === b.id;
+            return (
+              <button key={b.id} type="button" aria-pressed={ativo}
+                      onClick={() => setBarbeiroId(b.id)}
+                      className={`flex w-full items-center gap-3 rounded-[14px] border-[1.5px]
+                                  bg-superficie p-3 text-left transition-colors
+                                  ${ativo ? 'border-latao' : 'border-borda hover:border-latao'}`}>
+                <Rosto barbeiro={b} />
+                <span className="min-w-0 truncate text-[14.5px] md:text-[15.5px] font-bold text-tinta">
+                  {b.nome}
+                </span>
+                {ativo && (
+                  <span aria-hidden className="ml-auto flex size-5 shrink-0 items-center justify-center
+                                               rounded-full border-[1.5px] border-acento
+                                               text-[11px] font-bold text-acento">
+                    ✓
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </Etapa>
 
-      <section className="flex flex-col gap-2.5 md:col-start-1 md:row-start-2">
-        <Lbl>2. Serviço</Lbl>
-        {!barbeiroId ? <Sub>Escolhe o barbeiro pra ver os serviços.</Sub> : (
-          <Row wrap>
-            {servicos.map(s => (
-              <Chip key={s.id} ativo={servicoId === s.id} onClick={() => setServicoId(s.id)}>
-                {s.nome} · {s.duracaoMin}min
-                {s.precoCentavos !== null && ` · ${formatarPreco(s.precoCentavos)}`}
-              </Chip>
-            ))}
-          </Row>
+      <Etapa n="02" titulo="Serviço" className="md:col-start-1 md:row-start-2">
+        {!barbeiroId ? <Nota>Escolhe o barbeiro pra ver os serviços.</Nota> : (
+          // Quebra linha, e não rola de lado: um serviço escondido à direita
+          // da tela é um serviço que o cliente não sabe que existe.
+          <div className="flex flex-wrap gap-2">
+            {servicos.map(s => {
+              const ativo = servicoId === s.id;
+              return (
+                <button key={s.id} type="button" aria-pressed={ativo}
+                        onClick={() => setServicoId(s.id)}
+                        className={`max-w-full rounded-[12px] border-[1.5px] px-3.5 py-2.5 text-left
+                                    transition-colors
+                                    ${ativo ? 'border-acento bg-superficie2'
+                                            : 'border-borda bg-superficie hover:border-latao'}`}>
+                  <span className="block text-[12.5px] md:text-[13.5px] font-bold text-tinta">{s.nome}</span>
+                  <span className={`mt-0.5 block whitespace-nowrap text-[10.5px] md:text-[11.5px]
+                                    ${ativo ? 'font-semibold text-acento' : 'text-sub'}`}>
+                    {s.duracaoMin}min
+                    {s.precoCentavos !== null && ` · ${formatarPreco(s.precoCentavos)}`}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         )}
-      </section>
+      </Etapa>
 
-      <section className="flex flex-col gap-2.5 md:col-start-2 md:row-start-1 md:row-span-3">
-        {/* O rótulo acompanha DIAS_NA_HOME: com 1 dia, "próximos" seria
-            promessa que a lista não cumpre — quem quer outro dia vai pelo
-            calendário, logo abaixo. */}
-        <Lbl>{DIAS_NA_HOME === 1 ? '3. Horários livres hoje' : '3. Próximos horários livres'}</Lbl>
-        {!servicoId && <Sub>Escolhe o serviço pra ver os horários.</Sub>}
-        {dias.map(d => (
-          <div key={d.data} className="flex flex-col gap-2">
-            <Lbl>{d.rotulo}</Lbl>
-            {d.slots.length === 0 ? <Sub>sem vaga nesse dia</Sub> : (
-              <Row wrap>
-                {d.slots.map(s => (
-                  <Chip key={s.inicio} dado ativo={slot?.inicio === s.inicio} onClick={() => setSlot(s)}>
-                    {s.hora}
-                  </Chip>
-                ))}
-              </Row>
-            )}
+      <Etapa n="03" titulo="Horário" className="md:col-start-2 md:row-start-1 md:row-span-3">
+        {!servicoId && <Nota>Escolhe o serviço pra ver os horários.</Nota>}
+
+        {dias.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {dias.map(d => {
+              const ativo = d.data === diaVisto?.data;
+              return (
+                <button key={d.data} type="button" aria-pressed={ativo}
+                        onClick={() => setDiaAtivo(d.data)}
+                        className={`rounded-full border px-[13px] py-[7px] text-[12px] md:text-[13px]
+                                    font-semibold transition-colors
+                                    ${ativo ? 'border-acento bg-acento text-fundo'
+                                            : 'border-borda bg-superficie text-sub hover:border-latao'}`}>
+                  {maiuscula(d.rotulo)}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {diaVisto && (diaVisto.slots.length === 0 ? <Nota>sem vaga nesse dia</Nota> : (
+          // Cinco por linha, como no desenho: a grade cheia de horas é o que
+          // diz "agenda movimentada", e não uma lista curta e vazia.
+          <div className="grid grid-cols-5 gap-1.5">
+            {diaVisto.slots.map(s => {
+              const ativo = slot?.inicio === s.inicio;
+              return (
+                <button key={s.inicio} type="button" aria-pressed={ativo}
+                        onClick={() => setSlot(s)}
+                        className={`rounded-[14px] border py-[9px] text-center text-[11.5px] md:text-[13px]
+                                    tabular-nums transition-colors
+                                    ${ativo ? 'border-acento bg-acento font-bold text-fundo'
+                                            : 'border-borda bg-superficie font-semibold text-sub hover:border-latao hover:text-tinta'}`}>
+                  {s.hora}
+                </button>
+              );
+            })}
           </div>
         ))}
-        {servicoId && <Sub>só aparece o que está livre</Sub>}
+        {servicoId && <Nota className="mt-2">só aparece o que está livre</Nota>}
 
         {barbeiroId && servicoId && (
           // `urlCalendario`, e não uma URL escrita à mão: era escrita à mão, e
           // esquecia o `inicio`. Quem já tinha um horário na mão e ia ao
           // calendário só para dar uma olhada voltava sem ele — o "‹ voltar"
           // de lá só sabe devolver o que chegou.
-          <a href={urlCalendario({ barbeiroId, servicoId, inicio: slot?.inicio })}>
-            <Box className="flex justify-between items-center">
-              <span>escolher outro dia</span><Lbl>calendário ›</Lbl>
-            </Box>
+          <a href={urlCalendario({ barbeiroId, servicoId, inicio: slot?.inicio })}
+             className="mt-3 flex items-center justify-between rounded-[12px] border border-borda
+                        bg-superficie px-3.5 py-3 text-[13px] md:text-sm text-sub
+                        transition-colors hover:border-latao">
+            <span>Ver outro dia no calendário</span><span aria-hidden>›</span>
           </a>
         )}
-      </section>
+      </Etapa>
 
-      <section className="flex flex-col gap-2.5 md:col-start-1 md:row-start-3">
-        <Lbl>4. Seus dados</Lbl>
-        <Box variante={nome ? 'normal' : 'dash'}>
-          <input className="w-full outline-none bg-transparent" placeholder="Seu nome"
-                 value={nome} onChange={e => setNome(e.target.value)} />
-        </Box>
-        <Box variante={whats ? 'normal' : 'dash'}>
-          <input className="w-full outline-none bg-transparent" inputMode="numeric"
-                 placeholder="WhatsApp (11) 9 ____-____" value={whats}
-                 onChange={e => {
-                   const d = e.target.value.replace(/\D/g, '').slice(0, 11);
-                   setWhats(d.length >= 10 ? formatar(d) : d);
-                 }} />
-        </Box>
+      <Etapa n="04" titulo="Seus dados" className="md:col-start-1 md:row-start-3">
+        <div className="flex flex-col gap-2.5">
+          <Campo rotulo="Nome">
+            <input className={CAMPO} placeholder="Seu nome"
+                   value={nome} onChange={e => setNome(e.target.value)} />
+          </Campo>
+          <Campo rotulo="WhatsApp">
+            <input className={CAMPO} inputMode="numeric"
+                   placeholder="(11) 9 ____-____" value={whats}
+                   onChange={e => {
+                     const d = e.target.value.replace(/\D/g, '').slice(0, 11);
+                     setWhats(d.length >= 10 ? formatar(d) : d);
+                   }} />
+          </Campo>
+        </div>
 
-        {erro && <Sub className="text-acento">{erro}</Sub>}
+        {erro && <p className="mt-3 text-[12px] md:text-[13px] text-acento">{erro}</p>}
 
-        <Box variante={pronto && !enviando ? 'fill' : 'mut'}
-             className={pronto ? 'cursor-pointer' : ''} onClick={confirmar}>
-          {slot && servico
-            ? `confirmar ${servico.nome.toLowerCase()} ${slot.hora} com ${slot.barbeiroNome}`
-            : 'confirmar'}
-        </Box>
-        <Sub className="text-center">confirmação chega no seu zap</Sub>
-      </section>
+        {/* A frase do que vai ser marcado, logo acima do botão — o lugar
+            onde a pessoa confere antes de tocar. Antes ela morava DENTRO do
+            botão, em caixa baixa e comprida. */}
+        {slot && servico && (
+          <p className="mt-[22px] rounded-[12px] border border-borda bg-superficie2 px-3.5 py-3
+                        text-[12.5px] md:text-[13.5px] text-sub">
+            {servico.nome} com <b className="font-semibold text-acento">{slot.barbeiroNome}</b>
+            {diaDoSlot && ` · ${diaCurto(diaDoSlot.rotulo)}`} {slot.hora}
+          </p>
+        )}
+
+        <button type="button" onClick={confirmar} disabled={!pronto || enviando}
+                className={`w-full rounded-[14px] border-[1.5px] p-4 text-center
+                            text-[14.5px] md:text-base font-bold transition-colors
+                            ${slot && servico ? 'mt-4' : 'mt-[22px]'}
+                            border-acento bg-acento text-fundo
+                            disabled:border-borda disabled:bg-superficie disabled:text-apagado`}>
+          {enviando ? 'Confirmando…' : 'Confirmar horário'}
+        </button>
+        <Nota className="mt-2.5 text-center">A confirmação chega no seu WhatsApp</Nota>
+      </Etapa>
     </div>
   );
 }
+
+/// O cabeçalho de etapa do desenho: o número em fonte de dado, em âmbar, e o
+/// nome ao lado. `h2` de verdade — são as seções da página para quem lê com
+/// leitor de tela.
+function Etapa({
+  n, titulo, className = '', children,
+}: { n: string; titulo: string; className?: string; children: React.ReactNode }) {
+  return (
+    <section className={`flex flex-col ${className}`}>
+      <h2 className="mb-2.5 flex items-center gap-2 text-[13px] md:text-[15px] font-bold text-tinta">
+        <span className="font-dado text-[12px] md:text-[13px] text-acento">{n}</span>
+        {titulo}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+const Nota = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
+  <p className={`text-[11px] md:text-xs text-lbl ${className}`}>{children}</p>
+);
+
+/// O campo com o rótulo em cima. O `<label>` embrulha o `<input>`: tocar no
+/// rótulo foca o campo sem precisar de `id`.
+const Campo = ({ rotulo, children }: { rotulo: string; children: React.ReactNode }) => (
+  <label className="flex flex-col gap-1.5">
+    <span className="text-[11.5px] md:text-xs font-semibold text-lbl">{rotulo}</span>
+    {children}
+  </label>
+);
+
+/// A borda âmbar no foco É o anel de foco aqui: o contorno global de
+/// `:focus-visible` por fora dela faria dois fios em volta do mesmo campo.
+const CAMPO = 'w-full rounded-[12px] border-[1.5px] border-borda bg-superficie px-3.5 py-[13px] '
+  + 'text-[13.5px] md:text-sm text-tinta placeholder:text-apagado outline-none '
+  + 'focus-visible:outline-none focus:border-acento transition-colors';
+
+/// O rosto no cartão do barbeiro. Sem foto, a inicial sobre latão: o círculo
+/// vazio do `Avatar` some contra a nogueira, e o cartão ficava com um buraco
+/// onde devia estar a pessoa. A foto é a que o barbeiro põe no painel (o
+/// quadrado da barra de cima).
+const Rosto = ({ barbeiro }: { barbeiro: Barbeiro }) => barbeiro.fotoUrl
+  ? <Avatar tamanho={42} fotoUrl={barbeiro.fotoUrl} nome={barbeiro.nome} />
+  : (
+    <span aria-hidden className="flex size-[42px] shrink-0 items-center justify-center rounded-full
+                                 bg-latao text-[17px] font-bold text-fundo">
+      {barbeiro.nome.trim().charAt(0).toUpperCase()}
+    </span>
+  );
+
+const maiuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/// "hoje · qua 13 ago" vira "hoje"; "sex 15 ago", que não tem o prefixo, fica
+/// como veio. O rótulo é montado pelo back (`_rotulo` em services/agenda.py),
+/// e o ponto médio é o separador que ele promete.
+const diaCurto = (rotulo: string) => rotulo.split(' · ')[0];

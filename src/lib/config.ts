@@ -11,13 +11,13 @@ export const GRANULARIDADE_MIN = 30;
 
 export const ANTECEDENCIA_MINIMA_MIN = 0;
 export const PRAZO_CANCELAMENTO_MIN = 60;
-// Quantos dias a home enfileira embaixo de "3. Próximos horários livres".
-// Em 1, a tela mostra só HOJE: quem quer outro dia vai pelo calendário, que
-// e' o link logo abaixo. Vale saber o efeito de virar 1 — num fim de tarde
-// com a agenda cheia a secao fica vazia, e o calendario passa a ser o unico
-// caminho. Era 2 (hoje + amanha) e o valor estava escrito a mao dentro de
-// FormAgendamento, com esta constante orfa.
-export const DIAS_NA_HOME = 1;
+// Quantos dias a tela de marcar oferece nos chips acima da grade de horários
+// ("Hoje", "Amanhã"); o resto fica no calendário, que e' o link logo abaixo.
+// Foi 1 enquanto os dias vinham EMPILHADOS, cada um com a grade inteira: o
+// segundo dia dobrava a altura da seção. Com os chips só uma grade aparece
+// por vez, e o segundo dia volta a ser de graça — e é ele que salva o fim de
+// tarde com a agenda cheia, quando hoje não tem mais vaga.
+export const DIAS_NA_HOME = 2;
 export const JANELA_MAXIMA_DIAS = 60;
 // O lembrete e a cadência do agendador que o dispara, lado a lado porque um
 // depende do outro: TIQUE precisa ser MENOR que a antecedência, senão quem
