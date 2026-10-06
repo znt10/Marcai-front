@@ -3,12 +3,15 @@ import { useEffect, useState } from 'react';
 import { Box, Chip, Row, Lbl, Sub } from '@/components/wf';
 import { publicoApi, ignorarAborto } from '@/lib/api';
 import { urlAgendar } from '@/lib/escolha';
+import { diaDeHoje } from '@/lib/datas';
+import { mesDe, rotuloDoMes, somarMeses } from '@/lib/resumo';
 
 const CABECALHO = ['s', 't', 'q', 'q', 's', 's', 'd']; // semana começa na segunda
 
 export function MiniCalendario({ barbeiroId, servicoId }: { barbeiroId: string; servicoId: string }) {
-  const hoje = new Date();
-  const [mes, setMes] = useState(`${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`);
+  const hoje = diaDeHoje(new Date());
+  const mesDeHoje = mesDe(hoje);
+  const [mes, setMes] = useState(mesDeHoje);
   const [comVaga, setComVaga] = useState<number[]>([]);
   const [dia, setDia] = useState<string | null>(null);
   const [slots, setSlots] = useState<{ hora: string; inicio: string; barbeiroNome: string }[]>([]);
@@ -38,18 +41,24 @@ export function MiniCalendario({ barbeiroId, servicoId }: { barbeiroId: string; 
   // getDay(): 0=domingo. A grade começa na segunda, então domingo vira 6.
   const deslocamento = (new Date(ano, m - 1, 1).getDay() + 6) % 7;
 
-  const irPara = (delta: number) => {
-    const d = new Date(ano, m - 1 + delta, 1);
-    setMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-  };
+  // As setas eram texto cinza de 11px, e quem marcava no dia 31 não achava
+  // como ir para o mês seguinte. Agora são botões do tamanho de um dedo, e o
+  // mês aparece por extenso. Para trás só até o mês de hoje: antes dele não
+  // há horário para marcar.
+  const seta = `size-11 shrink-0 rounded-full border border-borda text-xl leading-none text-tinta
+                transition-colors hover:border-latao disabled:opacity-30 disabled:hover:border-borda`;
 
   return (
     <>
-      <Row className="items-center">
-        <button onClick={() => irPara(-1)} className="text-[11px] md:text-sm text-lbl">‹</button>
-        <div className="flex-1 text-center text-sm md:text-base">{mes}</div>
-        <button onClick={() => irPara(1)} className="text-[11px] md:text-sm text-lbl">›</button>
-      </Row>
+      {/* `div` e não `Row`: o `Row` estica cada filho (`flex-1`), e as setas
+          virariam pílulas da largura do título. */}
+      <div className="flex items-center gap-2">
+        <button type="button" aria-label="Mês anterior" disabled={mes <= mesDeHoje}
+                onClick={() => setMes(somarMeses(mes, -1))} className={seta}>‹</button>
+        <div className="flex-1 text-center text-base md:text-lg font-semibold">{rotuloDoMes(mes, hoje)}</div>
+        <button type="button" aria-label="Próximo mês"
+                onClick={() => setMes(somarMeses(mes, 1))} className={seta}>›</button>
+      </div>
 
       <div className="grid grid-cols-7 gap-1.5 md:gap-2 text-center">
         {CABECALHO.map((d, i) => <div key={i} className="text-[10px] md:text-xs text-lbl">{d}</div>)}
