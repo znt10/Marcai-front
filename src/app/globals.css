@@ -256,3 +256,23 @@ html[data-tema="claro"] .painel {
 
   font-family: var(--font-letreiro);
 }
+
+/* O GUIA DA PRIMEIRA VEZ na tela de marcar (`@/lib/guia`): o que se toca no
+   passo da vez ganha um anel âmbar que respira. Anel por `box-shadow`, e não
+   `outline` nem borda: não mexe no tamanho do botão, e não briga com o anel
+   de foco do `:focus-visible`. Quem pediu menos movimento ao sistema ganha o
+   anel parado. */
+@keyframes guia-pulso {
+  0%, 100% { box-shadow: 0 0 0 2px var(--color-acento); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-acento) 35%, transparent); }
+}
+.guia-alvo {
+  border-radius: 14px;
+  animation: guia-pulso 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .guia-alvo {
+    animation: none;
+    box-shadow: 0 0 0 3px var(--color-acento);
+  }
+}

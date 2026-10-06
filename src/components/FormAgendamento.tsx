@@ -10,6 +10,10 @@ import {
 import { DIAS_NA_HOME } from '@/lib/config';
 import { urlCalendario } from '@/lib/escolha';
 import { lerRascunho, salvarRascunho, limparRascunho } from '@/lib/rascunho';
+import {
+  TEXTO_DO_PASSO, dadosCompletos, guiaJaVisto, marcarGuiaVisto, proximoPasso, type Passo,
+} from '@/lib/guia';
+import { Balao } from '@/components/GuiaDoAgendar';
 
 /// 'YYYY-MM-DD' de um instante ISO, no fuso do navegador. Não usa
 /// `@/lib/datas` de propósito: aquele módulo é o ponto único de conversão do
@@ -62,6 +66,11 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
     if (r.nome) setNome(r.nome);
     if (r.whats) setWhats(r.whats);
   }, []);
+
+  // O guia da primeira vez. Lido em efeito pelo mesmo motivo do rascunho
+  // acima: `localStorage` não existe no servidor.
+  const [guia, setGuia] = useState(false);
+  useEffect(() => { setGuia(!guiaJaVisto()); }, []);
 
   // Grava a cada tecla. É barato (duas strings curtas) e é o que sobrevive a
   // fechar a aba sem querer no meio do preenchimento.
@@ -117,13 +126,22 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
   }, [dias]);
 
   const servico = servicos.find(s => s.id === servicoId);
-  const pronto = !!servicoId && !!slot && nome.trim().length >= 2 && whats.replace(/\D/g, '').length >= 10;
+  const pronto = !!servicoId && !!slot && dadosCompletos(nome, whats);
   // Sem chip escolhido, abre no primeiro dia COM vaga: num fim de tarde de
   // agenda cheia, acender "Hoje" vazio por padrão faria a tela começar
   // dizendo não, com o amanhã livre a um toque de distância.
   const diaVisto = dias.find(d => d.data === diaAtivo)
     ?? dias.find(d => d.slots.length > 0) ?? dias[0];
   const diaDoSlot = slot ? dias.find(d => d.slots.some(s => s.inicio === slot.inicio)) : undefined;
+
+  const passo = guia ? proximoPasso({
+    barbeiroId, servicoId, temHorario: !!slot,
+    diaSemVaga: !!diaVisto && diaVisto.slots.length === 0, nome, whats,
+  }) : null;
+  const pularGuia = () => { marcarGuiaVisto(); setGuia(false); };
+  const balao = (p: Passo) => passo === p && <Balao texto={TEXTO_DO_PASSO[p]} aoPular={pularGuia} />;
+  // O que se toca no passo da vez ganha o anel âmbar pulsando (`globals.css`).
+  const alvo = (p: Passo, falta = true) => (passo === p && falta ? ' guia-alvo' : '');
 
   async function confirmar() {
     if (!pronto || enviando) return;
@@ -137,6 +155,8 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
       // e não quando a aba fechar: o balcão da barbearia é um aparelho só, e o
       // próximo cliente não pode achar o telefone do anterior no formulário.
       limparRascunho();
+      // Marcou uma vez: daqui em diante, neste aparelho, a pessoa já sabe.
+      marcarGuiaVisto();
       window.location.href = `/agendamento/${codigo}`;
     } catch (e) {
       setErro(mensagemDoErro(e));
@@ -157,7 +177,8 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
   return (
     <div className="grid gap-[22px] md:grid-cols-2 md:gap-x-10 md:gap-y-8 md:items-start">
       <Etapa n="01" titulo="Barbeiro" className="md:col-start-1 md:row-start-1">
-        <div className="flex flex-col gap-2">
+        {balao('barbeiro')}
+        <div className={`flex flex-col gap-2${alvo('barbeiro')}`}>
           {barbeiros.map(b => {
             const ativo = barbeiroId === b.id;
             return (
@@ -184,10 +205,11 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
       </Etapa>
 
       <Etapa n="02" titulo="Serviço" className="md:col-start-1 md:row-start-2">
+        {balao('servico')}
         {!barbeiroId ? <Nota>Escolhe o barbeiro pra ver os serviços.</Nota> : (
           // Quebra linha, e não rola de lado: um serviço escondido à direita
           // da tela é um serviço que o cliente não sabe que existe.
-          <div className="flex flex-wrap gap-2">
+          <div className={`flex flex-wrap gap-2${alvo('servico')}`}>
             {servicos.map(s => {
               const ativo = servicoId === s.id;
               return (
@@ -213,8 +235,9 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
       <Etapa n="03" titulo="Horário" className="md:col-start-2 md:row-start-1 md:row-span-3">
         {!servicoId && <Nota>Escolhe o serviço pra ver os horários.</Nota>}
 
+        {balao('outro-dia')}
         {dias.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2">
+          <div className={`mb-3 flex flex-wrap gap-2${alvo('outro-dia')}`}>
             {dias.map(d => {
               const ativo = d.data === diaVisto?.data;
               return (
@@ -231,10 +254,11 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
           </div>
         )}
 
+        {balao('horario')}
         {diaVisto && (diaVisto.slots.length === 0 ? <Nota>sem vaga nesse dia</Nota> : (
           // Cinco por linha, como no desenho: a grade cheia de horas é o que
           // diz "agenda movimentada", e não uma lista curta e vazia.
-          <div className="grid grid-cols-5 gap-1.5">
+          <div className={`grid grid-cols-5 gap-1.5${alvo('horario')}`}>
             {diaVisto.slots.map(s => {
               const ativo = slot?.inicio === s.inicio;
               return (
@@ -267,13 +291,15 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
       </Etapa>
 
       <Etapa n="04" titulo="Seus dados" className="md:col-start-1 md:row-start-3">
+        {balao('dados')}
         <div className="flex flex-col gap-2.5">
           <Campo rotulo="Nome">
-            <input className={CAMPO} placeholder="Seu nome"
+            <input className={CAMPO + alvo('dados', nome.trim().length < 2)} placeholder="Seu nome"
                    value={nome} onChange={e => setNome(e.target.value)} />
           </Campo>
           <Campo rotulo="WhatsApp">
-            <input className={CAMPO} inputMode="numeric"
+            <input className={CAMPO + alvo('dados', whats.replace(/\D/g, '').length < 10)}
+                   inputMode="numeric"
                    placeholder="(11) 9 ____-____" value={whats}
                    onChange={e => {
                      const d = e.target.value.replace(/\D/g, '').slice(0, 11);
@@ -295,10 +321,11 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
           </p>
         )}
 
+        {passo === 'confirmar' && <div className="mt-4">{balao('confirmar')}</div>}
         <button type="button" onClick={confirmar} disabled={!pronto || enviando}
                 className={`w-full rounded-[14px] border-[1.5px] p-4 text-center
                             text-[14.5px] md:text-base font-bold transition-colors
-                            ${slot && servico ? 'mt-4' : 'mt-[22px]'}
+                            ${passo === 'confirmar' ? '' : slot && servico ? 'mt-4' : 'mt-[22px]'}${alvo('confirmar')}
                             border-acento bg-acento text-fundo
                             disabled:border-borda disabled:bg-superficie disabled:text-apagado`}>
           {enviando ? 'Confirmando…' : 'Confirmar horário'}
