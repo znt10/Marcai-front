@@ -8,7 +8,6 @@ import { useEu } from '@/components/painel/SessaoDoPainel';
 import { lembrar, esquecer } from '@/lib/eu-lembrado';
 import { SECOES } from '@/components/painel/secoes';
 import { SeletorDeSecao } from '@/components/painel/SeletorDeSecao';
-import { FaixaDoWhatsapp } from '@/components/painel/FaixaDoWhatsapp';
 import { BotaoDeTema } from '@/components/painel/Tema';
 import { AppDoBarbeiro } from '@/components/painel/AppDoBarbeiro';
 
@@ -178,12 +177,6 @@ export function NavPainel() {
           {carregando ? <Espaco /> : <Abas caminho={caminho} dono={dono} />}
         </nav>
         <SeletorDeSecao caminho={caminho} dono={dono} carregando={carregando} />
-        {/* DEPOIS da navegação, e dentro da barra: é aviso de estado, não
-            uma seção — no topo ela empurraria nome e abas para baixo toda vez
-            que o vínculo caísse, e o painel mudaria de forma por causa de uma
-            coisa que some sozinha. Ela mesma não desenha nada quando está
-            tudo de pé. */}
-        <FaixaDoWhatsapp />
       </div>
     </div>
   );
