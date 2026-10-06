@@ -3,10 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Box, Lbl, Sub } from '@/components/wf';
 import { adminApi, mensagemDoErro, type WhatsappCentral as Central } from '@/lib/api';
 import { formatar } from '@/lib/telefone';
-
-/// O QR troca a cada ~40s na Evolution: enquanto não conecta, a tela confere
-/// de 3 em 3 — o mesmo ritmo que a tela do QR da barbearia usava.
-const CONFERIR_MS = 3_000;
+import { proximaConferencia } from '@/lib/whatsapp-central';
 
 /// O número central do Marcaí no topo do admin.
 ///
@@ -18,28 +15,34 @@ export function WhatsappCentral() {
   const [dados, setDados] = useState<Central | null>(null);
   const [erro, setErro] = useState('');
 
-  const carregar = useCallback(async (signal?: AbortSignal) => {
+  const carregar = useCallback(async (signal: AbortSignal): Promise<Central | null> => {
     try {
-      setDados(await adminApi.whatsappCentral(signal));
+      const novos = await adminApi.whatsappCentral(signal);
+      setDados(novos);
       setErro('');
+      return novos;
     } catch (e) {
       const msg = mensagemDoErro(e);
       if (msg) setErro(msg);
+      return null;
     }
   }, []);
 
+  // Uma conferência de cada vez: a próxima só é marcada depois que a
+  // anterior respondeu (ver `proximaConferencia`).
   useEffect(() => {
     const ctrl = new AbortController();
-    void carregar(ctrl.signal);
-    return () => ctrl.abort();
+    let espera: ReturnType<typeof setTimeout> | undefined;
+    async function conferir() {
+      const ms = proximaConferencia(await carregar(ctrl.signal));
+      if (ms !== null && !ctrl.signal.aborted) espera = setTimeout(conferir, ms);
+    }
+    void conferir();
+    return () => {
+      ctrl.abort();
+      clearTimeout(espera);
+    };
   }, [carregar]);
-
-  const conectado = dados?.conectado === true;
-  useEffect(() => {
-    if (conectado) return;
-    const t = setInterval(() => { void carregar(); }, CONFERIR_MS);
-    return () => clearInterval(t);
-  }, [conectado, carregar]);
 
   return (
     <>
