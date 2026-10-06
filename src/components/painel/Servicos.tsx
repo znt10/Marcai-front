@@ -8,6 +8,7 @@ import {
   type ServicoDoCatalogo, type VinculoDeServico, type Eu, type Barbeiro,
 } from '@/lib/api';
 import { formatarPreco } from '@/lib/dinheiro';
+import { DURACAO_MAXIMA_MIN, DURACAO_MINIMA_MIN } from '@/lib/config';
 
 export function Servicos({ eu }: { eu: Eu }) {
   const [catalogo, setCatalogo] = useState<ServicoDoCatalogo[] | null>(null);
@@ -137,7 +138,7 @@ export function Servicos({ eu }: { eu: Eu }) {
               <label className="flex flex-col gap-0.5">
                 <Etiqueta>duração</Etiqueta>
                 <span className="flex items-baseline gap-1 font-dado text-[15px] font-bold text-tinta">
-                  <input type="number" min={v.duracaoMinimaMin} step={5}
+                  <input type="number" min={DURACAO_MINIMA_MIN} max={DURACAO_MAXIMA_MIN} step={5}
                          className="w-12 border-b border-borda bg-transparent text-right
                                     outline-none focus:border-acento"
                          defaultValue={v.duracaoMin}
@@ -263,12 +264,6 @@ function CartaoDoCatalogo({ servico: s, agir }: {
           {s.ativo ? 'tirar da lista' : 'voltar para a lista'}
         </BotaoVazado>
       </div>
-      {/* "min 20 · sugerida 40" nao dizia minimo de QUE, nem sugerida
-          para quem. Sao os dois limites que o barbeiro encontra la em
-          cima quando poe o tempo dele. */}
-      <span className="text-[11.5px] font-medium text-lbl">
-        nunca menos de {s.duracaoMinimaMin} min · normalmente {s.duracaoSugeridaMin} min
-      </span>
       {/* Zero é o aviso de que o serviço existe e ninguém oferece. */}
       {s.ativo && s.barbeiros === 0 && (
         <span className="text-[11.5px] font-medium text-acento">
@@ -279,12 +274,11 @@ function CartaoDoCatalogo({ servico: s, agir }: {
   );
 }
 
-function NovoServico({ aoCriar }: {
-  aoCriar: (d: { nome: string; duracaoMinimaMin: number; duracaoSugeridaMin: number }) => void;
-}) {
+/// Só o nome. O "nunca leva menos que" e o "normalmente leva" saíram em
+/// 06/10/2026: o tempo é de cada barbeiro, no campo duração de "Seus
+/// serviços", e dois números do dono por cima disso só confundiam.
+function NovoServico({ aoCriar }: { aoCriar: (d: { nome: string }) => void }) {
   const [nome, setNome] = useState('');
-  const [minima, setMinima] = useState(20);
-  const [sugerida, setSugerida] = useState(30);
 
   return (
     <>
@@ -297,35 +291,13 @@ function NovoServico({ aoCriar }: {
                placeholder="nome do serviço — ex.: sobrancelha"
                value={nome} onChange={(e) => setNome(e.target.value)} />
       </Cartao>
-      {/* Eram dois numeros rotulados "minima" e "sugerida", sem unidade e sem
-          dizer minima de que. Viram duas frases inteiras, com o campo no meio
-          e "min" do lado. */}
-      <Cartao className="flex flex-col gap-2.5 text-[13px] font-medium text-sub">
-        <label className="flex flex-wrap items-center gap-2">
-          nunca leva menos que
-          <input type="number" step={5} min={5}
-                 className="w-14 border-b border-borda bg-transparent text-right font-dado
-                            text-tinta outline-none focus:border-acento"
-                 value={minima} onChange={(e) => setMinima(Number(e.target.value))} />
-          min
-        </label>
-        <label className="flex flex-wrap items-center gap-2">
-          normalmente leva
-          <input type="number" step={5} min={5}
-                 className="w-14 border-b border-borda bg-transparent text-right font-dado
-                            text-tinta outline-none focus:border-acento"
-                 value={sugerida} onChange={(e) => setSugerida(Number(e.target.value))} />
-          min
-        </label>
-      </Cartao>
       <Texto>
-        Cada barbeiro ajusta o tempo dele depois. Estes dois números são só o
-        ponto de partida.
+        O tempo, cada barbeiro coloca o dele em Seus serviços, acima.
       </Texto>
       <BotaoCheio largura="cheia" disabled={nome.trim().length < 2}
                   onClick={() => {
                     if (nome.trim().length < 2) return;
-                    aoCriar({ nome, duracaoMinimaMin: minima, duracaoSugeridaMin: sugerida });
+                    aoCriar({ nome });
                     setNome('');
                   }}>
         + acrescentar à lista
