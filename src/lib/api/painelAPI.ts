@@ -179,7 +179,9 @@ export const servicosApi = {
       signal, loginEm: LOGIN_DO_PAINEL,
     }).then((d) => d.servicos),
 
-  criar: (dados: { nome: string; duracaoMinimaMin: number; duracaoSugeridaMin: number }) =>
+  /// Só o nome: o tempo é de cada barbeiro, no vínculo. O back dá ao serviço
+  /// novo o tempo padrão com que começa quem toca em "faço".
+  criar: (dados: { nome: string }) =>
     pedir<{ id: string }>('/painel/servicos', {
       metodo: 'POST', corpo: dados, loginEm: LOGIN_DO_PAINEL,
     }),
