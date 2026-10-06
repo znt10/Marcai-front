@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
-import { Box, Chip, Lbl, Sub } from '@/components/wf';
-import { adminApi, mensagemDoErro, type NovaBarbearia, type Plano } from '@/lib/api';
+import { Box, Lbl, Sub } from '@/components/wf';
+import { adminApi, mensagemDoErro, type NovaBarbearia } from '@/lib/api';
 
 /// Cinco campos, e os dois que saíram têm motivos diferentes.
 ///
@@ -22,10 +22,6 @@ const CAMPOS = [
 
 export function FormBarbearia({ aoCriar }: { aoCriar?: () => void }) {
   const [dados, setDados] = useState<Record<string, string>>({});
-  // Nasce em `SEM_ZAP`, e o padrão é a decisão: errar para o plano mais
-  // barato não manda mensagem nenhuma de um número errado; errar para o
-  // outro, manda — e ainda cria uma instância que ninguém pediu.
-  const [plano, setPlano] = useState<Plano>('SEM_ZAP');
   const [erro, setErro] = useState('');
   const [link, setLink] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -39,11 +35,10 @@ export function FormBarbearia({ aoCriar }: { aoCriar?: () => void }) {
       // Os cinco campos de CAMPOS são exatamente os de NovaBarbearia, e o
       // botão só habilita com todos preenchidos.
       const criada = await adminApi.criarBarbearia({
-        ...(dados as unknown as NovaBarbearia), plano,
+        ...(dados as unknown as NovaBarbearia),
       });
       setLink(criada.linkConvite);
       setDados({});
-      setPlano('SEM_ZAP');
       aoCriar?.();
     } catch (e) {
       setErro(mensagemDoErro(e));
@@ -62,19 +57,6 @@ export function FormBarbearia({ aoCriar }: { aoCriar?: () => void }) {
                  onChange={(e) => setDados({ ...dados, [c.chave]: e.target.value })} />
         </Box>
       ))}
-      {/* Escolha de DOIS, e por isso duas pastilhas em vez de um interruptor:
-          um "com zap" sozinho não diria qual é a alternativa, e é justamente
-          a alternativa que o admin está vendendo. */}
-      <Lbl>plano</Lbl>
-      <div className="flex gap-2">
-        <Chip ativo={plano === 'SEM_ZAP'} onClick={() => setPlano('SEM_ZAP')}>sem zap</Chip>
-        <Chip ativo={plano === 'COM_ZAP'} onClick={() => setPlano('COM_ZAP')}>com zap</Chip>
-      </div>
-      {plano === 'COM_ZAP' && (
-        <Sub>
-          o número é criado depois do cadastro; o dono lê o QR no painel dele
-        </Sub>
-      )}
       {erro && <Sub className="text-acento">{erro}</Sub>}
       <Box variante={completo ? 'fill' : 'mut'}
            className={completo ? 'cursor-pointer' : ''} onClick={criar}>
