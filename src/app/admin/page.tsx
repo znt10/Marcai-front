@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { ListaBarbearias } from '@/components/admin/ListaBarbearias';
 import { FormBarbearia } from '@/components/admin/FormBarbearia';
+import { WhatsappCentral } from '@/components/admin/WhatsappCentral';
 import { Sep, Lbl } from '@/components/wf';
 import { adminApi, origemDoTenant, LOGIN_DO_ADMIN } from '@/lib/api';
 
@@ -29,6 +30,8 @@ export default function Admin() {
 
   return (
     <>
+      <WhatsappCentral />
+      <Sep />
       <ListaBarbearias recarregarEm={versao} />
       <Sep />
       <FormBarbearia aoCriar={() => setVersao((v) => v + 1)} />

@@ -19,8 +19,8 @@ export type {
   ServicoDoCatalogo, VinculoDeServico,
   ColunaDoDia, ItemDoQuadro, DadosDaBarbearia,
   LinhaDoResumo, Resumo,
-  WhatsappDaBarbearia, EstadoDoWhatsapp,
+  WhatsappDaBarbearia,
 } from './painelAPI';
 
 export { adminApi, LOGIN_DO_ADMIN } from './adminAPI';
-export type { BarbeariaDaLista, NovaBarbearia, Plano } from './adminAPI';
+export type { BarbeariaDaLista, NovaBarbearia, Plano, WhatsappCentral } from './adminAPI';

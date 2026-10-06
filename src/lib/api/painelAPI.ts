@@ -305,50 +305,17 @@ export const resumoApi = {
     }),
 };
 
-/// O WhatsApp da própria barbearia.
-///
-/// `qrBase64` chega `null` para quem não é dono — a rota decide isso, não a
-/// tela. Com o QR na mão, um barbeiro ligaria o WhatsApp da barbearia ao
-/// próprio celular e passaria a receber a conversa de todo cliente. O
-/// `estado`, esse sim, todo mundo vê: é dele que sai a faixa de "caiu".
-export type EstadoDoWhatsapp =
-  /// A instância ainda não existe do lado da Evolution. Some sozinho: a
-  /// conferência de 5 minutos a cria.
-  | 'PENDENTE'
-  | 'AGUARDANDO_QR'
-  | 'CONECTADO'
-  | 'DESCONECTADO';
-
+/// A tela do WhatsApp desde a etapa 1 do número central: o número da
+/// barbearia não fica ligado a nada, então não há estado nem QR — só o texto
+/// pronto da mensagem de saudação e as mensagens que não chegaram.
 export type WhatsappDaBarbearia = {
-  plano: 'SEM_ZAP' | 'COM_ZAP';
-  /// `null` no plano sem zap — não há vínculo nenhum de que falar.
-  estado: EstadoDoWhatsapp | null;
-  numeroConectado: string | null;
-  desconectadoDesde: string | null;
-  qrBase64: string | null;
-  /// Quantas mensagens de cliente não saíram enquanto o vínculo esteve fora
-  /// do ar. É o número que faz o dono descobrir a queda pelo prejuízo.
+  /// O que o dono cola na "Mensagem de saudação" do WhatsApp Business.
+  saudacao: string;
+  /// Mensagens de cliente que não saíram porque o número do Marcaí caiu.
   naoEnviadas: number;
-  /// O atendimento automático. Só liga com o WhatsApp conectado, e nasce
-  /// desligado — ninguém acorda com um robô atendendo o número do negócio.
-  botAtivo: boolean;
 };
 
 export const whatsappApi = {
   ver: (signal?: AbortSignal) =>
     pedir<WhatsappDaBarbearia>('/painel/whatsapp', { signal, loginEm: LOGIN_DO_PAINEL }),
-
-  /// Trocar de celular: desliga o aparelho atual e a instância volta a gerar
-  /// QR. Só o dono — a rota responde 403 para `BARBEIRO`.
-  desconectar: () =>
-    pedir<{ ok: true }>('/painel/whatsapp/desconectar', {
-      metodo: 'POST', loginEm: LOGIN_DO_PAINEL,
-    }),
-
-  /// Liga ou desliga o bot. Só o dono — a rota responde 403 para `BARBEIRO`.
-  /// Responde 422 quando a Evolution recusa: nesse caso nada mudou.
-  ligarBot: (ativo: boolean) =>
-    pedir<{ ok: true; botAtivo: boolean }>('/painel/whatsapp/bot', {
-      metodo: 'POST', corpo: { ativo }, loginEm: LOGIN_DO_PAINEL,
-    }),
 };
