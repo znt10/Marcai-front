@@ -115,23 +115,34 @@ export function Vitrine({
             // quem clicou acha que o clique não funcionou.
             <Sub>ainda sem preços cadastrados — chama no zap pra combinar</Sub>
           ) : (
-            atual.servicos.map((s) => (
-              <Box key={s.id} className="flex items-baseline justify-between gap-3">
-                <span>
-                  {s.nome}{' '}
-                  <span className="font-dado text-[11px] text-lbl">{s.duracaoMin}min</span>
-                </span>
-                {/* Nulo enquanto ESTE barbeiro não definiu preço para o
-                    serviço. Some o preço, não a linha: "faço barba, preço a
-                    combinar" é informação; sumir com a barba esconde que ele
-                    faz. */}
-                {s.precoCentavos !== null && (
-                  <span className="font-dado text-acento shrink-0">
-                    {formatarPreco(s.precoCentavos)}
+            // Lista de cardápio, e não uma caixa por serviço. Com borda,
+            // fundo e cantos, cada linha tinha cara de botão — em teste, as
+            // cinco pessoas tocaram nelas achando que escolhiam o serviço.
+            // Aqui não há o que tocar: é uma tabela para ler, então ela se
+            // veste como a tabela de preços na parede da barbearia — linhas
+            // finas entre os itens e um pontilhado levando o olho ao preço.
+            <ul className="flex flex-col border-y border-borda-suave">
+              {atual.servicos.map((s) => (
+                <li key={s.id}
+                    className="flex items-baseline gap-2 py-2.5 md:py-3 text-[13px] md:text-sm
+                               border-b border-borda-suave last:border-b-0">
+                  <span className="min-w-0">
+                    {s.nome}{' '}
+                    <span className="font-dado text-[11px] text-lbl">{s.duracaoMin}min</span>
                   </span>
-                )}
-              </Box>
-            ))
+                  <span aria-hidden className="flex-1 min-w-4 border-b border-dotted border-lbl/50 translate-y-[-3px]" />
+                  {/* Nulo enquanto ESTE barbeiro não definiu preço para o
+                      serviço. Some o preço, não a linha: "faço barba, preço a
+                      combinar" é informação; sumir com a barba esconde que ele
+                      faz. */}
+                  {s.precoCentavos !== null && (
+                    <span className="font-dado text-acento shrink-0">
+                      {formatarPreco(s.precoCentavos)}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       )}
