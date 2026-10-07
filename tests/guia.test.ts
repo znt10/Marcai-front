@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  proximoPasso, dadosCompletos, guiaJaVisto, marcarGuiaVisto, type EstadoDoForm,
+  proximoPasso, dadosCompletos, guiaJaVisto, marcarGuiaVisto, mostraDicaDoCalendario, digitando,
+  type EstadoDoForm,
 } from '@/lib/guia';
 
 /// O guia da primeira vez na tela de agendar: um balão em cima do passo que
@@ -8,7 +9,8 @@ import {
 /// e troca o barbeiro vê o balão voltar junto.
 
 const VAZIO: EstadoDoForm = {
-  barbeiroId: '', servicoId: '', temHorario: false, diaSemVaga: false, nome: '', whats: '',
+  barbeiroId: '', servicoId: '', temHorario: false, diaSemVaga: false, algumDiaComVaga: true,
+  nome: '', whats: '',
 };
 
 describe('proximoPasso', () => {
@@ -35,6 +37,14 @@ describe('proximoPasso', () => {
       .toBe('outro-dia');
   });
 
+  it('todos os dias da tela cheios: o balão vai para o calendário', () => {
+    // Sábado à noite, domingo fechado: tocar no outro botão só mostra outro
+    // dia vazio. A saída é o calendário.
+    expect(proximoPasso({
+      ...VAZIO, barbeiroId: 'b', servicoId: 's', diaSemVaga: true, algumDiaComVaga: false,
+    })).toBe('calendario');
+  });
+
   it('com o horário na mão, o dia cheio que está à vista não importa', () => {
     expect(proximoPasso({
       ...VAZIO, barbeiroId: 'b', servicoId: 's', temHorario: true, diaSemVaga: true,
@@ -53,6 +63,32 @@ describe('proximoPasso', () => {
     expect(proximoPasso({ ...base, nome: 'M' })).toBe('dados');
     expect(proximoPasso({ ...base, nome: 'Maria' })).toBe('dados');
     expect(proximoPasso({ ...base, nome: 'Maria', whats: '8398801' })).toBe('dados');
+  });
+});
+
+describe('mostraDicaDoCalendario', () => {
+  it('acompanha o balão enquanto falta o horário', () => {
+    expect(mostraDicaDoCalendario('horario')).toBe(true);
+    expect(mostraDicaDoCalendario('outro-dia')).toBe(true);
+  });
+
+  it('some quando o balão já está no calendário, depois do horário, e sem guia', () => {
+    for (const p of ['barbeiro', 'servico', 'calendario', 'dados', 'confirmar', null] as const) {
+      expect(mostraDicaDoCalendario(p)).toBe(false);
+    }
+  });
+});
+
+describe('digitando', () => {
+  it('campo em foco segura a rolagem do balão', () => {
+    expect(digitando({ tagName: 'INPUT' })).toBe(true);
+    expect(digitando({ tagName: 'TEXTAREA' })).toBe(true);
+  });
+
+  it('botão em foco, ou nada em foco, deixa rolar', () => {
+    expect(digitando({ tagName: 'BUTTON' })).toBe(false);
+    expect(digitando({ tagName: 'BODY' })).toBe(false);
+    expect(digitando(null)).toBe(false);
   });
 });
 
