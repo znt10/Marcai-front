@@ -2,8 +2,10 @@
 import { useState } from 'react';
 import { Cartao, Pilula, BotaoCheio, Titulo, Texto } from '@/components/painel/pecas';
 import { equipeApi, mensagemDoErro, type NovoBarbeiro } from '@/lib/api';
+import { useVocabulario } from '@/components/Vocabulario';
 
 export function FormBarbeiro({ aoCriar }: { aoCriar?: () => void }) {
+  const v = useVocabulario();
   const [nome, setNome] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [papel, setPapel] = useState<NovoBarbeiro['papel']>('BARBEIRO');
@@ -49,7 +51,7 @@ export function FormBarbeiro({ aoCriar }: { aoCriar?: () => void }) {
       <div className="flex gap-2">
         {(['DONO', 'BARBEIRO'] as const).map((p) => (
           <Pilula key={p} ativo={p === papel} onClick={() => setPapel(p)}>
-            {p === 'DONO' ? 'dono' : 'barbeiro'}
+            {p === 'DONO' ? 'dono' : v.prof}
           </Pilula>
         ))}
       </div>

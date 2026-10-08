@@ -1,6 +1,9 @@
 'use client';
 import { useState } from 'react';
 import { Box, Lbl, Sub, Avatar } from '@/components/wf';
+import { useVocabulario } from '@/components/Vocabulario';
+import { Marca } from '@/components/Marca';
+import type { Tipo } from '@/lib/tipos';
 import { formatarPreco } from '@/lib/dinheiro';
 import type { CardapioDoBarbeiro } from '@/lib/vitrine';
 
@@ -29,8 +32,10 @@ import type { CardapioDoBarbeiro } from '@/lib/vitrine';
 /// que devia responder "quanto custa um corte aqui". Escolhendo o rosto, a
 /// resposta é sempre três linhas — e comparar dois barbeiros é um toque.
 export function Vitrine({
-  endereco, horarioResumo, cardapios,
+  nome, tipo, endereco, horarioResumo, cardapios,
 }: {
+  nome: string;
+  tipo?: Tipo;
   endereco: string;
   horarioResumo: string | null;
   cardapios: CardapioDoBarbeiro[];
@@ -38,20 +43,22 @@ export function Vitrine({
   // O primeiro da equipe, e não "nenhum": a seção de preços existir vazia
   // esperando um clique é uma tela que não respondeu à pergunta. A ordem da
   // equipe vem do back e começa no dono.
+  const v = useVocabulario();
   const [escolhido, setEscolhido] = useState(cardapios[0]?.barbeiro.id ?? '');
   const atual = cardapios.find((c) => c.barbeiro.id === escolhido) ?? cardapios[0];
 
   return (
     <>
       <Box className="flex flex-col items-center gap-3 pt-6 pb-5 md:pt-7 text-center">
-        <img src="/marca.png" alt="" width={96} height={96} className="rounded-wf" />
+        <Marca tipo={tipo} nome={nome} tamanho={96} className="rounded-wf" />
 
-        {/* A frase é do PRODUTO, não desta barbearia: não há campo para ela no
-            banco, então toda barbearia diz o mesmo. Quando existir uma
-            manchete por barbearia, é aqui que ela entra. */}
+        {/* A frase é do RAMO, não desta barbearia (`tipos.ts`, `slogan`): não
+            há campo para ela no banco, então toda barbearia diz o mesmo, e
+            todo estúdio também. Quando existir uma manchete por
+            estabelecimento, é aqui que ela entra. */}
         <p className="font-letreiro uppercase font-semibold leading-[1.05]
                       tracking-[0.02em] text-[26px] md:text-[34px] text-tinta">
-          Corte de homem,<br />hora marcada.
+          {v.slogan[0]}<br />{v.slogan[1]}
         </p>
 
         <div className="flex flex-col gap-0.5">
@@ -66,7 +73,7 @@ export function Vitrine({
             resto numa barbearia recém-criada, que ainda não tem ninguém. */}
         {cardapios.length > 0 && (
           <div className="w-full flex flex-col gap-2 mt-3 text-left">
-            <Lbl>barbeiros</Lbl>
+            <Lbl>{v.profs}</Lbl>
             <div className="grid grid-cols-3 gap-2">
               {cardapios.map(({ barbeiro }) => {
                 const ativo = barbeiro.id === atual?.barbeiro.id;

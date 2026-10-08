@@ -1,7 +1,9 @@
 import { cache } from 'react';
 import { headers } from 'next/headers';
-import { notFound } from 'next/navigation';
+import { notFound, unstable_rethrow } from 'next/navigation';
 import { ipDoCliente } from '@/lib/ip-do-cliente';
+import type { Paleta } from '@/lib/paletas';
+import type { Tipo } from '@/lib/tipos';
 
 /// A vitrine do tenant, servida pelo Django desde a fatia 8. Este modulo era
 /// o ultimo do front a tocar o banco; o Prisma saiu com ele.
@@ -17,6 +19,11 @@ export type Barbearia = {
   /// Nulo ate o dono escrever a frase. A home ja trata (`b.horarioResumo ? ...`).
   horarioResumo: string | null;
   whatsappContato: string;
+  /// O ramo e as cores (spec 2026-10-08). Opcionais porque o back de antes
+  /// deles não os manda: `vocabulario()` e `paleta()` caem na barbearia de
+  /// sempre.
+  tipo?: Tipo;
+  paleta?: Paleta;
 };
 
 /// Reexportada daqui porque e daqui que o resto do sistema a le. A
@@ -91,12 +98,35 @@ export async function buscarNoDjango(caminho: string): Promise<Response> {
 /// Envolvida em `cache()` do React: varias chamadas na MESMA requisicao batem
 /// no Django uma vez so. Era o mesmo desenho quando a consulta era ao Prisma;
 /// o que mudou foi so o outro lado do fio.
-export const barbeariaAtual = cache(async (): Promise<Barbearia> => {
+const lerBarbearia = cache(async (): Promise<{ status: number; barbearia: Barbearia | null }> => {
   const r = await buscarNoDjango('/api/barbearia');
+  return { status: r.status, barbearia: r.ok ? await r.json() : null };
+});
+
+export const barbeariaAtual = cache(async (): Promise<Barbearia> => {
+  const { status, barbearia } = await lerBarbearia();
   // So 404 e barbearia inexistente. Um 5xx (Django fora do ar, por exemplo)
   // NAO e a mesma coisa — tratar os dois igual faria uma queda do Django
   // aparecer pra todo tenant como "essa barbearia nao existe".
-  if (r.status === 404) notFound();
-  if (!r.ok) throw new Error(`GET /api/barbearia devolveu ${r.status}`);
-  return r.json();
+  if (status === 404) notFound();
+  if (!barbearia) throw new Error(`GET /api/barbearia devolveu ${status}`);
+  return barbearia;
+});
+
+/// A mesma leitura (e a MESMA ida ao Django, pelo `cache()` de
+/// `lerBarbearia`), para quem só quer ENFEITAR a página com o ramo e as
+/// cores: o layout raiz. Ele também desenha o admin, o domínio raiz e a tela
+/// de 404, onde não há barbearia — ali isto devolve `null` em vez de
+/// derrubar a página, e a página fica com a paleta e as palavras de sempre.
+///
+/// `unstable_rethrow` no `catch`: o `headers()` e o `fetch` `no-store` de
+/// `buscarNoDjango` avisam o Next de que a rota é dinâmica LANÇANDO; engolido
+/// aqui, o aviso se perderia (ver a doc da função).
+export const barbeariaOuNada = cache(async (): Promise<Barbearia | null> => {
+  try {
+    return (await lerBarbearia()).barbearia;
+  } catch (e) {
+    unstable_rethrow(e);
+    return null;
+  }
 });

@@ -1,13 +1,16 @@
 import Link from 'next/link';
 import { barbeariaAtual } from '@/lib/tenant';
+import { vocabulario } from '@/lib/tipos';
 import { cartaoDestaPagina } from '@/lib/miniatura';
 import { FormAgendamento } from '@/components/FormAgendamento';
+import { Marca } from '@/components/Marca';
 
 export async function generateMetadata() {
   const b = await barbeariaAtual();
+  const v = vocabulario(b.tipo);
   return {
     title: `Marcar horário · ${b.nome}`,
-    ...(await cartaoDestaPagina(b.nome, `Escolha o serviço, o barbeiro e o horário. ${b.endereco}.`)),
+    ...(await cartaoDestaPagina(b.nome, `Escolha o serviço, ${v.oProf} e o horário. ${b.endereco}.`)),
   };
 }
 
@@ -24,6 +27,7 @@ export default async function Agendar({
   // A volta do calendário chega por aqui. Ler no servidor e passar como prop
   // evita useSearchParams() e a fronteira de Suspense que ele exigiria.
   const { barbeiroId, servicoId, inicio } = await searchParams;
+  const v = vocabulario(b.tipo);
 
   return (
     <div className="fluxo min-h-dvh">
@@ -31,17 +35,16 @@ export default async function Agendar({
         {/* O cabeçalho inteiro é a volta para a vitrine. O desenho não tem o
             "‹ a barbearia" do rodapé, e sem isto a única saída seria o voltar
             do navegador. */}
-        <Link href="/" aria-label={`Voltar para a barbearia ${b.nome}`}
+        <Link href="/" aria-label={`Voltar para ${v.oLugar} ${b.nome}`}
               className="mx-auto flex max-w-[1100px] items-center gap-[9px]
                          px-[18px] pt-4 pb-3.5 sm:px-7 md:px-10 md:py-5">
-          <img src="/marca.png" alt="" width={22} height={22}
-               className="rounded-[5px] shrink-0 md:size-[28px]" />
+          <Marca tipo={b.tipo} nome={b.nome} tamanho={22} className="rounded-[5px] md:size-[28px]" />
           <span className="text-[16px] md:text-[19px] font-extrabold text-tinta">Marcaí</span>
           {/* O horário de funcionamento e o endereço ficaram na vitrine: aqui
               a pessoa já decidiu entrar, e o topo só confirma onde ela está. */}
           <span className="ml-1.5 min-w-0 truncate border-l border-borda pl-1.5
                            text-[10.5px] md:text-xs font-semibold uppercase text-lbl">
-            {b.nome} barbearia
+            {v.lugar} {b.nome}
           </span>
         </Link>
       </header>

@@ -10,6 +10,7 @@ import {
   MODOS, andar, modoDoPeriodo, periodoDe, rotuloDe, type Periodo,
 } from '@/lib/resumo';
 import { diaDeHoje } from '@/lib/datas';
+import { useVocabulario } from '@/components/Vocabulario';
 
 /// Delega a `diaDeHoje`: fuso só se converte em `datas.ts`, nunca aqui. Sem
 /// isso, entre 21h e meia-noite local o contêiner (UTC) e o navegador
@@ -22,7 +23,10 @@ const hoje = () => diaDeHoje(new Date());
 /// vezes seguidas vira um borrão de dígitos.
 const curto = (dia: string) => `${dia.slice(8, 10)}/${dia.slice(5, 7)}`;
 
+const maiuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 export function Resumo() {
+  const v = useVocabulario();
   // O período é o estado, e o modo é DERIVADO dele (`modoDoPeriodo`) em vez de
   // guardado ao lado. Guardar os dois abriria a possibilidade de discordarem —
   // um modo "semana" apontando para um intervalo que não é uma semana, depois
@@ -136,7 +140,7 @@ export function Resumo() {
           </Lbl>
 
           {dados.linhas.length === 0 && (
-            <Box variante="dash">Nenhum barbeiro na equipe ainda.</Box>
+            <Box variante="dash">{maiuscula(v.nenhumProf)} na equipe ainda.</Box>
           )}
 
           {/* Antes das linhas: a proporção é a leitura de relance, e os
@@ -151,7 +155,7 @@ export function Resumo() {
               <div className="flex items-baseline justify-between gap-3">
                 <span className="font-letreiro uppercase tracking-[0.06em]">no período</span>
                 <span className="font-dado">
-                  {dados.totais.cortes} {dados.totais.cortes === 1 ? 'corte' : 'cortes'}
+                  {dados.totais.cortes} {dados.totais.cortes === 1 ? v.atendimento : v.atendimentos}
                 </span>
               </div>
               {/* A frase é longa de propósito. `totais.clientes` conta gente
@@ -162,8 +166,7 @@ export function Resumo() {
               <Sub className="mt-1">
                 {dados.totais.clientes}{' '}
                 {dados.totais.clientes === 1 ? 'pessoa diferente' : 'pessoas diferentes'} —
-                quem cortou com mais de um barbeiro conta uma vez aqui e uma vez
-                em cada linha.
+                {v.quemPassouPorDois} conta uma vez aqui e uma vez em cada linha.
               </Sub>
             </Box>
           )}
@@ -174,6 +177,7 @@ export function Resumo() {
 }
 
 function Linha({ l, teto }: { l: LinhaDoResumo; teto: number }) {
+  const v = useVocabulario();
   return (
     <Box variante={l.cortes === 0 ? 'mut' : 'normal'}>
       <div className="flex items-baseline justify-between gap-3">
@@ -198,7 +202,7 @@ function Linha({ l, teto }: { l: LinhaDoResumo; teto: number }) {
              style={{ width: `${Math.round((l.cortes / teto) * 100)}%` }} />
       </div>
 
-      <Lbl className="mt-1.5">cortes / pessoas</Lbl>
+      <Lbl className="mt-1.5">{v.atendimentos} / pessoas</Lbl>
     </Box>
   );
 }

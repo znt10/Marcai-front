@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Box, Lbl, Sub, Sep } from '@/components/wf';
+import { useVocabulario } from '@/components/Vocabulario';
 import { publicoApi, mensagemDoErro } from '@/lib/api';
 import { formatarPreco } from '@/lib/dinheiro';
 
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export function Confirmado(p: Props) {
+  const v = useVocabulario();
   const [status, setStatus] = useState(p.status);
   const [erro, setErro] = useState('');
 
@@ -110,7 +112,7 @@ export function Confirmado(p: Props) {
       )}
       {erro && <Sub className="text-acento">{erro}</Sub>}
       <Sep />
-      <Sub>dá pra cancelar até 1h antes. depois disso, só chamando a barbearia.</Sub>
+      <Sub>dá pra cancelar até 1h antes. depois disso, só chamando {v.oLugar}.</Sub>
     </>
   );
 }

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Lbl } from '@/components/wf';
 import type { LinhaDoResumo } from '@/lib/api';
 import { porcentagens, coresPorBarbeiro, COR_OUTROS, CORES_DE_BARBEIRO } from '@/lib/resumo';
+import { useVocabulario } from '@/components/Vocabulario';
 
 /// A divisão dos cortes do período entre a equipe — "que pedaço do movimento
 /// foi meu".
@@ -59,6 +60,7 @@ const ponto = (raio: number, giro: number) => [
 ];
 
 export function PizzaDeCortes({ linhas }: { linhas: LinhaDoResumo[] }) {
+  const v = useVocabulario();
   const [sobre, setSobre] = useState<number | null>(null);
 
   const fatias = fatiasDe(linhas);
@@ -88,7 +90,7 @@ export function PizzaDeCortes({ linhas }: { linhas: LinhaDoResumo[] }) {
       <svg
         viewBox="0 0 120 120" width="120" height="120" className="shrink-0"
         role="img"
-        aria-label={`Divisão dos ${total} cortes: ${desenhadas
+        aria-label={`Divisão dos ${total} ${v.atendimentos}: ${desenhadas
           .map((f) => `${f.nome}, ${f.pct} por cento`)
           .join('; ')}`}
       >
@@ -113,7 +115,7 @@ export function PizzaDeCortes({ linhas }: { linhas: LinhaDoResumo[] }) {
             >
               {/* Tooltip nativo: identidade e número sem depender de hover
                   com o mouse — quem chega por teclado ou toque não fica sem. */}
-              <title>{`${f.nome}: ${f.cortes} ${f.cortes === 1 ? 'corte' : 'cortes'} (${f.pct}%)`}</title>
+              <title>{`${f.nome}: ${f.cortes} ${f.cortes === 1 ? v.atendimento : v.atendimentos} (${f.pct}%)`}</title>
             </path>
           );
         })}
@@ -141,7 +143,7 @@ export function PizzaDeCortes({ linhas }: { linhas: LinhaDoResumo[] }) {
           </li>
         ))}
         <li>
-          <Lbl className="mt-0.5">divisão dos cortes</Lbl>
+          <Lbl className="mt-0.5">divisão dos {v.atendimentos}</Lbl>
         </li>
       </ul>
     </div>

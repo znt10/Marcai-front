@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { barbeariaAtual } from '@/lib/tenant';
+import { vocabulario } from '@/lib/tipos';
 import { cartaoDestaPagina } from '@/lib/miniatura';
 import { cardapioPorBarbeiro } from '@/lib/vitrine';
 import { Vitrine } from '@/components/Vitrine';
+import { Marca } from '@/components/Marca';
 import { Frame, Box } from '@/components/wf';
 import { formatar } from '@/lib/telefone';
 
@@ -34,6 +36,7 @@ export default async function Barbearia() {
     barbeariaAtual(),
     cardapioPorBarbeiro(),
   ]);
+  const v = vocabulario(b.tipo);
 
   return (
     <Frame>
@@ -41,9 +44,8 @@ export default async function Barbearia() {
           MARCAÍ, não desta barbearia — não há campo de logo por barbearia no
           banco. Quando houver, é este `src` que passa a variar. */}
       <div className="flex items-center gap-3">
-        <img src="/marca.png" alt="" width={30} height={30}
-             className="rounded-[3px] shrink-0" />
-        <h1 className="!text-[19px] md:!text-[22px]">barbearia {b.nome}</h1>
+        <Marca tipo={b.tipo} nome={b.nome} tamanho={30} className="rounded-[3px]" />
+        <h1 className="!text-[19px] md:!text-[22px]">{v.lugar} {b.nome}</h1>
       </div>
 
       {/* O cartaz e a tabela de preços moram num Client Component só: a
@@ -51,11 +53,11 @@ export default async function Barbearia() {
           acima dos dois. Os cardápios de todos vêm daqui prontos, então a
           troca não custa rede — e o HTML do servidor já sai com o primeiro
           barbeiro e os preços dele. */}
-      <Vitrine endereco={b.endereco} horarioResumo={b.horarioResumo}
+      <Vitrine nome={b.nome} tipo={b.tipo} endereco={b.endereco} horarioResumo={b.horarioResumo}
                cardapios={cardapios} />
 
       {/* Por último, como no desenho: a decisão vem depois de ler a casa. */}
-      <Link href="/agendar" aria-label={`Marcar horário na ${b.nome}`}>
+      <Link href="/agendar" aria-label={`Marcar horário ${v.noNome(b.nome)}`}>
         <Box variante="fill" className="!py-4 !text-base md:!text-lg">
           marcar horário
         </Box>
@@ -79,9 +81,10 @@ export default async function Barbearia() {
 /// chamada e a do componente viram uma só dentro da mesma requisição.
 export async function generateMetadata() {
   const b = await barbeariaAtual();
-  const descricao = `Marque seu horário na ${b.nome}. ${b.endereco}.`;
+  const v = vocabulario(b.tipo);
+  const descricao = `Marque seu horário ${v.noNome(b.nome)}. ${b.endereco}.`;
   return {
-    title: `${b.nome} · barbearia`,
+    title: `${b.nome} · ${v.lugar}`,
     description: descricao,
     ...(await cartaoDestaPagina(b.nome, descricao)),
   };

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { barbeariaAtual } from '@/lib/tenant';
+import { vocabulario, type Tipo } from '@/lib/tipos';
 
 /// O app instalável do BARBEIRO.
 ///
@@ -28,8 +29,9 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   // instala. Se o Django estiver fora do ar na hora em que o navegador vier
   // buscar isto, o app nasce com o nome do produto e pronto.
   let nome = 'Marcaí';
+  let tipo: Tipo | undefined;
   try {
-    nome = (await barbeariaAtual()).nome;
+    ({ nome, tipo } = await barbeariaAtual());
   } catch {
     // fica o padrão
   }
@@ -39,7 +41,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     // O que cabe embaixo do ícone na tela inicial: uns 12 caracteres antes de
     // o Android cortar com reticências. O "— painel" fica só no nome longo.
     short_name: nome,
-    description: 'A agenda da barbearia para quem trabalha nela: o dia, o quadro da equipe, os horários e os serviços.',
+    description: `A agenda ${vocabulario(tipo).doLugar} para a equipe: o dia, o quadro, os horários e os serviços.`,
     start_url: '/painel',
     scope: '/',
     display: 'standalone',

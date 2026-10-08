@@ -1,4 +1,6 @@
 import { pedir } from './client';
+import type { Paleta } from '@/lib/paletas';
+import type { Tipo } from '@/lib/tipos';
 
 /// As rotas do admin da plataforma. Elas só existem no host `admin.` — fora
 /// dele o proxy responde 404 antes de qualquer rota rodar.
@@ -12,6 +14,8 @@ export type Plano = 'SEM_ZAP' | 'COM_ZAP';
 
 export type BarbeariaDaLista = {
   id: string; slug: string; nome: string; ativo: boolean; plano: Plano;
+  /// Ausentes no back de antes deles: barbearia, preto e amarelo.
+  tipo?: Tipo; paleta?: Paleta;
   barbeiros: number; agendamentos: number;
 };
 
@@ -23,6 +27,10 @@ export type NovaBarbearia = {
   whatsappContato: string; donoNome: string;
   /// Ausente = `COM_ZAP` do lado do servidor.
   plano?: Plano;
+  /// O ramo e as cores (spec 2026-10-08). Ausentes = barbearia; sem paleta,
+  /// a sugerida pelo tipo.
+  tipo?: Tipo;
+  paleta?: Paleta;
 };
 
 /// O número central do Marcaí — desde a etapa 1 ele manda tudo, equipe e

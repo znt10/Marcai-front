@@ -11,10 +11,11 @@ import { DIAS_NA_HOME } from '@/lib/config';
 import { urlCalendario } from '@/lib/escolha';
 import { lerRascunho, salvarRascunho, limparRascunho } from '@/lib/rascunho';
 import {
-  TEXTO_DO_PASSO, dadosCompletos, guiaJaVisto, marcarGuiaVisto, mostraDicaDoCalendario,
-  proximoPasso, type Passo,
+  dadosCompletos, guiaJaVisto, marcarGuiaVisto, mostraDicaDoCalendario, proximoPasso,
+  textoDoPasso, unicaPessoa, type Passo,
 } from '@/lib/guia';
 import { Balao, DicaDoCalendario } from '@/components/GuiaDoAgendar';
+import { useVocabulario } from '@/components/Vocabulario';
 
 /// 'YYYY-MM-DD' de um instante ISO, no fuso do navegador. Não usa
 /// `@/lib/datas` de propósito: aquele módulo é o ponto único de conversão do
@@ -28,6 +29,7 @@ const diaLocalDe = (iso: string) => {
 type Inicial = { barbeiroId?: string; servicoId?: string; inicio?: string };
 
 export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
+  const v = useVocabulario();
   const [barbeiros, setBarbeiros] = useState<Barbeiro[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [dias, setDias] = useState<Dia[]>([]);
@@ -83,7 +85,15 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
   // confirmação, de outro — 409 na cara do cliente.
   useEffect(() => {
     const ctrl = new AbortController();
-    publicoApi.barbeiros(ctrl.signal).then(setBarbeiros).catch(ignorarAborto);
+    publicoApi.barbeiros(ctrl.signal)
+      .then(lista => {
+        setBarbeiros(lista);
+        // Uma pessoa só: já escolhida (`unicaPessoa`). Sem passar por cima
+        // de quem voltou do calendário com a escolha na URL.
+        const unica = unicaPessoa(lista);
+        if (unica) setBarbeiroId(atual => atual || unica);
+      })
+      .catch(ignorarAborto);
     return () => ctrl.abort();
   }, []);
 
@@ -141,7 +151,7 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
     algumDiaComVaga: dias.some(d => d.slots.length > 0), nome, whats,
   }) : null;
   const pularGuia = () => { marcarGuiaVisto(); setGuia(false); };
-  const balao = (p: Passo) => passo === p && <Balao texto={TEXTO_DO_PASSO[p]} aoPular={pularGuia} />;
+  const balao = (p: Passo) => passo === p && <Balao texto={textoDoPasso(p, v)} aoPular={pularGuia} />;
   // O que se toca no passo da vez ganha o anel âmbar pulsando (`globals.css`).
   const alvo = (p: Passo, falta = true) => (passo === p && falta ? ' guia-alvo' : '');
 
@@ -172,13 +182,19 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
     }
   }
 
+  // Uma pessoa só atendendo: ela já veio escolhida (`unicaPessoa`) e o passo
+  // dela some, com as etapas renumeradas. `=== 1`, e não `<= 1`: carregando
+  // (lista vazia), a etapa aparece como sempre, e uma barbearia de vários
+  // barbeiros não vê a tela pular quando a lista chega.
+  const soUmaPessoa = barbeiros.length === 1;
+
   // As quatro etapas são irmãs na marcação, na ordem do desenho — é assim
   // que o celular as empilha, 1, 2, 3, 4. No desktop o grid as recoloca em
   // duas colunas SEM mexer na ordem do DOM: fossem dois <div> de coluna, o
   // celular receberia "04 Seus dados" antes de "03 Horário".
   return (
     <div className="grid gap-[22px] md:grid-cols-2 md:gap-x-10 md:gap-y-8 md:items-start">
-      <Etapa n="01" titulo="Barbeiro" className="md:col-start-1 md:row-start-1">
+      {!soUmaPessoa && <Etapa n="01" titulo={v.Prof} className="md:col-start-1 md:row-start-1">
         {balao('barbeiro')}
         <div className={`flex flex-col gap-2${alvo('barbeiro')}`}>
           {barbeiros.map(b => {
@@ -204,11 +220,12 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
             );
           })}
         </div>
-      </Etapa>
+      </Etapa>}
 
-      <Etapa n="02" titulo="Serviço" className="md:col-start-1 md:row-start-2">
+      <Etapa n={soUmaPessoa ? '01' : '02'} titulo="Serviço"
+             className={`md:col-start-1 ${soUmaPessoa ? 'md:row-start-1' : 'md:row-start-2'}`}>
         {balao('servico')}
-        {!barbeiroId ? <Nota>Escolhe o barbeiro pra ver os serviços.</Nota> : (
+        {!barbeiroId ? <Nota>Escolhe {v.oProf} pra ver os serviços.</Nota> : (
           // Quebra linha, e não rola de lado: um serviço escondido à direita
           // da tela é um serviço que o cliente não sabe que existe.
           <div className={`flex flex-wrap gap-2${alvo('servico')}`}>
@@ -234,7 +251,8 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
         )}
       </Etapa>
 
-      <Etapa n="03" titulo="Horário" className="md:col-start-2 md:row-start-1 md:row-span-3">
+      <Etapa n={soUmaPessoa ? '02' : '03'} titulo="Horário"
+             className="md:col-start-2 md:row-start-1 md:row-span-3">
         {!servicoId && <Nota>Escolhe o serviço pra ver os horários.</Nota>}
 
         {balao('outro-dia')}
@@ -296,7 +314,8 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
         )}
       </Etapa>
 
-      <Etapa n="04" titulo="Seus dados" className="md:col-start-1 md:row-start-3">
+      <Etapa n={soUmaPessoa ? '03' : '04'} titulo="Seus dados"
+             className={`md:col-start-1 ${soUmaPessoa ? 'md:row-start-2' : 'md:row-start-3'}`}>
         {balao('dados')}
         <div className="flex flex-col gap-2.5">
           <Campo rotulo="Nome">

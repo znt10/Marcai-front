@@ -1,6 +1,8 @@
 import { ImageResponse } from 'next/og';
 import { buscarNoDjango, type Barbearia } from '@/lib/tenant';
 import { ALTURA_MINIATURA, LARGURA_MINIATURA } from '@/lib/miniatura';
+import { paleta } from '@/lib/paletas';
+import { vocabulario } from '@/lib/tipos';
 
 /// A imagem do cartão de link (`og:image`), gerada com o nome da barbearia.
 /// Não há logo cadastrada — o nome, no letreiro do painel, é o que identifica.
@@ -18,7 +20,14 @@ export async function GET() {
   }
 
   const nome = b?.nome ?? 'Marcaí';
-  const linha = b ? b.endereco : 'Agendamento para barbearias';
+  const linha = b ? b.endereco : 'Agendamento online';
+  // As cores do estabelecimento (`paletas.ts`): o cartão do link é a primeira
+  // coisa que a cliente vê dele, antes de abrir. Sem estabelecimento, a de
+  // sempre.
+  const { tokens: cor, esquema } = paleta(b?.paleta);
+  // O rótulo do ramo vai no latão sobre o escuro, como sempre; sobre o claro
+  // o latão some (é cor de sombra), e vai o destaque.
+  const corDoRotulo = esquema === 'dark' ? cor.latao : cor.acento;
 
   return new ImageResponse(
     (
@@ -30,14 +39,14 @@ export async function GET() {
           flexDirection: 'column',
           justifyContent: 'center',
           padding: '0 96px',
-          background: '#14100e',
-          color: '#f2ebe1',
-          borderLeft: '24px solid #febc1a',
+          background: cor.fundo,
+          color: cor.tinta,
+          borderLeft: `24px solid ${cor.acento}`,
         }}
       >
         {b ? (
-          <div style={{ fontSize: 30, color: '#c98a45', letterSpacing: 6, textTransform: 'uppercase' }}>
-            Barbearia
+          <div style={{ fontSize: 30, color: corDoRotulo, letterSpacing: 6, textTransform: 'uppercase' }}>
+            {vocabulario(b.tipo).Lugar}
           </div>
         ) : null}
         <div
@@ -51,7 +60,7 @@ export async function GET() {
           {nome}
         </div>
         {linha ? (
-          <div style={{ fontSize: 34, color: '#a3948a', marginTop: 28 }}>{linha}</div>
+          <div style={{ fontSize: 34, color: cor.sub, marginTop: 28 }}>{linha}</div>
         ) : null}
         <div
           style={{
@@ -59,8 +68,8 @@ export async function GET() {
             marginTop: 56,
             fontSize: 34,
             fontWeight: 700,
-            color: '#241a10',
-            background: '#febc1a',
+            color: cor['no-acento'],
+            background: cor.acento,
             padding: '14px 28px',
             borderRadius: 8,
             alignSelf: 'flex-start',

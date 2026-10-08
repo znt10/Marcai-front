@@ -10,6 +10,7 @@ import { SECOES } from '@/components/painel/secoes';
 import { SeletorDeSecao } from '@/components/painel/SeletorDeSecao';
 import { BotaoDeTema } from '@/components/painel/Tema';
 import { AppDoBarbeiro } from '@/components/painel/AppDoBarbeiro';
+import { useVocabulario } from '@/components/Vocabulario';
 
 /// A navegação do painel, uma só para as seis telas.
 ///
@@ -64,6 +65,7 @@ function Espaco() {
 }
 
 export function NavPainel() {
+  const v = useVocabulario();
   const caminho = usePathname();
   // `eu` vem do provider montado no layout, não de uma busca própria: era
   // aqui que uma das seis buscas independentes de `painelApi.eu()` vivia.
@@ -146,7 +148,7 @@ export function NavPainel() {
               <span className="shrink-0 rounded-[5px] border border-borda px-[7px] py-[3px]
                                text-[9.5px] font-semibold tracking-[0.57px] text-lbl
                                lg:rounded-[6px] lg:px-[9px] lg:py-[4px] lg:text-[12px]">
-                {dono ? 'Dono' : 'Barbeiro'}
+                {dono ? 'Dono' : v.Prof}
               </span>
             )}
           </div>

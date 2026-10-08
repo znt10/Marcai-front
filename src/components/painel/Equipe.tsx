@@ -5,6 +5,7 @@ import { formatar } from '@/lib/telefone';
 import {
   equipeApi, ignorarAborto, mensagemDoErro, type MembroDaEquipe,
 } from '@/lib/api';
+import { useVocabulario } from '@/components/Vocabulario';
 
 /// Os avisos que explicam por que alguém não recebe cliente. O design da
 /// Etapa 1 pediu isso em destaque: barbeiro sem serviço ou sem expediente
@@ -19,6 +20,7 @@ function avisosDe(m: MembroDaEquipe): string[] {
 }
 
 export function Equipe({ recarregarEm, euId }: { recarregarEm?: number; euId?: string }) {
+  const v = useVocabulario();
   const [equipe, setEquipe] = useState<MembroDaEquipe[] | null>(null);
   const [erro, setErro] = useState('');
   const [link, setLink] = useState('');
@@ -66,7 +68,7 @@ export function Equipe({ recarregarEm, euId }: { recarregarEm?: number; euId?: s
               {m.id === euId && <span className="text-lbl"> (você)</span>}
             </span>
             <span className="shrink-0 font-dado text-[11px] text-sub">
-              {m.papel === 'DONO' ? 'dono' : 'barbeiro'}
+              {m.papel === 'DONO' ? 'dono' : v.prof}
             </span>
           </div>
 

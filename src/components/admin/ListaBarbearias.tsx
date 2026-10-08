@@ -4,6 +4,8 @@ import { Box, Chip, Lbl, Sub } from '@/components/wf';
 import {
   adminApi, ignorarAborto, mensagemDoErro, type BarbeariaDaLista,
 } from '@/lib/api';
+import { paleta } from '@/lib/paletas';
+import { NOME_DO_TIPO, vocabulario } from '@/lib/tipos';
 
 /// Reexportado porque a tela do admin já importava o tipo daqui; a definição
 /// mora junto das rotas, em `lib/api/adminAPI.ts`.
@@ -47,13 +49,16 @@ export function ListaBarbearias({ recarregarEm }: { recarregarEm?: number }) {
 
   return (
     <>
-      <Lbl>barbearias</Lbl>
-      {barbearias.length === 0 && <Sub>nenhuma ainda</Sub>}
+      <Lbl>estabelecimentos</Lbl>
+      {barbearias.length === 0 && <Sub>nenhum ainda</Sub>}
       {barbearias.map((b) => (
         <Box key={b.id} variante={b.ativo ? 'normal' : 'mut'}
              className="flex flex-wrap gap-2 justify-between items-center">
-          <span>{b.nome} · <span className="text-lbl">{b.slug}</span></span>
-          <Lbl>{b.barbeiros} barbeiros · {b.agendamentos} agendamentos</Lbl>
+          <span>
+            {b.nome} · <span className="text-lbl">{b.slug}</span>
+            {' '}· <span className="text-lbl">{NOME_DO_TIPO[b.tipo ?? 'BARBEARIA']}, {paleta(b.paleta).nome.toLowerCase()}</span>
+          </span>
+          <Lbl>{b.barbeiros} {vocabulario(b.tipo).profs} · {b.agendamentos} agendamentos</Lbl>
           <div className="flex gap-2 flex-wrap">
             <Chip onClick={() => alternar(b)}>{b.ativo ? 'desativar' : 'reativar'}</Chip>
             <Chip acento onClick={() => reemitir(b)}>novo convite</Chip>
@@ -67,7 +72,7 @@ export function ListaBarbearias({ recarregarEm }: { recarregarEm?: number }) {
           {link}
         </Box>
       )}
-      <Sub>desativar leva até um minuto para tirar a barbearia do ar</Sub>
+      <Sub>desativar leva até um minuto para tirar do ar</Sub>
     </>
   );
 }

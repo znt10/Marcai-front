@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Box, Frame, Lbl, Sub } from '@/components/wf';
 import { useEu } from '@/components/painel/SessaoDoPainel';
+import { useVocabulario } from '@/components/Vocabulario';
 import { mensagemDoErro, whatsappApi, type WhatsappDaBarbearia } from '@/lib/api';
 import { textoDasNaoEnviadas } from '@/lib/whatsapp-saudacao';
 
@@ -87,6 +88,7 @@ function HoraDaLista({ dados, aoMudar }: {
   dados: WhatsappDaBarbearia; aoMudar: (hora: string) => void;
 }) {
   const { eu } = useEu();
+  const v = useVocabulario();
   const [escolhida, setEscolhida] = useState(dados.horaDaLista);
   const [salvando, setSalvando] = useState(false);
   const [resultado, setResultado] = useState<{ ok: boolean; texto: string } | null>(null);
@@ -109,7 +111,7 @@ function HoraDaLista({ dados, aoMudar }: {
     <>
       <Lbl className="mt-2">Lista do dia da equipe</Lbl>
       <Sub>
-        Todo dia de manhã, cada barbeiro recebe no WhatsApp os horários dele.
+        Todo dia de manhã, cada {v.prof} recebe no WhatsApp os horários {v.dele}.
         Se a agenda de hoje muda depois disso, a lista é refeita.
       </Sub>
       {eu?.papel !== 'DONO' ? (

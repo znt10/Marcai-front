@@ -5,6 +5,8 @@
 /// quem volta e troca o barbeiro, ou vai ao calendário e volta, vê o balão no
 /// lugar certo sem nada para sincronizar.
 
+import type { Vocabulario } from './tipos';
+
 export type Passo =
   | 'barbeiro' | 'servico' | 'horario' | 'outro-dia' | 'calendario' | 'dados' | 'confirmar';
 
@@ -21,9 +23,13 @@ export type EstadoDoForm = {
 };
 
 /// Curtos, no imperativo, e sem termo de aplicativo: quem precisa do guia não
-/// sabe o que é "slot" nem "chip".
-export const TEXTO_DO_PASSO: Record<Passo, string> = {
-  barbeiro: 'Toque no barbeiro que vai te atender',
+/// sabe o que é "slot" nem "chip". Só o primeiro muda com o ramo ("Toque na
+/// profissional"); os outros valem para todos.
+export function textoDoPasso(passo: Passo, v: Vocabulario): string {
+  return passo === 'barbeiro' ? `Toque ${v.noProf} que vai te atender` : TEXTO_COMUM[passo];
+}
+
+const TEXTO_COMUM: Record<Exclude<Passo, 'barbeiro'>, string> = {
   servico: 'Agora escolha o serviço',
   horario: 'Escolha um horário livre',
   'outro-dia': 'Esse dia está cheio. Toque em outro dia',
@@ -61,6 +67,13 @@ export function proximoPasso(e: EstadoDoForm): Passo {
 /// dados.
 export const mostraDicaDoCalendario = (passo: Passo | null) =>
   passo === 'horario' || passo === 'outro-dia';
+
+/// Com UMA pessoa só atendendo, ela já vem escolhida e o passo some (spec
+/// 2026-10-08): o estúdio de uma profissional só faria a cliente tocar no
+/// único rosto da tela para poder seguir. O painel já faz assim
+/// (`FormMarcar`, `Horarios`). Devolve o id dela, ou `null` com zero ou mais
+/// de uma.
+export const unicaPessoa = (equipe: { id: string }[]) => (equipe.length === 1 ? equipe[0].id : null);
 
 /// O balão que nasce enquanto a pessoa digita NÃO rola a tela até ele. O
 /// WhatsApp fica completo no 10º dígito, e quem digita um celular de 11 via
