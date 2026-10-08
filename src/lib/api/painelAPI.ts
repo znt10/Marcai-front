@@ -315,9 +315,21 @@ export type WhatsappDaBarbearia = {
   saudacao: string;
   /// Mensagens de cliente que não saíram porque o número do Marcaí caiu.
   naoEnviadas: number;
+  /// A hora em que cada barbeiro recebe a lista do dia, "06:30".
+  horaDaLista: string;
+  /// As horas que o dono pode escolher, de meia em meia hora. Vêm do back
+  /// porque só elas têm disparo lá: uma hora fora delas seria uma lista que
+  /// nunca sai.
+  horasDaLista: string[];
 };
 
 export const whatsappApi = {
   ver: (signal?: AbortSignal) =>
     pedir<WhatsappDaBarbearia>('/painel/whatsapp', { signal, loginEm: LOGIN_DO_PAINEL }),
+
+  /// Só o dono: a rota responde 403 para `BARBEIRO`.
+  mudarHoraDaLista: (hora: string) =>
+    pedir<{ ok: true; horaDaLista: string }>('/painel/whatsapp/hora-da-lista', {
+      metodo: 'POST', corpo: { hora }, loginEm: LOGIN_DO_PAINEL,
+    }),
 };
