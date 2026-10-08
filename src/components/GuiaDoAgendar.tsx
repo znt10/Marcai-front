@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef } from 'react';
+import { digitando } from '@/lib/guia';
 
 /// O balão do guia da primeira vez (`@/lib/guia`). Desenhado DENTRO da etapa
 /// que falta, logo acima do que se toca, e não flutuando por cima da página:
@@ -14,10 +15,11 @@ export function Balao({ texto, aoPular }: { texto: string; aoPular: () => void }
   // Cada passo monta o seu balão, então "montou" é "o passo mudou". No
   // celular o passo seguinte quase sempre está abaixo da dobra: se o balão
   // nasceu fora da metade de cima da tela, ela rola até ele. O do primeiro
-  // passo já nasce no alto, e a página não pula ao abrir.
+  // passo já nasce no alto, e a página não pula ao abrir. Nem pula com a
+  // pessoa digitando (`digitando`).
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || digitando(document.activeElement)) return;
     const { top } = el.getBoundingClientRect();
     if (top >= 0 && top <= window.innerHeight * 0.4) return;
     const calmo = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -37,5 +39,16 @@ export function Balao({ texto, aoPular }: { texto: string; aoPular: () => void }
       {/* A ponta do balão, apontando para o que se toca logo abaixo. */}
       <span aria-hidden className="absolute -bottom-1.5 left-7 size-3 rotate-45 bg-acento" />
     </div>
+  );
+}
+
+/// A dica do calendário (`mostraDicaDoCalendario`): menor que o balão, só o
+/// texto em âmbar, sem fundo e sem "Já sei usar". Ela acompanha o balão do
+/// horário, não disputa com ele, e por isso também não rola a tela.
+export function DicaDoCalendario() {
+  return (
+    <p className="mb-1.5 text-[12.5px] md:text-[13px] font-semibold text-acento">
+      <span aria-hidden>👇 </span>Aqui você escolhe qualquer outro dia do mês
+    </p>
   );
 }

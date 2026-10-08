@@ -11,9 +11,10 @@ import { DIAS_NA_HOME } from '@/lib/config';
 import { urlCalendario } from '@/lib/escolha';
 import { lerRascunho, salvarRascunho, limparRascunho } from '@/lib/rascunho';
 import {
-  TEXTO_DO_PASSO, dadosCompletos, guiaJaVisto, marcarGuiaVisto, proximoPasso, type Passo,
+  TEXTO_DO_PASSO, dadosCompletos, guiaJaVisto, marcarGuiaVisto, mostraDicaDoCalendario,
+  proximoPasso, type Passo,
 } from '@/lib/guia';
-import { Balao } from '@/components/GuiaDoAgendar';
+import { Balao, DicaDoCalendario } from '@/components/GuiaDoAgendar';
 
 /// 'YYYY-MM-DD' de um instante ISO, no fuso do navegador. Não usa
 /// `@/lib/datas` de propósito: aquele módulo é o ponto único de conversão do
@@ -136,7 +137,8 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
 
   const passo = guia ? proximoPasso({
     barbeiroId, servicoId, temHorario: !!slot,
-    diaSemVaga: !!diaVisto && diaVisto.slots.length === 0, nome, whats,
+    diaSemVaga: !!diaVisto && diaVisto.slots.length === 0,
+    algumDiaComVaga: dias.some(d => d.slots.length > 0), nome, whats,
   }) : null;
   const pularGuia = () => { marcarGuiaVisto(); setGuia(false); };
   const balao = (p: Passo) => passo === p && <Balao texto={TEXTO_DO_PASSO[p]} aoPular={pularGuia} />;
@@ -281,12 +283,16 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
           // esquecia o `inicio`. Quem já tinha um horário na mão e ia ao
           // calendário só para dar uma olhada voltava sem ele — o "‹ voltar"
           // de lá só sabe devolver o que chegou.
-          <a href={urlCalendario({ barbeiroId, servicoId, inicio: slot?.inicio })}
-             className="mt-3 flex items-center justify-between rounded-[12px] border border-borda
-                        bg-superficie px-3.5 py-3 text-[13px] md:text-sm text-sub
-                        transition-colors hover:border-latao">
-            <span>Ver outro dia no calendário</span><span aria-hidden>›</span>
-          </a>
+          <div className="mt-3">
+            {balao('calendario')}
+            {mostraDicaDoCalendario(passo) && <DicaDoCalendario />}
+            <a href={urlCalendario({ barbeiroId, servicoId, inicio: slot?.inicio })}
+               className={`flex items-center justify-between rounded-[12px] border border-borda
+                           bg-superficie px-3.5 py-3 text-[13px] md:text-sm text-sub
+                           transition-colors hover:border-latao${alvo('calendario')}`}>
+              <span>Ver outro dia no calendário</span><span aria-hidden>›</span>
+            </a>
+          </div>
         )}
       </Etapa>
 

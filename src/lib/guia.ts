@@ -5,7 +5,8 @@
 /// quem volta e troca o barbeiro, ou vai ao calendário e volta, vê o balão no
 /// lugar certo sem nada para sincronizar.
 
-export type Passo = 'barbeiro' | 'servico' | 'horario' | 'outro-dia' | 'dados' | 'confirmar';
+export type Passo =
+  | 'barbeiro' | 'servico' | 'horario' | 'outro-dia' | 'calendario' | 'dados' | 'confirmar';
 
 export type EstadoDoForm = {
   barbeiroId: string;
@@ -13,6 +14,8 @@ export type EstadoDoForm = {
   temHorario: boolean;
   /// O dia que está à vista não tem vaga nenhuma.
   diaSemVaga: boolean;
+  /// Algum dos dias da tela (os botões acima da grade) tem vaga.
+  algumDiaComVaga: boolean;
   nome: string;
   whats: string;
 };
@@ -24,6 +27,7 @@ export const TEXTO_DO_PASSO: Record<Passo, string> = {
   servico: 'Agora escolha o serviço',
   horario: 'Escolha um horário livre',
   'outro-dia': 'Esse dia está cheio. Toque em outro dia',
+  calendario: 'Esses dias estão cheios. Toque aqui para ver outro dia do mês',
   dados: 'Escreva seu nome e seu WhatsApp. A confirmação chega por lá',
   confirmar: 'Pronto! Toque em Confirmar horário',
 };
@@ -35,13 +39,35 @@ export const dadosCompletos = (nome: string, whats: string) =>
 
 /// Nome e WhatsApp são UM passo, e não dois: separados, o balão pularia para
 /// o WhatsApp na segunda letra do nome, com a pessoa ainda digitando.
+///
+/// Com TODOS os dias da tela cheios, o passo é o calendário, e não "toque em
+/// outro dia": os outros botões estão tão cheios quanto este, e o balão
+/// mandaria a pessoa de um dia vazio para outro sem nunca mostrar a saída.
 export function proximoPasso(e: EstadoDoForm): Passo {
   if (!e.barbeiroId) return 'barbeiro';
   if (!e.servicoId) return 'servico';
-  if (!e.temHorario) return e.diaSemVaga ? 'outro-dia' : 'horario';
+  if (!e.temHorario) {
+    if (!e.diaSemVaga) return 'horario';
+    return e.algumDiaComVaga ? 'outro-dia' : 'calendario';
+  }
   if (!dadosCompletos(e.nome, e.whats)) return 'dados';
   return 'confirmar';
 }
+
+/// A dica pequena em cima de "Ver outro dia no calendário", junto com o balão
+/// do horário (pedido de 07/10/2026): a tela só mostra dois dias, e quem
+/// queria o sábado que vem não sabe que o resto do mês está a um toque. Só
+/// enquanto o horário falta — escolhido, ela viraria ruído no caminho dos
+/// dados.
+export const mostraDicaDoCalendario = (passo: Passo | null) =>
+  passo === 'horario' || passo === 'outro-dia';
+
+/// O balão que nasce enquanto a pessoa digita NÃO rola a tela até ele. O
+/// WhatsApp fica completo no 10º dígito, e quem digita um celular de 11 via
+/// o "Pronto!" aparecer e a página correr para baixo antes do último número,
+/// com o campo sumindo de vista e o teclado aberto.
+export const digitando = (ativo: { tagName?: string } | null | undefined) =>
+  ['INPUT', 'TEXTAREA', 'SELECT'].includes(ativo?.tagName ?? '');
 
 /// `localStorage`, e não `sessionStorage` como o rascunho: "primeira vez" é
 /// por aparelho, e quem já marcou uma vez não precisa do guia na semana
