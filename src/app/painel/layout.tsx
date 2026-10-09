@@ -1,5 +1,6 @@
 import { NavPainel } from '@/components/painel/NavPainel';
 import { ProvedorDaSessao } from '@/components/painel/SessaoDoPainel';
+import { AvisoDeVersaoNova } from '@/components/AvisoDeVersaoNova';
 
 /// O painel inteiro passa por aqui, inclusive `/painel/login` — a `NavPainel`
 /// se apaga sozinha lá, em vez de este arquivo precisar saber quais rotas são
@@ -29,6 +30,7 @@ export default function LayoutDoPainel({ children }: { children: React.ReactNode
         <NavPainel />
         {children}
       </ProvedorDaSessao>
+      <AvisoDeVersaoNova />
     </div>
   );
 }

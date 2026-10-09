@@ -45,6 +45,13 @@ const origens = [
 // deploy com o proxy ligado.
 const apiInterna = process.env.API_INTERNA_URL?.trim().replace(/\/+$/, "");
 
+// A identidade deste build, que o aparelho usa para perceber que ficou para
+// trás (ver src/lib/versao.ts). O `env` do Next substitui o valor no código
+// durante o `npm run build`, então o que vai para o bundle do celular e o que
+// `/versao` responde são o MESMO literal. A hora do build basta: o que importa
+// é mudar a cada deploy. Em `next dev` fica "dev", e o aviso não aparece.
+const versaoDoBuild = process.env.NODE_ENV === "production" ? String(Date.now()) : "dev";
+
 // `standalone` existe para o Dockerfile, que copia `.next/standalone` para uma
 // imagem sem node_modules. Na Vercel ele NAO pode existir: o build com
 // Turbopack morre em `ENOENT .next/next-server.js.nft.json` — o rastreamento
@@ -53,6 +60,7 @@ const apiInterna = process.env.API_INTERNA_URL?.trim().replace(/\/+$/, "");
 // `VERCEL` e' definida pela plataforma durante o build.
 const nextConfig: NextConfig = {
   ...(process.env.VERCEL ? {} : { output: "standalone" as const }),
+  env: { NEXT_PUBLIC_VERSAO_DO_APP: versaoDoBuild },
 
   // Sem isto o Next responde 308 tirando a barra final ANTES do proxy.ts e de
   // qualquer rewrite — e toda URL do admin do Django termina em `/`
