@@ -1,4 +1,5 @@
 import { Frame, Lbl } from '@/components/wf';
+import { AvisoDeVersaoNova } from '@/components/AvisoDeVersaoNova';
 
 export default function LayoutAdmin({ children }: { children: React.ReactNode }) {
   return (
@@ -8,6 +9,7 @@ export default function LayoutAdmin({ children }: { children: React.ReactNode })
         <Lbl>plataforma</Lbl>
       </div>
       {children}
+      <AvisoDeVersaoNova />
     </Frame>
   );
 }

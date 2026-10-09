@@ -16,7 +16,9 @@ const RAIZ = join(__dirname, '..');
 
 /// Posta pelo Next e pelo runtime, nunca pela gente. Documentar seria mentir
 /// sobre quem a define.
-const DO_RUNTIME = new Set(['NODE_ENV']);
+/// `NEXT_PUBLIC_VERSAO_DO_APP` é do mesmo tipo: quem a escreve é o `env` do
+/// `next.config.ts`, no build. Ninguém a preenche.
+const DO_RUNTIME = new Set(['NODE_ENV', 'NEXT_PUBLIC_VERSAO_DO_APP']);
 
 function arquivosDe(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
