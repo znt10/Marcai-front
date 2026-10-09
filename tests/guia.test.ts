@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   proximoPasso, dadosCompletos, guiaJaVisto, marcarGuiaVisto, mostraDicaDoCalendario, digitando,
-  type EstadoDoForm,
+  textoDoPasso, unicaPessoa, type EstadoDoForm,
 } from '@/lib/guia';
+import { vocabulario } from '@/lib/tipos';
 
 /// O guia da primeira vez na tela de agendar: um balão em cima do passo que
 /// falta. Ele SEGUE o estado do formulário, e não uma ordem fixa — quem volta
@@ -89,6 +90,30 @@ describe('digitando', () => {
     expect(digitando({ tagName: 'BUTTON' })).toBe(false);
     expect(digitando({ tagName: 'BODY' })).toBe(false);
     expect(digitando(null)).toBe(false);
+  });
+});
+
+describe('textoDoPasso', () => {
+  it('o primeiro passo fala de quem atende, no gênero do ramo', () => {
+    expect(textoDoPasso('barbeiro', vocabulario('BARBEARIA'))).toBe('Toque no barbeiro que vai te atender');
+    expect(textoDoPasso('barbeiro', vocabulario('SOBRANCELHA'))).toBe('Toque na profissional que vai te atender');
+    expect(textoDoPasso('barbeiro', vocabulario('OUTRO'))).toBe('Toque no profissional que vai te atender');
+  });
+
+  it('os outros passos são os mesmos para todo ramo', () => {
+    expect(textoDoPasso('servico', vocabulario('SOBRANCELHA')))
+      .toBe(textoDoPasso('servico', vocabulario('BARBEARIA')));
+  });
+});
+
+describe('unicaPessoa', () => {
+  it('uma pessoa só atendendo: já vem escolhida', () => {
+    expect(unicaPessoa([{ id: 'ana' }])).toBe('ana');
+  });
+
+  it('com mais de uma, ou nenhuma ainda (carregando), ninguém é escolhido', () => {
+    expect(unicaPessoa([{ id: 'zeca' }, { id: 'rael' }])).toBeNull();
+    expect(unicaPessoa([])).toBeNull();
   });
 });
 

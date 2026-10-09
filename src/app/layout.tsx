@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from 'next';
 import { Poppins, Archivo, Space_Mono } from 'next/font/google';
 import './globals.css';
 import { SCRIPT_DO_TEMA } from '@/components/painel/Tema';
+import { ProvedorDoVocabulario } from '@/components/Vocabulario';
+import { estiloDaPaleta, paleta } from '@/lib/paletas';
+import { barbeariaOuNada } from '@/lib/tenant';
 
 /// Três faces, três trabalhos — expostas como variáveis CSS para que os
 /// primitivos de @/components/wf as usem sem importar next/font.
@@ -49,21 +52,31 @@ export const metadata: Metadata = {
   },
 };
 
-/// A cor da barra do navegador — a mesma do fundo do painel, nos dois modos.
+/// A cor da barra do navegador — a mesma do fundo do painel, nos dois modos,
+/// ou o fundo da paleta clara do estabelecimento (`paletas.ts`, `barra`).
 ///
 /// Segue a preferência do SISTEMA, e não a escolha feita no botão da barra:
 /// esta cor é lida do HTML pelo navegador antes de qualquer script rodar, e
 /// não há como um `meta` acompanhar um estado do React. Quem inverte o tema à
 /// mão fica com a barra do outro modo — o preço é uma faixa de cor no topo,
 /// e o troco seria um lampejo a cada abertura.
-export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#1c1814' },
-    { media: '(prefers-color-scheme: light)', color: '#faf6f0' },
-  ],
-};
+export async function generateViewport(): Promise<Viewport> {
+  const { barra } = paleta((await barbeariaOuNada())?.paleta);
+  return {
+    themeColor: [
+      { media: '(prefers-color-scheme: dark)', color: barra.escuro },
+      { media: '(prefers-color-scheme: light)', color: barra.claro },
+    ],
+  };
+}
 
-export default function RootLayout({ children }: LayoutProps<'/'>) {
+export default async function RootLayout({ children }: LayoutProps<'/'>) {
+  // O ramo e as cores do estabelecimento deste host (spec 2026-10-08). Lidos
+  // AQUI, no servidor, e postos no `<html>`: a página já chega com as cores
+  // certas, sem o pisca de pintar âmbar e trocar para rosé depois. Fora de
+  // um estabelecimento (admin, domínio raiz, 404) vem `null`, e fica tudo
+  // como sempre foi.
+  const b = await barbeariaOuNada();
   return (
     // `suppressHydrationWarning` no `<html>`, e só nele: o script abaixo
     // escreve `data-tema` neste elemento ANTES de o React hidratar, então o
@@ -71,7 +84,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
     // propósito — é exatamente o que evita o pisca. Sem esta marca o React
     // reclama de uma diferença que é o desenho funcionando. Ela não desce
     // para os filhos: qualquer outra divergência continua sendo avisada.
-    <html lang="pt-BR" suppressHydrationWarning
+    <html lang="pt-BR" suppressHydrationWarning style={b ? estiloDaPaleta(b.paleta) : undefined}
           className={`${letreiro.variable} ${corpo.variable} ${dado.variable}`}>
       <body>
         {/* Antes de qualquer pintura: escreve no `<html>` o tema que a pessoa
@@ -83,7 +96,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
             raiz fique com a Metadata API. Aqui ele roda enquanto o HTML é
             lido, que é antes da hidratação — que é o que importa. */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_DO_TEMA }} />
-        {children}
+        <ProvedorDoVocabulario tipo={b?.tipo}>{children}</ProvedorDoVocabulario>
       </body>
     </html>
   );

@@ -9,8 +9,10 @@ import {
 } from '@/lib/api';
 import { formatarPreco } from '@/lib/dinheiro';
 import { DURACAO_MAXIMA_MIN, DURACAO_MINIMA_MIN } from '@/lib/config';
+import { useVocabulario } from '@/components/Vocabulario';
 
 export function Servicos({ eu }: { eu: Eu }) {
+  const v = useVocabulario();
   const [catalogo, setCatalogo] = useState<ServicoDoCatalogo[] | null>(null);
   const [vinculos, setVinculos] = useState<VinculoDeServico[]>([]);
   const [barbeiros, setBarbeiros] = useState<Barbeiro[]>([]);
@@ -92,7 +94,7 @@ export function Servicos({ eu }: { eu: Eu }) {
           da barbearia mais abaixo, e nada na tela explica por que o mesmo
           servico esta escrito duas vezes. */}
       <Texto>
-        Marque o que você faz, duração e preço — cada barbeiro pode
+        Marque o que você faz, duração e preço — cada {v.prof} pode
         personalizar.
       </Texto>
       {catalogo === null && <Texto>carregando…</Texto>}
@@ -190,9 +192,9 @@ export function Servicos({ eu }: { eu: Eu }) {
           {/* "Catálogo" e' palavra de sistema. E a secao precisa dizer, com
               todas as letras, qual e' a diferenca dela para a lista de cima —
               e' de la' que vem o "por que Corte esta escrito duas vezes". */}
-          <Titulo>A lista da barbearia</Titulo>
+          <Titulo>A lista {v.doLugar}</Titulo>
           <Texto>
-            Tudo que a barbearia oferece. Cada barbeiro escolhe, acima, o que
+            Tudo que {v.oLugar} oferece. Cada {v.prof} escolhe, acima, o que
             faz. Só você mexe aqui.
           </Texto>
           {ativos.map((s) => (
@@ -227,7 +229,7 @@ export function Servicos({ eu }: { eu: Eu }) {
                   {/* Diz o que essa gaveta É, para quem abriu sem saber: sem
                       isto, um "Corte" apagado aqui embaixo parece um bug. */}
                   <Texto>
-                    Estes não aparecem para o cliente e nenhum barbeiro pode
+                    Estes não aparecem para o cliente e {v.nenhumProf} pode
                     marcá-los. Ficam guardados aqui caso você queira de volta.
                   </Texto>
                   {desativados.map((s) => (
@@ -252,6 +254,7 @@ function CartaoDoCatalogo({ servico: s, agir }: {
   servico: ServicoDoCatalogo;
   agir: (acao: () => Promise<unknown>) => Promise<void>;
 }) {
+  const v = useVocabulario();
   return (
     <Cartao variante={s.ativo ? 'normal' : 'mut'} className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between gap-3">
@@ -267,7 +270,7 @@ function CartaoDoCatalogo({ servico: s, agir }: {
       {/* Zero é o aviso de que o serviço existe e ninguém oferece. */}
       {s.ativo && s.barbeiros === 0 && (
         <span className="text-[11.5px] font-medium text-acento">
-          nenhum barbeiro faz este — o cliente não vê ele
+          {v.nenhumProf} faz este — o cliente não vê ele
         </span>
       )}
     </Cartao>
@@ -278,6 +281,7 @@ function CartaoDoCatalogo({ servico: s, agir }: {
 /// 06/10/2026: o tempo é de cada barbeiro, no campo duração de "Seus
 /// serviços", e dois números do dono por cima disso só confundiam.
 function NovoServico({ aoCriar }: { aoCriar: (d: { nome: string }) => void }) {
+  const v = useVocabulario();
   const [nome, setNome] = useState('');
 
   return (
@@ -288,11 +292,11 @@ function NovoServico({ aoCriar }: { aoCriar: (d: { nome: string }) => void }) {
       <Cartao variante={nome ? 'normal' : 'dash'}>
         <input className="w-full bg-transparent text-[13.5px] font-medium outline-none
                           placeholder:text-lbl"
-               placeholder="nome do serviço — ex.: sobrancelha"
+               placeholder={`nome do serviço — ex.: ${v.exemploServico}`}
                value={nome} onChange={(e) => setNome(e.target.value)} />
       </Cartao>
       <Texto>
-        O tempo, cada barbeiro coloca o dele em Seus serviços, acima.
+        O tempo, cada {v.prof} coloca o {v.dele} em Seus serviços, acima.
       </Texto>
       <BotaoCheio largura="cheia" disabled={nome.trim().length < 2}
                   onClick={() => {

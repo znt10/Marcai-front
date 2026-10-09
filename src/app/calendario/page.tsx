@@ -15,7 +15,9 @@ export default async function Calendario({
   if (!barbeiroId || !servicoId) {
     return (
       <Frame>
-        <Sub>Escolhe o barbeiro e o serviço antes.</Sub>
+        {/* Neutra: esta tela não lê o estabelecimento, e "o barbeiro" seria
+            errado num estúdio. */}
+        <Sub>Escolhe quem vai te atender e o serviço antes.</Sub>
         <a href={voltar} className="text-[11px] md:text-xs text-lbl">‹ voltar</a>
       </Frame>
     );

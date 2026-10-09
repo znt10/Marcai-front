@@ -7,6 +7,7 @@ import {
   painelApi, publicoApi, ignorarAborto, mensagemDoErro, ErroApi,
   type Barbeiro, type Servico, type Slot,
 } from '@/lib/api';
+import { useVocabulario } from '@/components/Vocabulario';
 
 /// O caso do balcão: o cliente está ali e quer o próximo horário. O padrão
 /// economiza toque; não é regra — os dois campos continuam trocáveis.
@@ -18,6 +19,7 @@ function padraoDeHorario() {
 }
 
 export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO' } }) {
+  const v = useVocabulario();
   // O dono marca para qualquer um da equipe; o barbeiro, só para si. Não é
   // decisão da tela: a rota responde 404 para o BARBEIRO que mandar o id de um
   // colega. Aqui o seletor só some — um controle com uma opção só é ruído.
@@ -94,7 +96,7 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
     <>
       {barbeiros.length > 1 && (
         <>
-          <Lbl>barbeiro</Lbl>
+          <Lbl>{v.prof}</Lbl>
           <div className="flex flex-wrap gap-2">
             {barbeiros.map((b) => (
               <Box key={b.id} variante={b.id === barbeiroId ? 'fill' : 'normal'}

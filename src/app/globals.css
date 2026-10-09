@@ -141,10 +141,24 @@
   --color-sub:        #c2b29b;
   --color-lbl:        #8f7e68;
   --color-apagado:    #8f7e68;
-  --color-acento:     #d9a34a;
   --color-mut:        #2b2118;
   --color-mut-borda:  #3a2c1e;
   --color-linha:      #3a2c1e;
+  /* Estes quatro o painel herdava do `@theme`. Fixados aqui porque a paleta
+     do estabelecimento (`src/lib/paletas.ts`) troca o `@theme` no `<html>`:
+     sem eles, o painel escuro de um estúdio branco e rosé herdaria um
+     `superficie2` quase branco. */
+  --color-superficie2:  #413326;
+  --color-borda-suave:  #3a2c1e;
+  --color-latao:        #c98a45;
+  --color-livre:        #5c8a6d;
+
+  /* O DESTAQUE é a única cor que o painel pega da paleta do
+     estabelecimento (rosé, dourado). O valor depois da vírgula é o âmbar de
+     sempre, para o painel fora de um estabelecimento. */
+  --color-acento:       var(--painel-acento-escuro, #d9a34a);
+  --color-acento-forte: var(--painel-acento-forte-escuro, #e8b360);
+  --color-no-acento:    var(--painel-no-acento-escuro, #241a10);
 
   --radius-wf: 14px;
   /* Sem a sombra sólida de letreiro: é o gesto da identidade do cliente, e
@@ -214,8 +228,9 @@ html[data-tema="claro"] .painel {
   --color-sub:        #7a6952;
   --color-lbl:        #a0917a;
   --color-apagado:    #a0917a;
-  --color-acento:     #a66b22;
-  --color-acento-forte: #d9a34a;
+  --color-acento:     var(--painel-acento-claro, #a66b22);
+  --color-acento-forte: var(--painel-acento-forte-claro, #d9a34a);
+  --color-no-acento:  var(--painel-no-acento-claro, #241a10);
   --color-mut:        #f3ebdf;
   --color-mut-borda:  #e7dac3;
   --color-linha:      #e7dac3;
@@ -235,8 +250,9 @@ html[data-tema="claro"] .painel {
     --color-sub:        #7a6952;
     --color-lbl:        #a0917a;
     --color-apagado:    #a0917a;
-    --color-acento:     #a66b22;
-    --color-acento-forte: #d9a34a;
+    --color-acento:     var(--painel-acento-claro, #a66b22);
+    --color-acento-forte: var(--painel-acento-forte-claro, #d9a34a);
+    --color-no-acento:  var(--painel-no-acento-claro, #241a10);
     --color-mut:        #f3ebdf;
     --color-mut-borda:  #e7dac3;
     --color-linha:      #e7dac3;
@@ -252,7 +268,7 @@ html[data-tema="claro"] .painel {
    superfície para o que está aceso (o serviço escolhido, o resumo antes do
    botão). O `superficie2` de fora é o do painel, claro demais para isto. */
 .fluxo {
-  --color-superficie2: #241b15;
+  --color-superficie2: var(--fluxo-superficie2, #241b15);
 
   font-family: var(--font-letreiro);
 }
