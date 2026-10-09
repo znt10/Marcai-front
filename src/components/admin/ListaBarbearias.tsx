@@ -4,20 +4,26 @@ import { Box, Chip, Lbl, Sub } from '@/components/wf';
 import {
   adminApi, ignorarAborto, mensagemDoErro, type BarbeariaDaLista,
 } from '@/lib/api';
+import { daCategoria } from '@/lib/categorias';
 import { paleta } from '@/lib/paletas';
-import { NOME_DO_TIPO, vocabulario } from '@/lib/tipos';
+import { vocabulario, type Tipo } from '@/lib/tipos';
 
 /// Reexportado porque a tela do admin já importava o tipo daqui; a definição
 /// mora junto das rotas, em `lib/api/adminAPI.ts`.
 export type Barbearia = BarbeariaDaLista;
 
-export function ListaBarbearias({ recarregarEm }: { recarregarEm?: number }) {
-  const [barbearias, setBarbearias] = useState<Barbearia[]>([]);
+/// Só os da categoria em que o admin entrou (`/admin/<categoria>`). O
+/// filtro é aqui, e não no back: a rota já devolve o tipo de cada um, e a
+/// entrada do admin precisa da lista inteira para contar as categorias.
+export function ListaBarbearias({ tipo, recarregarEm }: { tipo: Tipo; recarregarEm?: number }) {
+  const [todas, setTodas] = useState<Barbearia[]>([]);
+  const barbearias = daCategoria(todas, tipo);
+  const v = vocabulario(tipo);
   const [link, setLink] = useState('');
   const [erro, setErro] = useState('');
 
   const carregar = (signal?: AbortSignal) =>
-    adminApi.barbearias(signal).then(setBarbearias).catch(ignorarAborto);
+    adminApi.barbearias(signal).then(setTodas).catch(ignorarAborto);
 
   // Aborta na limpeza: criar duas barbearias em seguida muda `recarregarEm`
   // duas vezes, e a resposta da primeira busca chegando depois da segunda
@@ -49,16 +55,19 @@ export function ListaBarbearias({ recarregarEm }: { recarregarEm?: number }) {
 
   return (
     <>
-      <Lbl>estabelecimentos</Lbl>
+      <Lbl>cadastrados</Lbl>
       {barbearias.length === 0 && <Sub>nenhum ainda</Sub>}
       {barbearias.map((b) => (
         <Box key={b.id} variante={b.ativo ? 'normal' : 'mut'}
              className="flex flex-wrap gap-2 justify-between items-center">
           <span>
             {b.nome} · <span className="text-lbl">{b.slug}</span>
-            {' '}· <span className="text-lbl">{NOME_DO_TIPO[b.tipo ?? 'BARBEARIA']}, {paleta(b.paleta).nome.toLowerCase()}</span>
+            {' '}· <span className="text-lbl">{paleta(b.paleta).nome.toLowerCase()}</span>
           </span>
-          <Lbl>{b.barbeiros} {vocabulario(b.tipo).profs} · {b.agendamentos} agendamentos</Lbl>
+          <Lbl>
+            {b.barbeiros} {b.barbeiros === 1 ? v.prof : v.profs}
+            {' · '}{b.agendamentos} {b.agendamentos === 1 ? 'agendamento' : 'agendamentos'}
+          </Lbl>
           <div className="flex gap-2 flex-wrap">
             <Chip onClick={() => alternar(b)}>{b.ativo ? 'desativar' : 'reativar'}</Chip>
             <Chip acento onClick={() => reemitir(b)}>novo convite</Chip>

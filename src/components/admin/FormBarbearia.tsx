@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Box, Chip, Lbl, Sub } from '@/components/wf';
 import { adminApi, mensagemDoErro, type NovaBarbearia } from '@/lib/api';
 import { PALETAS, PALETAS_EM_ORDEM, PALETA_PADRAO, type Paleta } from '@/lib/paletas';
-import { NOME_DO_TIPO, TIPOS, vocabulario, type Tipo, type Vocabulario } from '@/lib/tipos';
+import { vocabulario, type Tipo, type Vocabulario } from '@/lib/tipos';
 
 /// Cinco campos, e os dois que saíram têm motivos diferentes.
 ///
@@ -24,12 +24,12 @@ const camposDo = (v: Vocabulario) => [
   { chave: 'donoNome',        rotulo: 'nome do dono' },
 ] as const;
 
-export function FormBarbearia({ aoCriar }: { aoCriar?: () => void }) {
+/// O tipo vem da CATEGORIA em que o admin entrou (`/admin/sobrancelha`), e
+/// não de um seletor aqui: cada categoria cria os seus (pedido de 09/10).
+export function FormBarbearia({ tipo, aoCriar }: { tipo: Tipo; aoCriar?: () => void }) {
   const [dados, setDados] = useState<Record<string, string>>({});
-  // O tipo e a paleta (spec 2026-10-08). A paleta ACOMPANHA o tipo até o
-  // admin tocar numa: `null` quer dizer "a sugerida", e trocar o tipo
-  // depois de escolher uma à mão não desfaz a escolha.
-  const [tipo, setTipo] = useState<Tipo>('BARBEARIA');
+  // A paleta (spec 2026-10-08) começa na sugerida pelo tipo: `null` quer
+  // dizer "a sugerida", até o admin tocar numa.
   const [paletaEscolhida, setPaletaEscolhida] = useState<Paleta | null>(null);
   const paleta = paletaEscolhida ?? PALETA_PADRAO[tipo];
   const v = vocabulario(tipo);
@@ -63,14 +63,6 @@ export function FormBarbearia({ aoCriar }: { aoCriar?: () => void }) {
   return (
     <>
       <Lbl>novo estabelecimento</Lbl>
-      <Sub>tipo</Sub>
-      <div className="flex flex-wrap gap-2">
-        {TIPOS.map((t) => (
-          <Chip key={t} ativo={tipo === t} aria-pressed={tipo === t} onClick={() => setTipo(t)}>
-            {NOME_DO_TIPO[t]}
-          </Chip>
-        ))}
-      </div>
       <Sub>cores</Sub>
       <div className="flex flex-wrap gap-2">
         {PALETAS_EM_ORDEM.map((p) => (

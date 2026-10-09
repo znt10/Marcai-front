@@ -1,15 +1,26 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { ListaBarbearias } from '@/components/admin/ListaBarbearias';
-import { FormBarbearia } from '@/components/admin/FormBarbearia';
+import Link from 'next/link';
 import { WhatsappCentral } from '@/components/admin/WhatsappCentral';
-import { Sep, Lbl } from '@/components/wf';
-import { adminApi, origemDoTenant, LOGIN_DO_ADMIN } from '@/lib/api';
+import { Box, Sep, Lbl, Sub } from '@/components/wf';
+import {
+  adminApi, ignorarAborto, origemDoTenant, LOGIN_DO_ADMIN, type BarbeariaDaLista,
+} from '@/lib/api';
+import { NOME_DA_CATEGORIA, daCategoria, slugDaCategoria } from '@/lib/categorias';
+import { TIPOS } from '@/lib/tipos';
 
+/// A ENTRADA do admin (pedido de 09/10/2026): o que é de todos (o número
+/// central do WhatsApp) e um cartão por categoria. A lista e o formulário de
+/// criar moram dentro de cada categoria (`/admin/<categoria>`).
 export default function Admin() {
-  // Criar uma barbearia tem que aparecer na lista sem F5. Um contador é o
-  // suficiente: ele muda, o efeito da lista roda de novo.
-  const [versao, setVersao] = useState(0);
+  // Só para contar quantos cada categoria tem. `null` enquanto carrega: um
+  // "nenhum ainda" piscando antes da resposta seria mentira.
+  const [todas, setTodas] = useState<BarbeariaDaLista[] | null>(null);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    adminApi.barbearias(ctrl.signal).then(setTodas).catch(ignorarAborto);
+    return () => ctrl.abort();
+  }, []);
 
   // O admin do Django mora no DJANGO — outra porta (8000), não esta (3000).
   // Sem este link ele existia sem ter entrada: funcionava, respondia, e a
@@ -32,9 +43,24 @@ export default function Admin() {
     <>
       <WhatsappCentral />
       <Sep />
-      <ListaBarbearias recarregarEm={versao} />
-      <Sep />
-      <FormBarbearia aoCriar={() => setVersao((v) => v + 1)} />
+      <Lbl>categorias</Lbl>
+      {/* Uma por tipo, na ordem de `TIPOS`: tipo novo no código vira cartão
+          novo aqui sem mexer nesta tela. */}
+      {TIPOS.map((t) => {
+        const n = todas ? daCategoria(todas, t).length : null;
+        return (
+          <Link key={t} href={`/admin/${slugDaCategoria(t)}`}>
+            <Box className="flex items-baseline justify-between hover:border-acento">
+              <span className="font-letreiro text-[17px] md:text-[19px] font-bold text-tinta">
+                {NOME_DA_CATEGORIA[t]}
+              </span>
+              <Sub>
+                {n === null ? '…' : n === 0 ? 'nenhum ainda' : n === 1 ? '1 cadastrado' : `${n} cadastrados`} ›
+              </Sub>
+            </Box>
+          </Link>
+        );
+      })}
       <Sep />
       <div className="flex justify-between items-baseline text-[10px] md:text-xs text-lbl">
         {/* `<a>` e não `<Link>`, a mesma exceção de `Confirmado`: isto SAI do

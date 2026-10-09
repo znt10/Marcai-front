@@ -13,12 +13,6 @@ export type Tipo = 'BARBEARIA' | 'SOBRANCELHA' | 'OUTRO';
 
 export const TIPOS: Tipo[] = ['BARBEARIA', 'SOBRANCELHA', 'OUTRO'];
 
-/// O nome do ramo para quem ESCOLHE (o admin), e não a palavra do lugar:
-/// a sobrancelha é um "estúdio", mas o ramo é "Sobrancelha".
-export const NOME_DO_TIPO: Record<Tipo, string> = {
-  BARBEARIA: 'Barbearia', SOBRANCELHA: 'Sobrancelha', OUTRO: 'Outro',
-};
-
 export type Vocabulario = {
   /// "barbearia", "estúdio" — no meio da frase.
   lugar: string;
