@@ -2,7 +2,9 @@ services:
   app:
     container_name: Marcai-front-app
     build: { context: ., target: dev }
-    command: npm run dev
+    # A ponte da 8000 vai junto: sem ela, estabelecimento criado pelo admin
+    # em dev dá 500 até ganhar apelido no compose do back. Ver o arquivo.
+    command: sh -c "node scripts/ponte-do-dev.mjs & exec npm run dev"
     environment:
       NEXT_PUBLIC_DOMINIO_BASE: localhost
       # Vazia = desligado. A saída para testar pelo celular sem DNS curinga:

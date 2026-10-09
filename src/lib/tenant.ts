@@ -56,12 +56,13 @@ const PORTA_API = process.env.NEXT_PUBLIC_API_URL || '8000';
 ///   `NEXT_PUBLIC_API_URL="443"` virava `http://brutus.<dominio>:443`: HTTP
 ///   puro na porta do HTTPS, e toda página renderizada no servidor dava 500.
 ///
-/// - Sem ela (dev): o host da requisição com a porta do Django. Em dev,
-///   `brutus.localhost`/`dontony.localhost` so resolvem porque o servico `api`
-///   do compose do back declara esses nomes como ALIAS de rede (ver
-///   `../Marcai-back/docker-compose.yml`) — sem isso o host so existiria no
-///   navegador, nunca de dentro do contêiner do front. Uma linha por tenant:
-///   uma barbearia nova criada pelo admin em dev nao ganha apelido sozinha.
+/// - Sem ela (dev): o host da requisição com a porta do Django. De dentro do
+///   contêiner do front, `<slug>.localhost` aponta para o próprio contêiner,
+///   e quem escuta na 8000 ali é a ponte `scripts/ponte-do-dev.mjs`, que
+///   repassa ao Django com o Host intacto. Assim um estabelecimento criado
+///   pelo admin em dev abre na hora. (Os apelidos de rede no compose do back,
+///   `brutus.localhost` e companhia, eram a solução antiga, uma linha por
+///   tenant; continuam lá e só levam direto ao mesmo Django.)
 ///
 /// Sempre `no-store`: o dono edita a frase do horario, o preço ou a equipe no
 /// painel e precisa ver o resultado. O `cache()` do React de quem chama ja
