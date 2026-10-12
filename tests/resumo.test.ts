@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   periodoDe, andar, rotuloDe, modoDoPeriodo, porcentagens, type Modo,
-  coresPorBarbeiro, CORES_DE_BARBEIRO,
+  coresPorServico, montarPizza, CORES_DO_RESUMO, COR_OUTROS,
   diasDaGrade, inicioDaSemana, mesDe, somarMeses, rotuloDoMes,
 } from '@/lib/resumo';
+import type { ServicoDoResumo } from '@/lib/api';
 
 // 2026-09-05 e' um SABADO — o ultimo dia da semana quando a semana comeca no
 // domingo, entao ele e' a ancora que mais denuncia erro de convencao: com a
@@ -176,47 +177,109 @@ describe('porcentagens', () => {
   });
 });
 
-describe('coresPorBarbeiro', () => {
-  const linha = (barbeiroId: string, cortes: number) => ({ barbeiroId, cortes });
+describe('coresPorServico', () => {
+  const servico = (servicoId: string, cortes: number) => ({ servicoId, cortes });
 
-  it('a cor segue o BARBEIRO, nao a posicao no ranking', () => {
-    // Este e' o teste inteiro. Na versao anterior a cor saia da ordem de
-    // volume: bastava dois trocarem de lugar de um mes para o outro para
-    // trocarem de cor, e quem tinha aprendido "o azul e' o Nando" via o azul
-    // virar outra pessoa sem nada avisar.
-    const equipe = [linha('a', 10), linha('b', 20), linha('c', 5)];
-    const antes = coresPorBarbeiro(equipe);
+  it('a cor segue o SERVICO, nao a posicao no ranking', () => {
+    // Na versao por volume, bastava dois servicos trocarem de lugar de um mes
+    // para o outro para trocarem de cor, e quem tinha aprendido "o azul e' a
+    // barba" via o azul virar outro servico sem nada avisar.
+    const catalogo = [servico('a', 10), servico('b', 20), servico('c', 5)];
+    const antes = coresPorServico(catalogo);
 
-    // Mes seguinte: 'a' passou 'b'. A ordem da EQUIPE (a, b, c) nao mudou.
-    const depois = coresPorBarbeiro([linha('a', 30), linha('b', 20), linha('c', 5)]);
+    // Mes seguinte: 'a' passou 'b'. A ordem do CATALOGO (a, b, c) nao mudou.
+    const depois = coresPorServico([servico('a', 30), servico('b', 20), servico('c', 5)]);
 
     expect(depois.get('a')).toBe(antes.get('a'));
     expect(depois.get('b')).toBe(antes.get('b'));
     expect(depois.get('c')).toBe(antes.get('c'));
   });
 
-  it('quem nao cortou no periodo nao ocupa cor', () => {
-    const cores = coresPorBarbeiro([linha('a', 3), linha('b', 0), linha('c', 1)]);
+  it('servico sem atendimento no periodo nao ocupa cor', () => {
+    const cores = coresPorServico([servico('a', 3), servico('b', 0), servico('c', 1)]);
     expect(cores.has('b')).toBe(false);
     expect([...cores.keys()]).toEqual(['a', 'c']);
   });
 
   it('passando do maximo, os MAIORES ficam nomeados e a cauda dobra', () => {
-    const cores = coresPorBarbeiro(
-      [linha('a', 1), linha('b', 50), linha('c', 40), linha('d', 30), linha('e', 2)],
+    const cores = coresPorServico(
+      [servico('a', 1), servico('b', 50), servico('c', 40), servico('d', 30), servico('e', 2)],
       4,
     );
     // Tres nomeados (a quarta cor fica para o "outros"), e sao os tres maiores.
     expect([...cores.keys()].sort()).toEqual(['b', 'c', 'd']);
-    // Mas a cor de cada um vem da ordem da EQUIPE, nao da de volume.
-    expect(cores.get('b')).toBe(CORES_DE_BARBEIRO[0]);
-    expect(cores.get('c')).toBe(CORES_DE_BARBEIRO[1]);
-    expect(cores.get('d')).toBe(CORES_DE_BARBEIRO[2]);
+    // Mas a cor de cada um vem da ordem do CATALOGO, nao da de volume.
+    expect(cores.get('b')).toBe(CORES_DO_RESUMO[0]);
+    expect(cores.get('c')).toBe(CORES_DO_RESUMO[1]);
+    expect(cores.get('d')).toBe(CORES_DO_RESUMO[2]);
   });
 
   it('nenhuma cor se repete', () => {
-    const cores = coresPorBarbeiro([linha('a', 4), linha('b', 3), linha('c', 2), linha('d', 1)]);
+    const cores = coresPorServico([servico('a', 4), servico('b', 3), servico('c', 2), servico('d', 1)]);
     expect(new Set(cores.values()).size).toBe(4);
+  });
+});
+
+describe('montarPizza', () => {
+  const s = (servicoId: string, cortes: number, centavos: number | null = null): ServicoDoResumo => ({
+    servicoId, nome: servicoId, cortes, centavos,
+  });
+
+  it('a cor de um servico e a mesma no salao e num profissional', () => {
+    // As cores saem SEMPRE do salao inteiro. Calculadas so' com os servicos
+    // do profissional, o Cabelo seria dourado no "Todos" e azul no Nando.
+    const salao = [s('cabelo', 30), s('barba', 20), s('pezinho', 10)];
+    const cores = coresPorServico(salao);
+    const doNando = montarPizza([s('barba', 5), s('pezinho', 2)], cores);
+    const doSalao = montarPizza(salao, cores);
+
+    const cor = (p: ReturnType<typeof montarPizza>, id: string) =>
+      p.linhas.find((l) => l.servicoId === id)!.cor;
+    expect(cor(doNando, 'barba')).toBe(cor(doSalao, 'barba'));
+    expect(cor(doNando, 'pezinho')).toBe(cor(doSalao, 'pezinho'));
+  });
+
+  it('ordem por volume, maior primeiro, e a cauda por ultimo', () => {
+    const servicos = [s('a', 1), s('b', 50), s('c', 40), s('d', 30), s('e', 2)];
+    const p = montarPizza(servicos, coresPorServico(servicos));
+    expect(p.linhas.map((l) => l.servicoId)).toEqual(['b', 'c', 'd', 'e', 'a']);
+  });
+
+  it('a cauda vira UMA fatia cinza, mas cada servico dela fica na legenda', () => {
+    const servicos = [s('a', 1, 500), s('b', 50), s('c', 40), s('d', 30), s('e', 2, 1000)];
+    const p = montarPizza(servicos, coresPorServico(servicos));
+
+    expect(p.fatias.map((f) => f.nome)).toEqual(['b', 'c', 'd', 'outros (2)']);
+    expect(p.fatias[3]).toMatchObject({ cortes: 3, cor: COR_OUTROS });
+
+    const e = p.linhas.find((l) => l.servicoId === 'e')!;
+    expect(e).toMatchObject({ cortes: 2, centavos: 1000, cor: COR_OUTROS, nomeado: false });
+  });
+
+  it('as porcentagens da legenda fecham em 100', () => {
+    const servicos = [s('a', 14), s('b', 11), s('c', 6)];
+    const p = montarPizza(servicos, coresPorServico(servicos));
+    expect(p.linhas.reduce((soma, l) => soma + l.pct, 0)).toBe(100);
+  });
+
+  it('o total soma quantidade e valor', () => {
+    const servicos = [s('a', 3, 12000), s('b', 2, 5000)];
+    const p = montarPizza(servicos, coresPorServico(servicos));
+    expect(p.cortes).toBe(5);
+    expect(p.centavos).toBe(17000);
+  });
+
+  it('servico sem preco fica fora do valor; sem preco nenhum, o total e null', () => {
+    const parte = [s('a', 3, 12000), s('b', 2, null)];
+    expect(montarPizza(parte, coresPorServico(parte)).centavos).toBe(12000);
+
+    const nenhum = [s('a', 3), s('b', 2)];
+    expect(montarPizza(nenhum, coresPorServico(nenhum)).centavos).toBeNull();
+  });
+
+  it('sem atendimento, nada para desenhar', () => {
+    const p = montarPizza([], new Map());
+    expect(p).toEqual({ linhas: [], fatias: [], cortes: 0, centavos: null });
   });
 });
 

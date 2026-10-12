@@ -1,4 +1,5 @@
 import { somarDias, diaSemanaDe } from '@/lib/datas';
+import type { ServicoDoResumo } from '@/lib/api';
 
 /// Os períodos do resumo: **modo mais âncora**, e não uma janela rolando.
 ///
@@ -163,37 +164,42 @@ export function modoDoPeriodo(p: Periodo): Modo | null {
   return null;
 }
 
-/// ## A cor de cada barbeiro
+/// ## A cor de cada serviço
 ///
 /// Quatro cores, e não seis: numa pizza qualquer fatia pode ser comparada com
 /// qualquer outra — e a primeira e a última ainda se encostam no anel. Então a
 /// paleta precisa passar no teste de TODOS os pares, não só dos vizinhos, e é
 /// aí que o tema escuro aperta. Cinco e seis foram medidos e reprovaram;
 /// quatro passa nos cinco testes, com pior separação ΔE 9.3 sob deuteranopia
-/// e 22.2 em visão normal, contra a superfície `#1e1815`.
-export const CORES_DE_BARBEIRO = ['#b88819', '#4a8ed0', '#c2537f', '#2e7a45'];
+/// e 19.4 em visão normal, contra o fundo do painel nos dois temas. No claro o
+/// dourado fica em 2.97:1 de contraste — a legenda escreve nome e número de
+/// cada fatia, e é ela que cobre isso.
+///
+/// Nasceram para a pizza da divisão entre a EQUIPE, que saiu quando o resumo
+/// passou a dividir por serviço (12/10): as linhas com barra já respondiam
+/// quem fez mais.
+export const CORES_DO_RESUMO = ['#b88819', '#4a8ed0', '#c2537f', '#2e7a45'];
 
 /// Cinza de recuo, fora da paleta categórica de propósito: "outros" não é uma
 /// identidade, é a ausência de uma.
 export const COR_OUTROS = '#6c5e54';
 
-/// Qual cor é de qual barbeiro — e a resposta **não depende de quem cortou
-/// mais**.
+/// Qual cor é de qual serviço — e a resposta **não depende de quem vendeu
+/// mais**, nem de qual profissional está escolhido.
 ///
-/// A versão anterior ordenava por volume e distribuía as cores nessa ordem. O
-/// efeito: bastava dois barbeiros trocarem de posição de um mês para o outro
-/// para trocarem de cor. O dono que aprendeu "o azul é o Nando" via o azul
-/// virar outra pessoa sem nada avisar — e o pior é que a tela continuava
-/// coerente consigo mesma, então não havia como desconfiar.
+/// Sai SEMPRE dos serviços do salão inteiro no período, e vale para todos os
+/// chips. Calculada por profissional, o "Cabelo" seria dourado no Todos e azul
+/// no Nando — e quem aprendeu a cor numa tela leria errado a outra.
 ///
-/// Aqui o volume decide só **quem ganha cor** (os maiores, porque a cauda
-/// dobra em "outros"); a ordem das cores vem da ordem da EQUIPE, que é a que o
-/// back manda e não muda com o movimento do mês.
-export function coresPorBarbeiro(
-  linhas: readonly { barbeiroId: string; cortes: number }[],
-  maximoDeCores = CORES_DE_BARBEIRO.length,
+/// O volume decide só **quem ganha cor** (os maiores, porque a cauda dobra em
+/// "outros"); QUAL cor vem da ordem do catálogo, que é a que o back manda e não
+/// muda com o movimento do mês. Ordenar por volume aqui faria dois serviços
+/// trocarem de cor só por trocarem de posição de um mês para o outro.
+export function coresPorServico(
+  servicos: readonly { servicoId: string; cortes: number }[],
+  maximoDeCores = CORES_DO_RESUMO.length,
 ): Map<string, string> {
-  const comCorte = linhas.filter((l) => l.cortes > 0);
+  const comCorte = servicos.filter((s) => s.cortes > 0);
   // Quem aparece nomeado: todos, se couberem; senão os maiores, guardando uma
   // vaga para o "outros" que recolhe a cauda.
   const nomeados =
@@ -201,14 +207,68 @@ export function coresPorBarbeiro(
       ? comCorte
       : [...comCorte].sort((a, b) => b.cortes - a.cortes).slice(0, maximoDeCores - 1);
 
-  const ehNomeado = new Set(nomeados.map((l) => l.barbeiroId));
+  const ehNomeado = new Set(nomeados.map((s) => s.servicoId));
   const cores = new Map<string, string>();
   let i = 0;
-  // Percorre na ordem ORIGINAL (a da equipe), não na de volume.
-  for (const l of linhas) {
-    if (ehNomeado.has(l.barbeiroId)) cores.set(l.barbeiroId, CORES_DE_BARBEIRO[i++]);
+  // Percorre na ordem ORIGINAL (a do catálogo), não na de volume.
+  for (const s of servicos) {
+    if (ehNomeado.has(s.servicoId)) cores.set(s.servicoId, CORES_DO_RESUMO[i++]);
   }
   return cores;
+}
+
+export type LinhaDaLegenda = ServicoDoResumo & { cor: string; pct: number; nomeado: boolean };
+export type FatiaDaRosca = { chave: string; nome: string; cortes: number; cor: string };
+
+/// O que a rosca e a legenda desenham, para o salão ou para um profissional.
+///
+/// A LEGENDA lista todo serviço, cada um com seus números — inclusive os da
+/// cauda: o dono quer saber quanto entrou de pigmentação mesmo quando ela não
+/// ganhou cor. A ROSCA junta a cauda numa fatia cinza só, porque duas fatias
+/// cinzas encostadas se leem como uma.
+///
+/// A ordem é por volume, maior primeiro (é o que faz a maior fatia começar no
+/// topo e a leitura girar do maior para o menor), e a cauda vem por último —
+/// na legenda e na rosca, para as duas lerem na mesma ordem.
+export function montarPizza(
+  servicos: readonly ServicoDoResumo[],
+  cores: Map<string, string>,
+): { linhas: LinhaDaLegenda[]; fatias: FatiaDaRosca[]; cortes: number; centavos: number | null } {
+  const comCorte = servicos.filter((s) => s.cortes > 0);
+  const porVolume = (a: ServicoDoResumo, b: ServicoDoResumo) => b.cortes - a.cortes;
+  const nomeados = comCorte.filter((s) => cores.has(s.servicoId)).sort(porVolume);
+  const cauda = comCorte.filter((s) => !cores.has(s.servicoId)).sort(porVolume);
+  const emOrdem = [...nomeados, ...cauda];
+
+  const pct = porcentagens(emOrdem.map((s) => s.cortes));
+  const linhas = emOrdem.map((s, i) => ({
+    ...s,
+    cor: cores.get(s.servicoId) ?? COR_OUTROS,
+    pct: pct[i],
+    nomeado: cores.has(s.servicoId),
+  }));
+
+  const fatias: FatiaDaRosca[] = nomeados.map((s) => ({
+    chave: s.servicoId, nome: s.nome, cortes: s.cortes, cor: cores.get(s.servicoId)!,
+  }));
+  if (cauda.length > 0) {
+    fatias.push({
+      chave: 'outros',
+      nome: cauda.length === 1 ? cauda[0].nome : `outros (${cauda.length})`,
+      cortes: cauda.reduce((soma, s) => soma + s.cortes, 0),
+      cor: COR_OUTROS,
+    });
+  }
+
+  // Mesma regra da rota: sem preço nenhum é `null`, com parte sem preço soma
+  // o que tem.
+  const comPreco = emOrdem.filter((s) => s.centavos !== null);
+  return {
+    linhas,
+    fatias,
+    cortes: emOrdem.reduce((soma, s) => soma + s.cortes, 0),
+    centavos: comPreco.length > 0 ? comPreco.reduce((soma, s) => soma + s.centavos!, 0) : null,
+  };
 }
 
 /// ## O calendário do seletor

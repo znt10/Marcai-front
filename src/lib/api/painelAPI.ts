@@ -277,6 +277,16 @@ export const equipeApi = {
     }),
 };
 
+/// O que a rota manda por serviço: quantos, e quanto entrou. `centavos` é
+/// `null` quando nenhum daqueles atendimentos tinha preço — zero diria que foi
+/// de graça.
+export type ServicoDoResumo = {
+  servicoId: string;
+  nome: string;
+  cortes: number;
+  centavos: number | null;
+};
+
 /// `clientes` é gente distinta, `cortes` é atendimento. O mesmo cliente
 /// voltando três vezes é 3 e 1 — por isso são duas colunas e não uma.
 export type LinhaDoResumo = {
@@ -287,6 +297,8 @@ export type LinhaDoResumo = {
   ativo: boolean;
   cortes: number;
   clientes: number;
+  /// Os serviços que ele fez no período, na ordem do catálogo.
+  servicos: ServicoDoResumo[];
 };
 
 export type Resumo = {
@@ -296,7 +308,9 @@ export type Resumo = {
   /// `totais.clientes` é distinto na BARBEARIA, não a soma das linhas: quem
   /// cortou com dois barbeiros é uma pessoa só. A soma das linhas pode passar
   /// do total, e está certo — a tela rotula em vez de esconder.
-  totais: { cortes: number; clientes: number };
+  /// `servicos` e `centavos` são do salão inteiro. `centavos` é `null` quando
+  /// nenhum atendimento do período tinha preço.
+  totais: { cortes: number; clientes: number; servicos: ServicoDoResumo[]; centavos: number | null };
 };
 
 /// Só o dono chega aqui: a rota responde 403 para `BARBEIRO`.
