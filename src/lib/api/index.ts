@@ -18,7 +18,7 @@ export type {
   DiaDeTrabalho, Bloqueio, Conflito,
   ServicoDoCatalogo, VinculoDeServico,
   ColunaDoDia, ItemDoQuadro, DadosDaBarbearia,
-  LinhaDoResumo, Resumo,
+  LinhaDoResumo, Resumo, ServicoDoResumo,
   WhatsappDaBarbearia,
 } from './painelAPI';
 

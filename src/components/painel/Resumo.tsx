@@ -5,9 +5,9 @@ import { SeletorDePeriodo } from '@/components/painel/SeletorDePeriodo';
 import {
   resumoApi, mensagemDoErro, type LinhaDoResumo, type Resumo as Dados,
 } from '@/lib/api';
-import { PizzaDeCortes } from '@/components/painel/PizzaDeCortes';
+import { PizzaDeServicos } from '@/components/painel/PizzaDeServicos';
 import {
-  MODOS, andar, modoDoPeriodo, periodoDe, rotuloDe, type Periodo,
+  MODOS, andar, coresPorServico, modoDoPeriodo, periodoDe, rotuloDe, type Periodo,
 } from '@/lib/resumo';
 import { diaDeHoje } from '@/lib/datas';
 import { useVocabulario } from '@/components/Vocabulario';
@@ -36,6 +36,9 @@ export function Resumo() {
   const [periodo, setPeriodo] = useState<Periodo>(() => periodoDe('mes', hoje()));
   const [dados, setDados] = useState<Dados | null>(null);
   const [erro, setErro] = useState('');
+  // O profissional do chip, ou `null` para "Todos". Guarda o ID e não a
+  // linha: a linha muda a cada período, e quem o dono escolheu não.
+  const [escolhido, setEscolhido] = useState<string | null>(null);
 
   const carregar = useCallback(async (p: Periodo, signal?: AbortSignal) => {
     setDados(null);
@@ -86,6 +89,15 @@ export function Resumo() {
   // que interessa é entre os barbeiros deste período, não contra uma meta que
   // ninguém combinou.
   const teto = Math.max(1, ...(dados?.linhas.map((l) => l.cortes) ?? [0]));
+
+  // DERIVADO, e não corrigido num efeito: quem saiu da equipe só aparece no
+  // período em que atendeu, e andando para outro mês a linha dele some. Aí a
+  // tela volta para "Todos" sozinha, sem um chip aceso apontando para
+  // ninguém — e voltando ao mês dele, ele volta escolhido.
+  const linhaEscolhida = dados?.linhas.find((l) => l.barbeiroId === escolhido) ?? null;
+  // As cores saem SEMPRE do salão inteiro: o mesmo serviço tem a mesma cor em
+  // qualquer chip.
+  const cores = coresPorServico(dados?.totais.servicos ?? []);
 
   return (
     <>
@@ -143,14 +155,42 @@ export function Resumo() {
             <Box variante="dash">{maiuscula(v.nenhumProf)} na equipe ainda.</Box>
           )}
 
-          {/* Antes das linhas: a proporção é a leitura de relance, e os
-              números embaixo são a resposta exata para quem quiser conferir.
-              A pizza se apaga sozinha quando não há divisão a mostrar. */}
-          <PizzaDeCortes linhas={dados.linhas} />
+          {/* Um chip por linha da equipe, igual às lojas do FechaCaixa. Com
+              um profissional só, "Todos" e ele seriam a mesma tela — os chips
+              não aparecem. */}
+          {dados.linhas.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Chip ativo={linhaEscolhida === null} aria-pressed={linhaEscolhida === null}
+                    onClick={() => setEscolhido(null)}>
+                Todos
+              </Chip>
+              {dados.linhas.map((l) => (
+                <Chip key={l.barbeiroId} ativo={linhaEscolhida?.barbeiroId === l.barbeiroId}
+                      aria-pressed={linhaEscolhida?.barbeiroId === l.barbeiroId}
+                      onClick={() => setEscolhido(l.barbeiroId)}>
+                  {l.barbeiroNome}
+                </Chip>
+              ))}
+            </div>
+          )}
 
-          {dados.linhas.map((l) => <Linha key={l.barbeiroId} l={l} teto={teto} />)}
-
+          {/* Antes das linhas: a proporção é a leitura de relance, e a conta
+              ao lado dela é a resposta exata. */}
           {dados.linhas.length > 0 && (
+            <PizzaDeServicos
+              servicos={linhaEscolhida ? linhaEscolhida.servicos : dados.totais.servicos}
+              cores={cores}
+            />
+          )}
+
+          {/* Com alguém escolhido, só a linha dele. A barra continua medida
+              contra o maior da equipe: sozinha contra si mesma, ela estaria
+              sempre cheia e não diria nada. */}
+          {(linhaEscolhida ? [linhaEscolhida] : dados.linhas).map((l) => (
+            <Linha key={l.barbeiroId} l={l} teto={teto} />
+          ))}
+
+          {dados.linhas.length > 0 && !linhaEscolhida && (
             <Box variante="mut">
               <div className="flex items-baseline justify-between gap-3">
                 <span className="font-letreiro uppercase tracking-[0.06em]">no período</span>
