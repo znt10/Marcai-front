@@ -29,7 +29,7 @@ export function ClientesBloqueados() {
   }, [carregar]);
 
   async function desbloquear(c: ClienteBloqueado) {
-    if (!confirm(`Desbloquear ${c.nome}? Ela volta a conseguir marcar pelo site.`)) return;
+    if (!confirm(`Desbloquear ${c.nome}? O número volta a conseguir marcar pelo site.`)) return;
     try {
       await clientesApi.desbloquear(c.id);
       await carregar();

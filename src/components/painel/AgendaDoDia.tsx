@@ -107,12 +107,12 @@ export function AgendaDoDia() {
     void carregar(dia);
   }
 
-  /// Bloquear (spec 2026-10-13): a prévia diz quantos horários dela vão ser
+  /// Bloquear (spec 2026-10-13): a prévia diz quantos horários do número vão ser
   /// cancelados — sem aviso, e eles não voltam ao desbloquear.
   async function bloquear(item: ItemDaAgenda) {
     const previa = await clientesApi.previa(item.id);
     if (previa.bloqueado) {
-      alert(`${previa.nome} já está bloqueada.`);
+      alert(`O número de ${previa.nome} já está bloqueado.`);
       return;
     }
     if (!confirm(textoDaConfirmacao(previa))) return;
