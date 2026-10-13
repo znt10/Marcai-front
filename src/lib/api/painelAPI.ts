@@ -321,6 +321,30 @@ export const resumoApi = {
     }),
 };
 
+/// Bloquear cliente (spec 2026-10-13). A prévia é o que a confirmação mostra.
+export type PreviaDoBloqueio = {
+  clienteId: string; nome: string; whatsapp: string; horarios: number; bloqueado: boolean;
+};
+
+export type ClienteBloqueado = {
+  id: string; nome: string; whatsapp: string; bloqueadoEm: string; bloqueadoPor: string | null;
+};
+
+export const clientesApi = {
+  previa: (agendamentoId: string) =>
+    pedir<PreviaDoBloqueio>(`/painel/agendamentos/${agendamentoId}/bloquear-cliente`, {
+      loginEm: LOGIN_DO_PAINEL,
+    }),
+  bloquear: (agendamentoId: string) =>
+    pedir<{ ok: true; cancelados: number }>(
+      `/painel/agendamentos/${agendamentoId}/bloquear-cliente`, { metodo: 'POST' },
+    ),
+  bloqueados: (signal?: AbortSignal) =>
+    pedir<ClienteBloqueado[]>('/painel/clientes/bloqueados', { signal, loginEm: LOGIN_DO_PAINEL }),
+  desbloquear: (clienteId: string) =>
+    pedir<{ ok: true }>(`/painel/clientes/${clienteId}/desbloquear`, { metodo: 'POST' }),
+};
+
 /// A tela do WhatsApp desde a etapa 1 do número central: o número da
 /// barbearia não fica ligado a nada, então não há estado nem QR — só o texto
 /// pronto da mensagem de saudação e as mensagens que não chegaram.
