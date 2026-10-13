@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Cartao, CartaoInterno, BotaoVazado, Etiqueta, Texto,
+  Cartao, CartaoInterno, BotaoSeta, Etiqueta, Texto,
 } from '@/components/painel/pecas';
 import {
   quadroApi, ignorarAborto, mensagemDoErro,
@@ -71,17 +71,13 @@ export function QuadroDoDia() {
           e à esquerda: num quadro de 1100px, `justify-between` jogava as
           setas para os cantos opostos da tela. */}
       <div className="flex w-[160px] items-center gap-2.5">
-        <BotaoVazado className="size-9 rounded-[10px] px-0 text-[14px] text-sub"
-                     aria-label="dia anterior" onClick={() => setDia(somar(dia, -1))}>
-          ←
-        </BotaoVazado>
+        <BotaoSeta direcao="voltar" aria-label="dia anterior"
+                   onClick={() => setDia(somar(dia, -1))} />
         <span className="flex-1 text-center text-[13.5px] font-bold text-tinta">
           {dia === hoje() ? 'hoje' : dia}
         </span>
-        <BotaoVazado className="size-9 rounded-[10px] px-0 text-[14px] text-sub"
-                     aria-label="próximo dia" onClick={() => setDia(somar(dia, 1))}>
-          →
-        </BotaoVazado>
+        <BotaoSeta direcao="avancar" aria-label="próximo dia"
+                   onClick={() => setDia(somar(dia, 1))} />
       </div>
 
       {colunas === null && <Texto>carregando…</Texto>}

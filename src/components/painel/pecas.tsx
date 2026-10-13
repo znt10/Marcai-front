@@ -132,6 +132,31 @@ export function BotaoVazado({
   );
 }
 
+/// A seta de andar um dia (Agenda e Quadro do dia): o quadrado de 36px do
+/// desenho. Desenhada em SVG, e não com "←"/"→": o caractere da fonte ficava
+/// fino e abaixo do centro do botão. Botão próprio, e não `BotaoVazado`: o
+/// `md:px-4 md:py-2.5` dele empurrava a seta para fora do meio no computador.
+export function BotaoSeta({
+  direcao, ...props
+}: { direcao: 'voltar' | 'avancar' } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type="button"
+      className="grid size-9 shrink-0 place-items-center rounded-[10px] border border-borda
+                 text-sub transition-colors hover:border-acento hover:text-tinta
+                 disabled:opacity-40"
+      {...props}
+    >
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden fill="none"
+           stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        {direcao === 'voltar'
+          ? <path d="M13 8H3M7 4 3 8l4 4" />
+          : <path d="M3 8h10M9 4l4 4-4 4" />}
+      </svg>
+    </button>
+  );
+}
+
 /// O interruptor do dia de trabalho. Substitui o par de botões "abrir/fechar":
 /// o estado passa a estar no próprio controle, e não na palavra ao lado dele.
 ///
