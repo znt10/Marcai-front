@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Cartao, BotaoCheio, BotaoVazado, Texto, TituloDaTela,
+  Cartao, BotaoCheio, BotaoSeta, Texto, TituloDaTela,
 } from '@/components/painel/pecas';
 import { painelApi, clientesApi, ignorarAborto, type ItemDaAgenda } from '@/lib/api';
 import { textoDaConfirmacao } from '@/lib/bloqueio';
@@ -147,17 +147,13 @@ export function AgendaDoDia() {
           um dia é o que a tela faz desde antes dele, e inventar um segundo
           jeito de andar seria pior que reusar o que o desenho já tem. */}
       <div className="flex w-[160px] items-center gap-2.5">
-        <BotaoVazado className="size-9 rounded-[10px] px-0 text-[14px] text-sub"
-                     aria-label="dia anterior" onClick={() => setDia(somar(dia, -1))}>
-          ←
-        </BotaoVazado>
+        <BotaoSeta direcao="voltar" aria-label="dia anterior"
+                   onClick={() => setDia(somar(dia, -1))} />
         <span className="flex-1 text-center text-[13.5px] font-bold text-tinta">
           {ehHoje ? 'hoje' : porExtenso(dia)}
         </span>
-        <BotaoVazado className="size-9 rounded-[10px] px-0 text-[14px] text-sub"
-                     aria-label="próximo dia" onClick={() => setDia(somar(dia, 1))}>
-          →
-        </BotaoVazado>
+        <BotaoSeta direcao="avancar" aria-label="próximo dia"
+                   onClick={() => setDia(somar(dia, 1))} />
       </div>
 
       {!ehHoje && (
