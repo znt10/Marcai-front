@@ -61,6 +61,9 @@ export const MIGRADAS: readonly string[] = [
   '/painel/resumo',
   '/painel/conflitos',
   '/painel/agendamentos',
+  // Clientes bloqueados (spec 2026-10-13): listar e desbloquear. O bloquear
+  // mora sob '/painel/agendamentos', que ja' esta' acima.
+  '/painel/clientes',
   '/painel/barbearia',
   // O WhatsApp da barbearia (estado, QR, desconectar). UMA entrada cobre as
   // duas rotas: o casamento e por SEGMENTO, entao '/painel/whatsapp' ja

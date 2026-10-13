@@ -11,7 +11,7 @@ export type {
 
 export {
   painelApi, equipeApi, horariosApi, servicosApi, quadroApi, barbeariaApi,
-  resumoApi, whatsappApi, LOGIN_DO_PAINEL,
+  resumoApi, whatsappApi, clientesApi, LOGIN_DO_PAINEL,
 } from './painelAPI';
 export type {
   Eu, ItemDaAgenda, MembroDaEquipe, NovoBarbeiro,
@@ -19,7 +19,7 @@ export type {
   ServicoDoCatalogo, VinculoDeServico,
   ColunaDoDia, ItemDoQuadro, DadosDaBarbearia,
   LinhaDoResumo, Resumo, ServicoDoResumo,
-  WhatsappDaBarbearia,
+  WhatsappDaBarbearia, PreviaDoBloqueio, ClienteBloqueado,
 } from './painelAPI';
 
 export { adminApi, LOGIN_DO_ADMIN } from './adminAPI';

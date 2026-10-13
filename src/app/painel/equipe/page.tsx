@@ -4,6 +4,7 @@ import { Frame } from '@/components/wf';
 import { Fio, Texto, TituloDaTela } from '@/components/painel/pecas';
 import { Equipe } from '@/components/painel/Equipe';
 import { FormBarbeiro } from '@/components/painel/FormBarbeiro';
+import { ClientesBloqueados } from '@/components/painel/ClientesBloqueados';
 import { useEu } from '@/components/painel/SessaoDoPainel';
 
 export default function EquipeDoPainel() {
@@ -33,6 +34,8 @@ export default function EquipeDoPainel() {
               <Equipe recarregarEm={versao} euId={eu?.id} />
               <Fio className="my-1" />
               <FormBarbeiro aoCriar={() => setVersao((v) => v + 1)} />
+              <Fio className="my-1" />
+              <ClientesBloqueados />
             </>
           )}
 

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   Cartao, BotaoCheio, BotaoVazado, Texto, TituloDaTela,
 } from '@/components/painel/pecas';
-import { painelApi, ignorarAborto, type ItemDaAgenda } from '@/lib/api';
+import { painelApi, clientesApi, ignorarAborto, type ItemDaAgenda } from '@/lib/api';
+import { textoDaConfirmacao } from '@/lib/bloqueio';
 import { useAtualizacaoPeriodica } from '@/lib/useAtualizacaoPeriodica';
 import { PAINEL_ATUALIZACAO_MS } from '@/lib/config';
 import { useEu } from '@/components/painel/SessaoDoPainel';
@@ -103,6 +104,19 @@ export function AgendaDoDia() {
   async function cancelar(item: ItemDaAgenda) {
     if (!confirm(`Cancelar o horário de ${item.clienteNome} às ${hora(item.inicio)}?`)) return;
     await painelApi.cancelar(item.id);
+    void carregar(dia);
+  }
+
+  /// Bloquear (spec 2026-10-13): a prévia diz quantos horários do número vão ser
+  /// cancelados — sem aviso, e eles não voltam ao desbloquear.
+  async function bloquear(item: ItemDaAgenda) {
+    const previa = await clientesApi.previa(item.id);
+    if (previa.bloqueado) {
+      alert(`O número de ${previa.nome} já está bloqueado.`);
+      return;
+    }
+    if (!confirm(textoDaConfirmacao(previa))) return;
+    await clientesApi.bloquear(item.id);
     void carregar(dia);
   }
 
@@ -228,6 +242,10 @@ export function AgendaDoDia() {
                       chamativa dela. A confirmação continua sendo a trava. */}
                   <button onClick={() => cancelar(i)} className="px-1.5 py-1 hover:text-acento">
                     cancelar
+                  </button>
+                  <span aria-hidden className="text-lbl">·</span>
+                  <button onClick={() => bloquear(i)} className="px-1.5 py-1 hover:text-acento">
+                    bloquear
                   </button>
                 </span>
               </div>
