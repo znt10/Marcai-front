@@ -23,4 +23,7 @@ export type {
 } from './painelAPI';
 
 export { adminApi, LOGIN_DO_ADMIN } from './adminAPI';
-export type { BarbeariaDaLista, NovaBarbearia, Plano, WhatsappCentral } from './adminAPI';
+export type {
+  BarbeariaDaLista, NovaBarbearia, Plano, WhatsappCentral,
+  LinhaDaMensalidade, MensalidadesDoAdmin, CamposDaMensalidade,
+} from './adminAPI';

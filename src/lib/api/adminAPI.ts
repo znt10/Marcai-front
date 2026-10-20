@@ -1,5 +1,6 @@
 import { pedir } from './client';
 import type { Paleta } from '@/lib/paletas';
+import type { SituacaoDaMensalidade } from '@/lib/mensalidade';
 import type { Tipo } from '@/lib/tipos';
 
 /// As rotas do admin da plataforma. Elas só existem no host `admin.` — fora
@@ -42,6 +43,34 @@ export type WhatsappCentral = {
   qrBase64: string | null;
 };
 
+/// Uma linha da tela de mensalidades: a barbearia e como ela está com a
+/// assinatura. Tudo vem calculado do back (`dias` é de atraso em ATRASADA e
+/// BLOQUEADA, e o que falta em EM_DIA e VENCENDO).
+export type LinhaDaMensalidade = {
+  barbeariaId: string; nome: string; tipo?: Tipo; ativo: boolean;
+  situacao: SituacaoDaMensalidade;
+  dias: number | null;
+  /// "YYYY-MM-DD"
+  bloqueiaEm: string | null;
+  valorCentavos: number | null;
+  pagaAte: string | null;
+  isenta: boolean;
+  nuncaBloquear: boolean;
+  /// O "já paguei" esperando o admin conferir o Pix.
+  informada: { cobrancaId: string; valorCentavos: number; em: string; porNome: string } | null;
+  ultimaPaga: { pagaEm: string; valorCentavos: number; como: string } | null;
+};
+
+export type MensalidadesDoAdmin = {
+  barbearias: LinhaDaMensalidade[];
+  contadores: { informadas: number; atrasadas: number; bloqueadas: number };
+};
+
+/// O que o admin pode mudar numa assinatura: qualquer subconjunto.
+export type CamposDaMensalidade = Partial<{
+  valorCentavos: number; isenta: boolean; nuncaBloquear: boolean; pagaAte: string;
+}>;
+
 export const adminApi = {
   entrar: (usuario: string, senha: string) =>
     pedir<{ ok: true }>('/admin/auth/login', {
@@ -67,4 +96,27 @@ export const adminApi = {
 
   reemitirConvite: (id: string) =>
     pedir<{ linkConvite: string }>(`/admin/barbearias/${id}/convite`, { metodo: 'POST' }),
+
+  mensalidades: (signal?: AbortSignal) =>
+    pedir<MensalidadesDoAdmin>('/admin/mensalidades', { signal, loginEm: LOGIN_DO_ADMIN }),
+
+  ajustarMensalidade: (barbeariaId: string, campos: CamposDaMensalidade) =>
+    pedir<LinhaDaMensalidade>(`/admin/mensalidades/${barbeariaId}`, {
+      metodo: 'PATCH', corpo: campos,
+    }),
+
+  /// Pagamento recebido fora do Pix do Marcaí (dinheiro, transferência).
+  registrarPagamento: (
+    barbeariaId: string,
+    dados: { pagaAte: string; valorCentavos: number; observacao?: string },
+  ) =>
+    pedir<LinhaDaMensalidade>(`/admin/mensalidades/${barbeariaId}/registrar`, {
+      metodo: 'POST', corpo: dados,
+    }),
+
+  confirmarCobranca: (cobrancaId: string) =>
+    pedir<LinhaDaMensalidade>(`/admin/cobrancas/${cobrancaId}/confirmar`, { metodo: 'POST' }),
+
+  recusarCobranca: (cobrancaId: string) =>
+    pedir<LinhaDaMensalidade>(`/admin/cobrancas/${cobrancaId}/recusar`, { metodo: 'POST' }),
 };

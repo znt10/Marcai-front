@@ -9,6 +9,16 @@ import {
 import { NOME_DA_CATEGORIA, daCategoria, slugDaCategoria } from '@/lib/categorias';
 import { TIPOS } from '@/lib/tipos';
 
+/// "2 avisaram que pagaram · 1 bloqueada"; vazio quando não há o que dizer.
+function resumoDasMensalidades(c: { informadas: number; bloqueadas: number } | null): string {
+  if (!c) return '';
+  const partes = [
+    c.informadas > 0 && `${c.informadas} ${c.informadas === 1 ? 'avisou que pagou' : 'avisaram que pagaram'}`,
+    c.bloqueadas > 0 && `${c.bloqueadas} ${c.bloqueadas === 1 ? 'bloqueada' : 'bloqueadas'}`,
+  ].filter(Boolean);
+  return partes.length ? partes.join(' · ') : 'tudo em dia';
+}
+
 /// A ENTRADA do admin (pedido de 09/10/2026): o que é de todos (o número
 /// central do WhatsApp) e um cartão por categoria. A lista e o formulário de
 /// criar moram dentro de cada categoria (`/admin/<categoria>`).
@@ -31,6 +41,16 @@ export default function Admin() {
   // que não existe quando o Next renderiza este Client Component no servidor.
   // Vazio até o efeito rodar, e o link só aparece depois — é um clique numa
   // tela que já exigiu login, não a primeira pintura de nada.
+  // Os contadores do cartão de mensalidades. Falhar aqui não derruba a entrada:
+  // o cartão só fica sem números.
+  const [mensal, setMensal] = useState<{ informadas: number; bloqueadas: number } | null>(null);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    adminApi.mensalidades(ctrl.signal).then((d) => setMensal(d.contadores))
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, []);
+
   const [urlDoDjango, setUrlDoDjango] = useState('');
   useEffect(() => { setUrlDoDjango(`${origemDoTenant()}/admin/django/`); }, []);
 
@@ -61,6 +81,16 @@ export default function Admin() {
           </Link>
         );
       })}
+      <Sep />
+      <Lbl>cobrança</Lbl>
+      <Link href="/admin/mensalidades">
+        <Box className="flex items-baseline justify-between hover:border-acento">
+          <span className="font-letreiro text-[17px] md:text-[19px] font-bold text-tinta">
+            Mensalidades
+          </span>
+          <Sub>{resumoDasMensalidades(mensal)} ›</Sub>
+        </Box>
+      </Link>
       <Sep />
       <div className="flex justify-between items-baseline text-[10px] md:text-xs text-lbl">
         {/* `<a>` e não `<Link>`, a mesma exceção de `Confirmado`: isto SAI do
