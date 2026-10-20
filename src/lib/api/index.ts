@@ -1,7 +1,7 @@
 /// Ponto de entrada da camada de API. Página e componente importam **daqui**,
 /// nunca escrevem caminho de rota à mão.
 
-export { pedir, ErroApi, ignorarAborto, mensagemDoErro, baseDe, origemDoTenant } from './client';
+export { pedir, ErroApi, MENSALIDADE_BLOQUEADA, ignorarAborto, mensagemDoErro, baseDe, origemDoTenant } from './client';
 export type { Pedido, Busca } from './client';
 
 export { publicoApi } from './publicoAPI';
@@ -11,7 +11,7 @@ export type {
 
 export {
   painelApi, equipeApi, horariosApi, servicosApi, quadroApi, barbeariaApi,
-  resumoApi, whatsappApi, clientesApi, LOGIN_DO_PAINEL,
+  resumoApi, whatsappApi, clientesApi, mensalidadeApi, LOGIN_DO_PAINEL,
 } from './painelAPI';
 export type {
   Eu, ItemDaAgenda, MembroDaEquipe, NovoBarbeiro,

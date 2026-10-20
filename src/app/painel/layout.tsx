@@ -1,5 +1,6 @@
 import { NavPainel } from '@/components/painel/NavPainel';
 import { ProvedorDaSessao } from '@/components/painel/SessaoDoPainel';
+import { PortaoDaMensalidade } from '@/components/painel/PortaoDaMensalidade';
 import { AvisoDeVersaoNova } from '@/components/AvisoDeVersaoNova';
 
 /// O painel inteiro passa por aqui, inclusive `/painel/login` — a `NavPainel`
@@ -18,6 +19,9 @@ import { AvisoDeVersaoNova } from '@/components/AvisoDeVersaoNova';
 /// `min-h-dvh` aqui, e não só no `Frame`: sem ele o fundo novo terminaria
 /// junto com o conteúdo, e o resto da janela voltaria ao fundo do cliente.
 ///
+/// `PortaoDaMensalidade` envolve só `children`: a `NavPainel` fica de fora
+/// para quem está bloqueado ainda poder sair e trocar de login.
+///
 /// `ProvedorDaSessao` é Client Component; este arquivo continua Server
 /// Component (React não suporta contexto em Server Component) — ele só
 /// importa o provider e o renderiza, sem precisar de `'use client'` próprio.
@@ -28,7 +32,7 @@ export default function LayoutDoPainel({ children }: { children: React.ReactNode
     <div className="painel min-h-dvh [&_.moldura]:min-h-0">
       <ProvedorDaSessao>
         <NavPainel />
-        {children}
+        <PortaoDaMensalidade>{children}</PortaoDaMensalidade>
       </ProvedorDaSessao>
       <AvisoDeVersaoNova />
     </div>
