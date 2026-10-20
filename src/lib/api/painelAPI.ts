@@ -380,5 +380,7 @@ export const mensalidadeApi = {
   ver: (signal?: AbortSignal) =>
     pedir<Mensalidade>('/painel/mensalidade', { signal, loginEm: LOGIN_DO_PAINEL }),
   jaPaguei: () =>
-    pedir<Mensalidade>('/painel/mensalidade/ja-paguei', { metodo: 'POST' }),
+    pedir<Mensalidade>('/painel/mensalidade/ja-paguei', {
+      metodo: 'POST', loginEm: LOGIN_DO_PAINEL,
+    }),
 };

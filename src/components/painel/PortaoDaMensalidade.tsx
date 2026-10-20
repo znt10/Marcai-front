@@ -58,9 +58,9 @@ export function PortaoDaMensalidade({ children }: { children: React.ReactNode })
   const faixa = faixaDaMensalidade(m);
   return (
     <>
-      {faixa && (
+      {faixa && m && (
         <div className="mx-auto max-w-[1440px] px-4 pt-4 md:px-10">
-          <Cartao variante="dash"><Texto className="text-tinta">{faixa}</Texto></Cartao>
+          <FaixaDaMensalidade m={m} texto={faixa.texto} mostraPix={faixa.mostraPix} aoMudar={setM} />
         </div>
       )}
       {children}
@@ -68,10 +68,54 @@ export function PortaoDaMensalidade({ children }: { children: React.ReactNode })
   );
 }
 
-/// O que o dono vê no lugar do painel: o Pix com os centavos próprios, o
-/// copia e cola e o "Já paguei". O site de agendamento segue aberto para os
-/// clientes — só o painel trava.
+/// A faixa acima do painel. Vencendo ou atrasada, traz o "Pagar com Pix",
+/// que abre o mesmo pagamento da tela de bloqueio: quem quer pagar antes de
+/// travar não precisa esperar o bloqueio para ver o QR. Depois do "Já
+/// paguei" a situação vira AGUARDANDO, a faixa perde o botão e o Pix fecha
+/// sozinho.
+function FaixaDaMensalidade({ m, texto, mostraPix, aoMudar }: {
+  m: Mensalidade; texto: string; mostraPix: boolean; aoMudar: (m: Mensalidade) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <Cartao variante="dash" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Texto className="text-tinta">{texto}</Texto>
+        {mostraPix && (
+          <BotaoVazado onClick={() => setAberto((a) => !a)} aria-expanded={aberto}>
+            {aberto ? 'Fechar' : 'Pagar com Pix'}
+          </BotaoVazado>
+        )}
+      </div>
+      {mostraPix && aberto && (
+        <div className="mx-auto flex w-full max-w-[480px] flex-col items-center gap-3 text-center">
+          <PagamentoPix m={m} aoMudar={aoMudar} />
+        </div>
+      )}
+    </Cartao>
+  );
+}
+
+/// O que o dono vê no lugar do painel. O site de agendamento segue aberto
+/// para os clientes — só o painel trava.
 function TelaDePagamento({ m, aoMudar }: { m: Mensalidade; aoMudar: (m: Mensalidade) => void }) {
+  return (
+    <main className="mx-auto flex max-w-[560px] flex-col gap-4 px-4 py-10">
+      <TituloDaTela titulo="A mensalidade está em atraso">
+        O painel volta assim que o pagamento for confirmado. O site de agendamento
+        continua funcionando para os seus clientes.
+      </TituloDaTela>
+      <Cartao className="flex flex-col items-center gap-3 text-center">
+        <PagamentoPix m={m} aoMudar={aoMudar} />
+      </Cartao>
+    </main>
+  );
+}
+
+/// O pagamento em si, o mesmo na tela de bloqueio e na faixa: o valor com os
+/// centavos próprios (é por eles que o Pix é reconhecido), o QR, o copia e
+/// cola e o "Já paguei".
+function PagamentoPix({ m, aoMudar }: { m: Mensalidade; aoMudar: (m: Mensalidade) => void }) {
   const [copiado, setCopiado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
@@ -101,40 +145,34 @@ function TelaDePagamento({ m, aoMudar }: { m: Mensalidade; aoMudar: (m: Mensalid
   }
 
   return (
-    <main className="mx-auto flex max-w-[560px] flex-col gap-4 px-4 py-10">
-      <TituloDaTela titulo="A mensalidade está em atraso">
-        O painel volta assim que o pagamento for confirmado. O site de agendamento
-        continua funcionando para os seus clientes.
-      </TituloDaTela>
-      <Cartao className="flex flex-col items-center gap-3 text-center">
-        {pix ? (
-          <>
-            <p className="text-[22px] font-bold text-tinta tabular-nums md:text-[26px]">
-              {reais(pix.valorCentavos)}
-            </p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={pix.qrSvg} alt={`QR Code Pix de ${reais(pix.valorCentavos)}`}
-                 className="size-[220px] rounded-[10px] bg-white p-2" />
-            <div className="flex w-full gap-2">
-              <input
-                readOnly
-                value={pix.copiaECola}
-                aria-label="Pix copia e cola"
-                onFocus={(e) => e.target.select()}
-                className="min-w-0 flex-1 rounded-[10px] border border-borda bg-superficie2
-                           px-3 py-2 text-[12px] text-tinta md:text-[13px]"
-              />
-              <BotaoVazado onClick={copiar}>{copiado ? 'Copiado' : 'Copiar'}</BotaoVazado>
-            </div>
-          </>
-        ) : (
-          <Texto>{m.pixErro ?? 'O Pix ainda não está disponível. Fale com o Marcaí.'}</Texto>
-        )}
-        <BotaoCheio largura="cheia" onClick={jaPaguei} disabled={enviando}>
-          {enviando ? 'Avisando...' : 'Já paguei'}
-        </BotaoCheio>
-        {erro && <Texto className="text-acento">{erro}</Texto>}
-      </Cartao>
-    </main>
+    <>
+      {pix ? (
+        <>
+          <p className="text-[22px] font-bold text-tinta tabular-nums md:text-[26px]">
+            {reais(pix.valorCentavos)}
+          </p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={pix.qrSvg} alt={`QR Code Pix de ${reais(pix.valorCentavos)}`}
+               className="size-[220px] rounded-[10px] bg-white p-2" />
+          <div className="flex w-full gap-2">
+            <input
+              readOnly
+              value={pix.copiaECola}
+              aria-label="Pix copia e cola"
+              onFocus={(e) => e.target.select()}
+              className="min-w-0 flex-1 rounded-[10px] border border-borda bg-superficie2
+                         px-3 py-2 text-[12px] text-tinta md:text-[13px]"
+            />
+            <BotaoVazado onClick={copiar}>{copiado ? 'Copiado' : 'Copiar'}</BotaoVazado>
+          </div>
+        </>
+      ) : (
+        <Texto>{m.pixErro ?? 'O Pix ainda não está disponível. Fale com o Marcaí.'}</Texto>
+      )}
+      <BotaoCheio largura="cheia" onClick={jaPaguei} disabled={enviando}>
+        {enviando ? 'Avisando...' : 'Já paguei'}
+      </BotaoCheio>
+      {erro && <Texto className="text-acento">{erro}</Texto>}
+    </>
   );
 }

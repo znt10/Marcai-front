@@ -57,8 +57,9 @@ export type LinhaDaMensalidade = {
   isenta: boolean;
   nuncaBloquear: boolean;
   /// O "já paguei" esperando o admin conferir o Pix.
-  informada: { cobrancaId: string; valorCentavos: number; em: string; porNome: string } | null;
-  ultimaPaga: { pagaEm: string; valorCentavos: number; como: string } | null;
+  /// `porNome` é null quando o barbeiro que avisou foi apagado.
+  informada: { cobrancaId: string; valorCentavos: number; em: string; porNome: string | null } | null;
+  ultimaPaga: { pagaEm: string | null; valorCentavos: number; como: string } | null;
 };
 
 export type MensalidadesDoAdmin = {

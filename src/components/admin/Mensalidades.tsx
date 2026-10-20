@@ -55,12 +55,16 @@ export function Mensalidades() {
         </span>
         <Link href="/admin"><Lbl>‹ início</Lbl></Link>
       </div>
+      {/* Texto, e não `Chip`: são números, não filtros — um chip desabilitado
+          parecia um botão quebrado. */}
       {linhas && (
-        <div className="flex flex-wrap gap-2">
-          <Chip ativo={informadas > 0} disabled>{informadas} avisaram que pagaram</Chip>
-          <Chip disabled>{atrasadas} {atrasadas === 1 ? 'atrasada' : 'atrasadas'}</Chip>
-          <Chip disabled>{bloqueadas} {bloqueadas === 1 ? 'bloqueada' : 'bloqueadas'}</Chip>
-        </div>
+        <Lbl>
+          <span className={informadas > 0 ? 'font-semibold text-acento' : ''}>
+            {informadas} {informadas === 1 ? 'avisou que pagou' : 'avisaram que pagaram'}
+          </span>
+          {' · '}{atrasadas} {atrasadas === 1 ? 'atrasada' : 'atrasadas'}
+          {' · '}{bloqueadas} {bloqueadas === 1 ? 'bloqueada' : 'bloqueadas'}
+        </Lbl>
       )}
       {!linhas && !erro && <Sub>carregando…</Sub>}
       {erro && <Sub className="text-acento">{erro}</Sub>}
@@ -80,12 +84,16 @@ function Linha({ linha: l, aoMudar }: {
   const [pagaAte, setPagaAte] = useState('');
   const [valorPago, setValorPago] = useState(emReais(l.valorCentavos));
   const [obs, setObs] = useState('');
+  const [novaData, setNovaData] = useState(l.pagaAte ?? '');
 
   /// Toda ação: erro limpo, um clique por vez, linha trocada pela devolvida.
   async function agir(acao: () => Promise<LinhaDaMensalidade>): Promise<boolean> {
     setErro(''); setOcupado(true);
     try {
-      aoMudar(await acao());
+      const nova = await acao();
+      aoMudar(nova);
+      // Tirar a isenção, registrar ou confirmar também movem a data.
+      setNovaData(nova.pagaAte ?? '');
       return true;
     } catch (e) {
       setErro(mensagemDoErro(e));
@@ -99,6 +107,14 @@ function Linha({ linha: l, aoMudar }: {
     const c = centavosDoTexto(valor);
     if (c === null) { setErro('Valor inválido. Use algo como 49,90.'); return; }
     void agir(() => adminApi.ajustarMensalidade(l.barbeariaId, { valorCentavos: c }));
+  }
+
+  /// Mover o "pago até" sem registrar pagamento: corrigir um erro, dar uns
+  /// dias, ou dizer de quando começa a cobrança de quem era isenta. A cobrança
+  /// aberta (mesmo avisada) cai no back: o ciclo dela acabou.
+  function salvarData() {
+    if (!novaData) { setErro('Escolha até que dia está pago.'); return; }
+    void agir(() => adminApi.ajustarMensalidade(l.barbeariaId, { pagaAte: novaData }));
   }
 
   async function registrar() {
@@ -119,7 +135,7 @@ function Linha({ linha: l, aoMudar }: {
       <div className="flex flex-wrap gap-2 justify-between items-baseline">
         <span>
           {l.nome}
-          {l.tipo && <> · <span className="text-lbl">{NOME_DA_CATEGORIA[l.tipo].toLowerCase()}</span></>}
+          {l.tipo && <> · <span className="text-lbl">{(NOME_DA_CATEGORIA[l.tipo] ?? l.tipo).toLowerCase()}</span></>}
         </span>
         <span className="font-semibold">{rotuloDaSituacao(l)}</span>
       </div>
@@ -131,7 +147,7 @@ function Linha({ linha: l, aoMudar }: {
       {l.informada && (
         <div className="flex flex-wrap gap-2 items-center justify-between">
           <span>
-            {l.informada.porNome} avisou que pagou {reais(l.informada.valorCentavos)} em{' '}
+            {l.informada.porNome ?? 'o dono'} avisou que pagou {reais(l.informada.valorCentavos)} em{' '}
             {formatarDiaCurto(new Date(l.informada.em))} {formatarHora(new Date(l.informada.em))}
           </span>
           <div className="flex gap-2">
@@ -160,6 +176,16 @@ function Linha({ linha: l, aoMudar }: {
           Nunca bloquear
         </Chip>
         <Chip ativo={registrando} onClick={() => setRegistrando((v) => !v)}>Registrar pagamento</Chip>
+      </div>
+
+      <div className="flex flex-wrap gap-2 items-center">
+        <label className="flex items-center gap-1"><Lbl>pago até</Lbl>
+          <input type="date" className={campo} value={novaData} aria-label={`Pago até, de ${l.nome}`}
+                 onChange={(e) => setNovaData(e.target.value)} />
+        </label>
+        <Chip disabled={ocupado || !novaData || novaData === l.pagaAte} onClick={salvarData}>
+          salvar data
+        </Chip>
       </div>
 
       {registrando && (

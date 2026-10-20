@@ -57,11 +57,19 @@ const diaEMes = (iso: string): string => {
   return `${dia}/${mes}`;
 };
 
+export type Faixa = {
+  texto: string;
+  /// A faixa traz o botão "Pagar com Pix": o dono paga antes de travar, sem
+  /// esperar o bloqueio para ver o QR. Não em AGUARDANDO — ele já avisou, e
+  /// um segundo Pix na cara só confunde.
+  mostraPix: boolean;
+};
+
 /// A faixa acima do painel, ou `null` quando não há o que dizer.
 ///
 /// Só o dono a vê: quem não é dono não tem como pagar, e a cobrança na cara
 /// do barbeiro só o deixaria sem ação possível.
-export function faixaDaMensalidade(m: Mensalidade | null): string | null {
+export function faixaDaMensalidade(m: Mensalidade | null): Faixa | null {
   if (!m || !m.souDono) return null;
   const dias = m.dias ?? 0;
   const mensalidade = m.valorCentavos != null
@@ -71,15 +79,18 @@ export function faixaDaMensalidade(m: Mensalidade | null): string | null {
   switch (m.situacao) {
     case 'VENCENDO': {
       const quando = dias === 0 ? 'vence hoje' : dias === 1 ? 'vence amanhã' : `vence em ${dias} dias`;
-      return `${mensalidade} ${quando}.`;
+      return { texto: `${mensalidade} ${quando}.`, mostraPix: true };
     }
     case 'ATRASADA': {
       const atraso = `${mensalidade} está vencida há ${dias} ${dias === 1 ? 'dia' : 'dias'}.`;
       // Quem nunca bloqueia não recebe promessa de bloqueio.
-      return m.bloqueiaEm ? `${atraso} O painel é bloqueado em ${diaEMes(m.bloqueiaEm)}.` : atraso;
+      const texto = m.bloqueiaEm
+        ? `${atraso} O painel é bloqueado em ${diaEMes(m.bloqueiaEm)}.`
+        : atraso;
+      return { texto, mostraPix: true };
     }
     case 'AGUARDANDO':
-      return 'Pagamento informado, aguardando confirmação.';
+      return { texto: 'Pagamento informado, aguardando confirmação.', mostraPix: false };
     default:
       return null;
   }

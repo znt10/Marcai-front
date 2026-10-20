@@ -32,15 +32,6 @@ export default function Admin() {
     return () => ctrl.abort();
   }, []);
 
-  // O admin do Django mora no DJANGO — outra porta (8000), não esta (3000).
-  // Sem este link ele existia sem ter entrada: funcionava, respondia, e a
-  // única forma de chegar lá era digitar `admin.<domínio>:8000/admin/django/`
-  // de cabeça. Foi assim que ele passou por "desativado" mesmo ligado.
-  //
-  // Em efeito, e não no `useState`: `origemDoTenant()` lê `window.location`,
-  // que não existe quando o Next renderiza este Client Component no servidor.
-  // Vazio até o efeito rodar, e o link só aparece depois — é um clique numa
-  // tela que já exigiu login, não a primeira pintura de nada.
   // Os contadores do cartão de mensalidades. Falhar aqui não derruba a entrada:
   // o cartão só fica sem números.
   const [mensal, setMensal] = useState<{ informadas: number; bloqueadas: number } | null>(null);
@@ -51,6 +42,15 @@ export default function Admin() {
     return () => ctrl.abort();
   }, []);
 
+  // O admin do Django mora no DJANGO — outra porta (8000), não esta (3000).
+  // Sem este link ele existia sem ter entrada: funcionava, respondia, e a
+  // única forma de chegar lá era digitar `admin.<domínio>:8000/admin/django/`
+  // de cabeça. Foi assim que ele passou por "desativado" mesmo ligado.
+  //
+  // Em efeito, e não no `useState`: `origemDoTenant()` lê `window.location`,
+  // que não existe quando o Next renderiza este Client Component no servidor.
+  // Vazio até o efeito rodar, e o link só aparece depois — é um clique numa
+  // tela que já exigiu login, não a primeira pintura de nada.
   const [urlDoDjango, setUrlDoDjango] = useState('');
   useEffect(() => { setUrlDoDjango(`${origemDoTenant()}/admin/django/`); }, []);
 

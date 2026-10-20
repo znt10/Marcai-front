@@ -30,33 +30,33 @@ describe('estadoDoPortao', () => {
 describe('faixaDaMensalidade', () => {
   it('VENCENDO: hoje, amanhã e em N dias', () => {
     expect(faixaDaMensalidade(m({ situacao: 'VENCENDO', dias: 0 })))
-      .toBe('Sua mensalidade de R$ 49,00 vence hoje.');
+      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 vence hoje.', mostraPix: true });
     expect(faixaDaMensalidade(m({ situacao: 'VENCENDO', dias: 1 })))
-      .toBe('Sua mensalidade de R$ 49,00 vence amanhã.');
+      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 vence amanhã.', mostraPix: true });
     expect(faixaDaMensalidade(m({ situacao: 'VENCENDO', dias: 4 })))
-      .toBe('Sua mensalidade de R$ 49,00 vence em 4 dias.');
+      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 vence em 4 dias.', mostraPix: true });
   });
 
   it('ATRASADA: singular, plural e a data do bloqueio em dd/mm', () => {
     expect(faixaDaMensalidade(m({ situacao: 'ATRASADA', dias: 1, bloqueiaEm: '2026-10-05' })))
-      .toBe('Sua mensalidade de R$ 49,00 está vencida há 1 dia. O painel é bloqueado em 05/10.');
+      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 está vencida há 1 dia. O painel é bloqueado em 05/10.', mostraPix: true });
     expect(faixaDaMensalidade(m({ situacao: 'ATRASADA', dias: 3, bloqueiaEm: '2026-12-31' })))
-      .toBe('Sua mensalidade de R$ 49,00 está vencida há 3 dias. O painel é bloqueado em 31/12.');
+      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 está vencida há 3 dias. O painel é bloqueado em 31/12.', mostraPix: true });
   });
 
   it('ATRASADA sem data de bloqueio não promete bloqueio', () => {
     expect(faixaDaMensalidade(m({ situacao: 'ATRASADA', dias: 2, bloqueiaEm: null })))
-      .toBe('Sua mensalidade de R$ 49,00 está vencida há 2 dias.');
+      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 está vencida há 2 dias.', mostraPix: true });
   });
 
   it('sem valor, a frase não inventa um', () => {
     expect(faixaDaMensalidade(m({ situacao: 'VENCENDO', dias: 2, valorCentavos: null })))
-      .toBe('Sua mensalidade vence em 2 dias.');
+      .toEqual({ texto: 'Sua mensalidade vence em 2 dias.', mostraPix: true });
   });
 
   it('AGUARDANDO: aguardando confirmação', () => {
     expect(faixaDaMensalidade(m({ situacao: 'AGUARDANDO' })))
-      .toBe('Pagamento informado, aguardando confirmação.');
+      .toEqual({ texto: 'Pagamento informado, aguardando confirmação.', mostraPix: false });
   });
 
   it.each<SituacaoDaMensalidade>(['EM_DIA', 'ISENTA', 'DESATIVADA', 'BLOQUEADA'])(
@@ -64,6 +64,13 @@ describe('faixaDaMensalidade', () => {
       expect(faixaDaMensalidade(m({ situacao }))).toBeNull();
     },
   );
+
+  it('o botão do Pix só aparece onde ainda há o que pagar', () => {
+    expect(faixaDaMensalidade(m({ situacao: 'VENCENDO', dias: 3 }))?.mostraPix).toBe(true);
+    expect(faixaDaMensalidade(m({ situacao: 'ATRASADA', dias: 3 }))?.mostraPix).toBe(true);
+    // Já avisou: um segundo Pix na cara só confunde.
+    expect(faixaDaMensalidade(m({ situacao: 'AGUARDANDO' }))?.mostraPix).toBe(false);
+  });
 
   it('null (carregando) não tem faixa', () => {
     expect(faixaDaMensalidade(null)).toBeNull();
