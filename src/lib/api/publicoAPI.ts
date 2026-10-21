@@ -24,6 +24,20 @@ export type NovoAgendamento = {
   nome: string; whatsapp: string;
 };
 
+/// O que a tela de `/agendamento/<codigo>` precisa; a consulta a cada 3 s do
+/// "aguardando pagamento" devolve o mesmo corpo que a página lê no servidor.
+export type DetalheDoAgendamento = {
+  codigo: string; clienteNome: string; barbeiroNome: string; servicoNome: string;
+  precoCentavos: number | null; inicio: string; fim: string; status: string;
+  /// Calculado pelo Django, no mesmo relógio da rota de cancelar: duas contas
+  /// em dois relógios davam a janela em que a tela oferece e a API recusa.
+  podeCancelar: boolean; endereco: string; whatsappBarbearia: string;
+  pix: { copiaECola: string; qrSvg: string; valorCentavos: number } | null;
+  expiraEm: string | null;
+  /// `whatsapp` sem o 55.
+  barbeiro: { nome: string; whatsapp: string };
+};
+
 export const publicoApi = {
   barbeiros: (signal?: AbortSignal) =>
     pedir<{ barbeiros: Barbeiro[] }>('/barbeiros', { signal }).then((d) => d.barbeiros),
@@ -48,6 +62,9 @@ export const publicoApi = {
 
   agendar: (dados: NovoAgendamento) =>
     pedir<{ codigo: string }>('/agendamentos', { metodo: 'POST', corpo: dados }),
+
+  detalhe: (codigo: string, signal?: AbortSignal) =>
+    pedir<DetalheDoAgendamento>(`/agendamentos/${encodeURIComponent(codigo)}`, { signal }),
 
   cancelar: (codigo: string) =>
     pedir<{ ok: true }>(`/agendamentos/${codigo}/cancelar`, { metodo: 'POST' }),

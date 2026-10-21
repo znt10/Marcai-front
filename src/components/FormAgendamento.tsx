@@ -9,7 +9,7 @@ import {
 } from '@/lib/api';
 import { DIAS_NA_HOME } from '@/lib/config';
 import { urlCalendario } from '@/lib/escolha';
-import { lerRascunho, salvarRascunho, limparRascunho } from '@/lib/rascunho';
+import { lerRascunho, salvarRascunho } from '@/lib/rascunho';
 import {
   dadosCompletos, guiaJaVisto, marcarGuiaVisto, mostraDicaDoCalendario, proximoPasso,
   textoDoPasso, unicaPessoa, type Passo,
@@ -163,10 +163,11 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
         barbeiroId: slot!.barbeiroId, servicoId, inicio: slot!.inicio,
         nome, whatsapp: whats,
       });
-      // O rascunho cumpriu o papel de atravessar o calendário. Some agora,
-      // e não quando a aba fechar: o balcão da barbearia é um aparelho só, e o
-      // próximo cliente não pode achar o telefone do anterior no formulário.
-      limparRascunho();
+      // O rascunho NÃO some aqui: se o Pix vencer, "escolher outro horário"
+      // precisa dele (o servidor nunca devolve o telefone). Quem o apaga é
+      // `/agendamento/<codigo>`, assim que o horário aparece confirmado ou
+      // cancelado. O balcão é um aparelho só, e o próximo cliente não pode
+      // achar o telefone do anterior no formulário.
       // Marcou uma vez: daqui em diante, neste aparelho, a pessoa já sabe.
       marcarGuiaVisto();
       window.location.href = `/agendamento/${codigo}`;

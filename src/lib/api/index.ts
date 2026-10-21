@@ -6,7 +6,7 @@ export type { Pedido, Busca } from './client';
 
 export { publicoApi } from './publicoAPI';
 export type {
-  Barbeiro, Servico, Slot, DiaComSlots, NovoAgendamento,
+  Barbeiro, Servico, Slot, DiaComSlots, NovoAgendamento, DetalheDoAgendamento,
 } from './publicoAPI';
 
 export {
