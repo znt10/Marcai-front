@@ -5,7 +5,6 @@ import { cartaoDestaPagina } from '@/lib/miniatura';
 import { cardapioPorBarbeiro } from '@/lib/vitrine';
 import { Vitrine } from '@/components/Vitrine';
 import { Marca } from '@/components/Marca';
-import { BotaoConta } from '@/components/conta/BotaoConta';
 import { Frame, Box } from '@/components/wf';
 import { formatar } from '@/lib/telefone';
 
@@ -46,8 +45,7 @@ export default async function Barbearia() {
           banco. Quando houver, é este `src` que passa a variar. */}
       <div className="flex items-center gap-3">
         <Marca tipo={b.tipo} nome={b.nome} tamanho={30} className="rounded-[3px]" />
-        <h1 className="!text-[19px] md:!text-[22px] min-w-0 flex-1">{v.lugar} {b.nome}</h1>
-        <BotaoConta />
+        <h1 className="!text-[19px] md:!text-[22px]">{v.lugar} {b.nome}</h1>
       </div>
 
       {/* O cartaz e a tabela de preços moram num Client Component só: a

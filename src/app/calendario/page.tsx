@@ -1,7 +1,6 @@
 import { Frame, Sub } from '@/components/wf';
 import { MiniCalendario } from '@/components/MiniCalendario';
 import { urlAgendar } from '@/lib/escolha';
-import { BotaoVoltar } from '@/components/BotaoVoltar';
 
 export default async function Calendario({
   searchParams,
@@ -19,13 +18,13 @@ export default async function Calendario({
         {/* Neutra: esta tela não lê o estabelecimento, e "o barbeiro" seria
             errado num estúdio. */}
         <Sub>Escolhe quem vai te atender e o serviço antes.</Sub>
-        <BotaoVoltar href={voltar} />
+        <a href={voltar} className="text-[11px] md:text-xs text-lbl">‹ voltar</a>
       </Frame>
     );
   }
   return (
     <Frame>
-      <BotaoVoltar href={voltar} />
+      <a href={voltar} className="text-[11px] md:text-xs text-lbl">‹ voltar</a>
       <h1>Escolher outro dia</h1>
       <MiniCalendario barbeiroId={barbeiroId} servicoId={servicoId} />
     </Frame>

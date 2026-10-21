@@ -191,15 +191,6 @@ describe('baseDe', () => {
   });
 });
 
-describe('conta do cliente', () => {
-  it('/conta/* vai para o Django, incluindo o histórico', () => {
-    comHost('brutus.localhost');
-    for (const rota of ['/conta/historico', '/conta/eu', '/conta/entrar', '/conta/agendamentos/abc/cancelar']) {
-      expect(baseDe(rota)).toBe('http://brutus.localhost:8000/api');
-    }
-  });
-});
-
 /// A rede que faltava, e ela existe porque o mesmo esquecimento já aconteceu
 /// TRÊS vezes: `/painel/foto`, `/painel/resumo` e `/painel/whatsapp`. Rota
 /// nova no `painelAPI.ts` sem a linha correspondente em `MIGRADAS` manda o
