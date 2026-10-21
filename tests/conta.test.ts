@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  separarHistorico, codigoValido, SENHA_MINIMA_CONTA, type ItemHistorico,
+  separarHistorico, codigoValido, camposDoAgendar, SENHA_MINIMA_CONTA, type ItemHistorico,
 } from '@/lib/conta';
 
 function item(codigo: string, inicio: string, status = 'CONFIRMADO'): ItemHistorico {
@@ -71,5 +71,20 @@ describe('inicialDoNome e rotuloDoHorario', () => {
     const { rotuloDoHorario } = await import('@/lib/conta');
     // 17:30Z = 14:30 em São Paulo; 24/10/2026 é sábado.
     expect(rotuloDoHorario('2026-10-24T17:30:00Z')).toMatch(/^sáb,? 24\/10 às 14:30$/);
+  });
+});
+
+describe('camposDoAgendar', () => {
+  const conta = { nome: 'Ana Souza', whatsapp: '(83) 9 8221-7869' };
+  it('deslogada, vale o rascunho e o campo fica livre', () => {
+    expect(camposDoAgendar(null, { nome: 'Zé', whats: '8399' }))
+      .toEqual({ nome: 'Zé', whats: '8399', travado: false });
+  });
+  it('logada, o whats é o da conta e ignora o do rascunho', () => {
+    const r = camposDoAgendar(conta, { nome: '', whats: '11999990000' });
+    expect(r).toEqual({ nome: 'Ana Souza', whats: '(83) 9 8221-7869', travado: true });
+  });
+  it('logada, o nome editado no rascunho é mantido', () => {
+    expect(camposDoAgendar(conta, { nome: 'Aninha', whats: '' }).nome).toBe('Aninha');
   });
 });

@@ -1,9 +1,9 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, Lbl, Sub, Sep } from '@/components/wf';
 import { useVocabulario } from '@/components/Vocabulario';
-import { publicoApi, mensagemDoErro } from '@/lib/api';
+import { publicoApi, contaApi, mensagemDoErro, ErroApi } from '@/lib/api';
 import { formatarPreco } from '@/lib/dinheiro';
 
 type Props = {
@@ -19,6 +19,16 @@ export function Confirmado(p: Props) {
   const v = useVocabulario();
   const [status, setStatus] = useState(p.status);
   const [erro, setErro] = useState('');
+
+  // O convite só aparece para quem sabidamente NÃO tem sessão (401). Erro de
+  // rede ou 500 não diz nada sobre a pessoa, então não mostra nada.
+  const [convidar, setConvidar] = useState(false);
+  useEffect(() => {
+    const ctl = new AbortController();
+    contaApi.eu(ctl.signal)
+      .catch((e) => { if (!ctl.signal.aborted && e instanceof ErroApi && e.status === 401) setConvidar(true); });
+    return () => ctl.abort();
+  }, []);
 
   const emSaoPaulo = (opcoes: Intl.DateTimeFormatOptions) =>
     new Date(p.inicioIso).toLocaleString('pt-BR', {
@@ -111,6 +121,11 @@ export function Confirmado(p: Props) {
         </>
       )}
       {erro && <Sub className="text-acento">{erro}</Sub>}
+      {convidar && (
+        <Link href="/conta" className="underline">
+          <Sub>Crie uma conta pra cancelar sem precisar deste link</Sub>
+        </Link>
+      )}
       <Sep />
       <Sub>dá pra cancelar até 1h antes. depois disso, só chamando {v.oLugar}.</Sub>
     </>

@@ -46,3 +46,18 @@ export function rotuloDoHorario(iso: string): string {
   }).format(d);
   return `${dia} às ${hora}`;
 }
+
+/// Os campos do formulário de agendar quando a pessoa tem (ou não) conta.
+///
+/// Logada, o WhatsApp é SEMPRE o da conta — o do rascunho é ignorado e o
+/// campo fica travado, porque é por esse número que o agendamento entra no
+/// histórico dela. O nome também vem da conta, mas continua editável: quem
+/// já mexeu nele antes de ir ao calendário (rascunho) não perde a edição.
+/// Deslogada, nada muda: vale o rascunho.
+export function camposDoAgendar(
+  conta: { nome: string; whatsapp: string } | null,
+  rascunho: { nome: string; whats: string },
+): { nome: string; whats: string; travado: boolean } {
+  if (!conta) return { nome: rascunho.nome, whats: rascunho.whats, travado: false };
+  return { nome: rascunho.nome || conta.nome, whats: conta.whatsapp, travado: true };
+}
