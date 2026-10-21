@@ -18,7 +18,10 @@ export function NovaSenha({ token }: { token: string }) {
     setErro(''); setOcupado(true);
     try {
       await contaApi.novaSenha(token, senha);
+      // A senha nova já deixa logado: volta para a página inicial, igual a
+      // entrar pela porta da conta (`ContaTela`).
       setPronto(true);
+      window.location.assign('/');
     } catch (e) {
       setErro(mensagemDoErro(e));
     } finally {
@@ -32,7 +35,7 @@ export function NovaSenha({ token }: { token: string }) {
         <p className="text-[14px] md:text-[15px] font-semibold text-tinta">
           Senha nova criada. Você já está logado.
         </p>
-        <Link href="/conta" className={LINK + ' self-start'}>Ver meus horários</Link>
+        <Link href="/" className={LINK + ' self-start'}>Ir para o início</Link>
       </section>
     );
   }
