@@ -26,7 +26,7 @@ describe('separarHistorico', () => {
 
   it('cancelado no futuro vai para os passados', () => {
     const r = separarHistorico([
-      item('c', '2026-10-30T10:00:00Z', 'CANCELADO'),
+      item('c', '2026-10-30T10:00:00Z', 'CANCELADO_CLIENTE'),
       item('f', '2026-10-22T10:00:00Z'),
     ], agora);
     expect(r.proximos.map((i) => i.codigo)).toEqual(['f']);
@@ -86,5 +86,17 @@ describe('camposDoAgendar', () => {
   });
   it('logada, o nome editado no rascunho é mantido', () => {
     expect(camposDoAgendar(conta, { nome: 'Aninha', whats: '' }).nome).toBe('Aninha');
+  });
+});
+
+describe('rotuloDoStatus', () => {
+  it('rotula os dois cancelamentos do back como Cancelado', async () => {
+    const { rotuloDoStatus } = await import('@/lib/conta');
+    expect(rotuloDoStatus('CANCELADO_CLIENTE')).toBe('Cancelado');
+    expect(rotuloDoStatus('CANCELADO_BARBEIRO')).toBe('Cancelado');
+  });
+  it('não diz nada de CONFIRMADO (no passado, simplesmente aconteceu)', async () => {
+    const { rotuloDoStatus } = await import('@/lib/conta');
+    expect(rotuloDoStatus('CONFIRMADO')).toBeNull();
   });
 });

@@ -3,6 +3,10 @@
 import type { ItemHistorico } from '@/lib/api/contaAPI';
 export type { ItemHistorico };
 
+/// Disparado em `window` quando a sessão da conta muda sem recarregar a página
+/// (sair); o `BotaoConta` do cabeçalho escuta e consulta de novo.
+export const EVENTO_CONTA = 'marcai:conta';
+
 /// Espelha `CONTA_SENHA_MINIMA` do back (`tenant/config.py`).
 export const SENHA_MINIMA_CONTA = 6;
 
@@ -28,6 +32,14 @@ export function separarHistorico(
   proximos.sort((a, b) => hora(a) - hora(b));
   passados.sort((a, b) => hora(b) - hora(a));
   return { proximos, passados };
+}
+
+/// O rótulo do status de um agendamento no histórico, ou `null` quando não há
+/// nada a dizer: CONFIRMADO no passado simplesmente aconteceu. Os status são
+/// os do back (CONFIRMADO, CANCELADO_CLIENTE, CANCELADO_BARBEIRO).
+export function rotuloDoStatus(status: string): string | null {
+  if (status === 'CANCELADO_CLIENTE' || status === 'CANCELADO_BARBEIRO') return 'Cancelado';
+  return null;
 }
 
 /// A letra do círculo do botão no topo: a inicial do primeiro nome.

@@ -9,7 +9,7 @@ import {
 } from '@/lib/api';
 import { DIAS_NA_HOME } from '@/lib/config';
 import { urlCalendario } from '@/lib/escolha';
-import { camposDoAgendar } from '@/lib/conta';
+import { camposDoAgendar, EVENTO_CONTA } from '@/lib/conta';
 import { lerRascunho, salvarRascunho, limparRascunho } from '@/lib/rascunho';
 import {
   dadosCompletos, guiaJaVisto, marcarGuiaVisto, mostraDicaDoCalendario, proximoPasso,
@@ -92,6 +92,7 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
     // Se o sair falhar a sessão continua de pé: não destrava o campo.
     try { await contaApi.sair(); } catch (e) { setErro(mensagemDoErro(e)); return; }
     setLogado(false); setNome(''); setWhats('');
+    window.dispatchEvent(new Event(EVENTO_CONTA));
   }
 
   // O guia da primeira vez. Lido em efeito pelo mesmo motivo do rascunho

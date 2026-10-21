@@ -2,15 +2,11 @@
 import { useState } from 'react';
 import { contaApi, mensagemDoErro } from '@/lib/api';
 import type { ItemHistorico, Lugar } from '@/lib/api';
-import { rotuloDoHorario, separarHistorico } from '@/lib/conta';
+import { rotuloDoHorario, rotuloDoStatus, separarHistorico } from '@/lib/conta';
 import { vocabulario } from '@/lib/tipos';
 import type { Tipo } from '@/lib/tipos';
 import { Marca } from '@/components/Marca';
 import { LINK } from './estilo';
-
-const STATUS: Record<string, string> = {
-  CONFIRMADO: 'Confirmado', CANCELADO: 'Cancelado', CONCLUIDO: 'Concluído', FALTOU: 'Faltou',
-};
 
 /// O histórico da conta: um bloco por lugar, "Próximos" e "Anteriores".
 export function Historico({ nome, lugares, aoMudar, aoSair }: {
@@ -101,7 +97,7 @@ function Linha({ i, status = false, children }: {
       <div className="min-w-0">
         <p className="text-[13.5px] md:text-sm font-semibold text-tinta">{rotuloDoHorario(i.inicio)}</p>
         <p className="truncate text-[12px] md:text-[13px] text-lbl">
-          {i.servicoNome} · {i.barbeiroNome}{status && ` · ${STATUS[i.status] ?? i.status}`}
+          {i.servicoNome} · {i.barbeiroNome}{status && rotuloDoStatus(i.status) && ` · ${rotuloDoStatus(i.status)}`}
         </p>
       </div>
       {children}

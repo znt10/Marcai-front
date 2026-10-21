@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { contaApi } from '@/lib/api';
-import { inicialDoNome } from '@/lib/conta';
+import { EVENTO_CONTA, inicialDoNome } from '@/lib/conta';
 
 /// O botão do topo: "Entrar" para quem não tem sessão, a inicial do nome em
 /// círculo para quem tem. Os dois levam a `/conta`.
@@ -14,11 +14,19 @@ export function BotaoConta() {
   const [estado, setEstado] = useState<'carregando' | 'fora' | { nome: string }>('carregando');
 
   useEffect(() => {
-    const ctl = new AbortController();
-    contaApi.eu(ctl.signal)
-      .then((eu) => setEstado({ nome: eu.nome }))
-      .catch(() => { if (!ctl.signal.aborted) setEstado('fora'); });
-    return () => ctl.abort();
+    let ctl = new AbortController();
+    const consultar = () => {
+      ctl.abort();
+      ctl = new AbortController();
+      const meu = ctl;
+      contaApi.eu(meu.signal)
+        .then((eu) => setEstado({ nome: eu.nome }))
+        .catch(() => { if (!meu.signal.aborted) setEstado('fora'); });
+    };
+    consultar();
+    // "Sair" em outra parte da página: consulta de novo.
+    window.addEventListener(EVENTO_CONTA, consultar);
+    return () => { ctl.abort(); window.removeEventListener(EVENTO_CONTA, consultar); };
   }, []);
 
   if (estado === 'carregando') return <span aria-hidden className="block h-8 w-[58px] shrink-0" />;

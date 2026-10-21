@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { contaApi, mensagemDoErro } from '@/lib/api';
+import { contaApi, ErroApi, mensagemDoErro } from '@/lib/api';
 import { codigoValido, SENHA_MINIMA_CONTA } from '@/lib/conta';
 import { formatar, normalizar } from '@/lib/telefone';
 import { BOTAO, CAMPO, LINK } from './estilo';
@@ -14,7 +14,7 @@ const ESPERA_REENVIO_S = 30;
 /// A senha digitada em "criar" fica só neste estado e vai de novo em
 /// "confirmar" (o back só cria a conta quando o código bate). Nunca vai para
 /// storage nem para a URL.
-export function PortaDaConta({ aoEntrar }: { aoEntrar: () => void }) {
+export function PortaDaConta({ aoEntrar }: { aoEntrar: () => Promise<boolean> }) {
   const [etapa, setEtapa] = useState<Etapa>('entrar');
   const [nome, setNome] = useState('');
   const [whats, setWhats] = useState('');
@@ -34,7 +34,19 @@ export function PortaDaConta({ aoEntrar }: { aoEntrar: () => void }) {
 
   const digitos = normalizar(whats);
 
-  function ir(e: Etapa) { setEtapa(e); setErro(''); setAviso(''); }
+  function ir(e: Etapa) {
+    // A senha de uma etapa não aparece em outra; só criar -> confirmar a reusa.
+    if (!(etapa === 'criar' && e === 'confirmar')) setSenha('');
+    setEtapa(e); setErro(''); setAviso('');
+  }
+
+  // Depois de entrar/confirmar o pai recarrega a conta. Se ainda assim ela
+  // não aparece, o cookie não ficou (ex.: Domain diferente, cookies bloqueados).
+  async function depoisDeEntrar() {
+    if (!(await aoEntrar())) {
+      throw new Error('Entrou, mas o navegador não guardou o acesso. Confere se os cookies estão liberados e tenta de novo.');
+    }
+  }
 
   async function rodar(fn: () => Promise<void>) {
     if (ocupado) return;
@@ -44,7 +56,7 @@ export function PortaDaConta({ aoEntrar }: { aoEntrar: () => void }) {
 
   const entrar = () => rodar(async () => {
     await contaApi.entrar(digitos!, senha);
-    aoEntrar();
+    await depoisDeEntrar();
   });
 
   const criar = () => rodar(async () => {
@@ -55,7 +67,7 @@ export function PortaDaConta({ aoEntrar }: { aoEntrar: () => void }) {
 
   const confirmar = () => rodar(async () => {
     await contaApi.confirmar(digitos!, codigo, senha);
-    aoEntrar();
+    await depoisDeEntrar();
   });
 
   const reenviar = () => rodar(async () => {
@@ -67,7 +79,13 @@ export function PortaDaConta({ aoEntrar }: { aoEntrar: () => void }) {
   // A resposta é a mesma exista a conta ou não: quem pergunta não descobre
   // quais números têm conta.
   const esqueci = () => rodar(async () => {
-    try { await contaApi.esqueci(digitos!); } catch { /* o texto é o mesmo */ }
+    try {
+      await contaApi.esqueci(digitos!);
+    } catch (e) {
+      // 429 e 503 são iguais com e sem conta, então podem aparecer; o resto
+      // fica calado para o texto ser o mesmo.
+      if (e instanceof ErroApi && (e.status === 429 || e.status === 503)) throw e;
+    }
     ir('enviado');
   });
 
