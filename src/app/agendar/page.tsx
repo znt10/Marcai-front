@@ -4,6 +4,7 @@ import { vocabulario } from '@/lib/tipos';
 import { cartaoDestaPagina } from '@/lib/miniatura';
 import { FormAgendamento } from '@/components/FormAgendamento';
 import { Marca } from '@/components/Marca';
+import { BotaoConta } from '@/components/conta/BotaoConta';
 
 export async function generateMetadata() {
   const b = await barbeariaAtual();
@@ -32,11 +33,14 @@ export default async function Agendar({
   return (
     <div className="fluxo min-h-dvh">
       <header className="border-b border-borda">
+        {/* O botão da conta fica FORA do Link: um link dentro de outro é HTML
+            inválido, e o toque no círculo não pode voltar para a vitrine. */}
+        <div className="mx-auto flex max-w-[1100px] items-center pr-[18px] sm:pr-7 md:pr-10">
         {/* O cabeçalho inteiro é a volta para a vitrine. O desenho não tem o
             "‹ a barbearia" do rodapé, e sem isto a única saída seria o voltar
             do navegador. */}
         <Link href="/" aria-label={`Voltar para ${v.oLugar} ${b.nome}`}
-              className="mx-auto flex max-w-[1100px] items-center gap-[9px]
+              className="flex min-w-0 flex-1 items-center gap-[9px]
                          px-[18px] pt-4 pb-3.5 sm:px-7 md:px-10 md:py-5">
           <Marca tipo={b.tipo} nome={b.nome} tamanho={22} className="rounded-[5px] md:size-[28px]" />
           <span className="text-[16px] md:text-[19px] font-extrabold text-tinta">Marcaí</span>
@@ -47,6 +51,8 @@ export default async function Agendar({
             {v.lugar} {b.nome}
           </span>
         </Link>
+        <BotaoConta />
+        </div>
       </header>
 
       <main className="mx-auto max-w-[1100px] px-[18px] pt-[18px] pb-8 sm:px-7 md:px-10 md:pt-8">

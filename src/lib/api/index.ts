@@ -24,3 +24,6 @@ export type {
 
 export { adminApi, LOGIN_DO_ADMIN } from './adminAPI';
 export type { BarbeariaDaLista, NovaBarbearia, Plano, WhatsappCentral } from './adminAPI';
+
+export { contaApi } from './contaAPI';
+export type { ContaEu, ItemHistorico, Lugar } from './contaAPI';
