@@ -73,3 +73,18 @@ export function camposDoAgendar(
   if (!conta) return { nome: rascunho.nome, whats: rascunho.whats, travado: false };
   return { nome: rascunho.nome || conta.nome, whats: conta.whatsapp, travado: true };
 }
+
+/// O balão do "Entrar" para quem nunca abriu a conta neste aparelho (pedido
+/// de 21/10/2026), no mesmo espírito do guia de agendar (`@/lib/guia`):
+/// `localStorage`, porque "primeira vez" é por aparelho.
+const CHAVE_GUIA = 'guia-conta-visto';
+
+/// Armazenamento bloqueado LANÇA; aí o balão aparece, como no outro guia.
+export function guiaDaContaVisto(): boolean {
+  try { return localStorage.getItem(CHAVE_GUIA) === '1'; } catch { return false; }
+}
+
+/// Chamado ao tocar em "Entrar", em "Agora não" e quando a conta já existe.
+export function marcarGuiaDaContaVisto(): void {
+  try { localStorage.setItem(CHAVE_GUIA, '1'); } catch { /* ver `guiaDaContaVisto` */ }
+}
