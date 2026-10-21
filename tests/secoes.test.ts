@@ -14,6 +14,7 @@ describe('rotuloDaSecao', () => {
     expect(rotuloDaSecao('/painel/dia')).toBe('quadro');
     expect(rotuloDaSecao('/painel/horarios')).toBe('horários');
     expect(rotuloDaSecao('/painel/servicos')).toBe('serviços');
+    expect(rotuloDaSecao('/painel/pix')).toBe('pix');
     expect(rotuloDaSecao('/painel/resumo')).toBe('resumo');
     expect(rotuloDaSecao('/painel/whatsapp')).toBe('whatsapp');
   });

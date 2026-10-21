@@ -15,6 +15,9 @@ export const SECOES: Secao[] = [
   { href: '/painel/dia', rotulo: 'quadro' },
   { href: '/painel/horarios', rotulo: 'horários' },
   { href: '/painel/servicos', rotulo: 'serviços' },
+  // De todo mundo: cada barbeiro cadastra a chave Pix dele, e nem o dono
+  // mexe na de outro.
+  { href: '/painel/pix', rotulo: 'pix' },
   { href: '/painel/equipe', rotulo: 'equipe', soDono: true },
   // No fim, e junto de `equipe`, porque as duas são as seções de quem
   // administra — e porque entrar no meio reordenaria cinco abas que a equipe

@@ -1,6 +1,7 @@
 import { pedir } from './client';
 import type { NovoAgendamento } from './publicoAPI';
 import type { Mensalidade } from '@/lib/mensalidade';
+import type { BlocoPix, TipoDeChave } from '@/lib/pix';
 
 /// As rotas do painel do barbeiro. Todas as de leitura passam `loginEm`:
 /// sessão morta manda para a tela de entrada em vez de deixar a tela vazia
@@ -19,6 +20,8 @@ export type ItemDaAgenda = {
   id: string; inicio: string; fim: string; servicoNome: string;
   barbeiroId: string; barbeiroNome: string;
   clienteNome: string; clienteWhatsapp: string;
+  /// Ausente/nulo = confirmado sem cobrança.
+  pix?: BlocoPix | null;
 };
 
 export const painelApi = {
@@ -48,7 +51,27 @@ export const painelApi = {
     pedir<{ codigo: string }>('/painel/agendamentos', { metodo: 'POST', corpo: dados }),
 
   cancelar: (id: string) =>
-    pedir<{ ok: true }>(`/painel/agendamentos/${id}/cancelar`, { metodo: 'POST' }),
+    pedir<{ ok: true; pagoCentavos?: number | null }>(`/painel/agendamentos/${id}/cancelar`, { metodo: 'POST' }),
+
+  /// O Pix caiu e o barbeiro confirma na mão. O 409 traz a frase "devolva o Pix".
+  recebi: (id: string) =>
+    pedir<{ ok: true }>(`/painel/agendamentos/${id}/recebi`, { metodo: 'POST' }),
+};
+
+/// O Pix do próprio barbeiro (nunca o de outro, nem o dono). O 400 de ligar
+/// sem preço leva `servicosSemPreco` no corpo do erro.
+export type MeuPix = {
+  cobraNoAgendamento: boolean; pixTipo: TipoDeChave | '';
+  pixChave: string; pixTitular: string; servicosSemPreco: string[];
+};
+
+export const meuPixApi = {
+  ver: (signal?: AbortSignal) =>
+    pedir<MeuPix>('/painel/meu-pix', { signal, loginEm: LOGIN_DO_PAINEL }),
+  salvar: (corpo: Partial<{
+    cobraNoAgendamento: boolean; pixTipo: string; pixChave: string; pixTitular: string;
+  }>) =>
+    pedir<MeuPix>('/painel/meu-pix', { metodo: 'PUT', corpo, loginEm: LOGIN_DO_PAINEL }),
 };
 
 /// O bloqueio chega aqui já traduzido em instante do dia pedido — a tela nunca
@@ -58,6 +81,7 @@ export type ItemDoQuadro =
   | {
       tipo: 'AGENDAMENTO'; id: string; inicio: string; fim: string;
       servicoNome: string; clienteNome: string; clienteWhatsapp: string;
+      pix?: BlocoPix | null;
     }
   | {
       tipo: 'BLOQUEIO'; id: string; inicio: string; fim: string;

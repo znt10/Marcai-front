@@ -7,6 +7,7 @@ import {
   quadroApi, ignorarAborto, mensagemDoErro,
   type ColunaDoDia, type ItemDoQuadro,
 } from '@/lib/api';
+import { PixDoItem } from '@/components/painel/PixDoItem';
 import { useAtualizacaoPeriodica } from '@/lib/useAtualizacaoPeriodica';
 import { PAINEL_ATUALIZACAO_MS } from '@/lib/config';
 
@@ -93,13 +94,13 @@ export function QuadroDoDia() {
           uma palavra. */}
       <div className="flex flex-col gap-3 md:flex-row md:snap-x md:snap-mandatory
                       md:overflow-x-auto md:pb-2">
-        {colunas?.map((c) => <Coluna key={c.barbeiroId} c={c} />)}
+        {colunas?.map((c) => <Coluna key={c.barbeiroId} c={c} aoConfirmar={() => void carregar(dia, undefined, true)} />)}
       </div>
     </>
   );
 }
 
-function Coluna({ c }: { c: ColunaDoDia }) {
+function Coluna({ c, aoConfirmar }: { c: ColunaDoDia; aoConfirmar: () => void }) {
   const fechado = c.abre === null || c.fecha === null;
 
   return (
@@ -164,7 +165,7 @@ function Coluna({ c }: { c: ColunaDoDia }) {
           <div className="flex flex-col gap-1.5 border-t border-borda-suave pt-2.5">
             {c.itens.length === 0
               ? <Texto>dia inteiro livre.</Texto>
-              : c.itens.map((i) => <Item key={i.id} i={i} />)}
+              : c.itens.map((i) => <Item key={i.id} i={i} aoConfirmar={aoConfirmar} />)}
           </div>
         )}
       </Cartao>
@@ -175,7 +176,7 @@ function Coluna({ c }: { c: ColunaDoDia }) {
 /// Uma linha do que vem pela frente: hora, quem, e o toque para o WhatsApp.
 /// Linha, e não cartão: são até uma dúzia por barbeiro, e um cartão cada
 /// transformava a coluna numa escada de bordas.
-function Item({ i }: { i: ItemDoQuadro }) {
+function Item({ i, aoConfirmar }: { i: ItemDoQuadro; aoConfirmar: () => void }) {
   if (i.tipo === 'BLOQUEIO') {
     return (
       <p className="text-[12.5px] font-medium text-lbl">
@@ -186,7 +187,7 @@ function Item({ i }: { i: ItemDoQuadro }) {
   }
 
   return (
-    <p className="text-[12.5px] font-medium text-sub">
+    <div className="text-[12.5px] font-medium text-sub">
       <span className="font-dado">{hora(i.inicio)}</span>
       {' · '}{i.clienteNome}{' · '}
       <a href={`https://wa.me/55${i.clienteWhatsapp}`} target="_blank" rel="noreferrer"
@@ -194,6 +195,7 @@ function Item({ i }: { i: ItemDoQuadro }) {
         whatsapp
       </a>
       <span className="block text-[11.5px] text-lbl">{i.servicoNome}</span>
-    </p>
+      <PixDoItem id={i.id} pix={i.pix} aoConfirmar={aoConfirmar} compacto />
+    </div>
   );
 }

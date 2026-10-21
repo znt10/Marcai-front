@@ -6,6 +6,8 @@ import {
 } from '@/components/painel/pecas';
 import { painelApi, clientesApi, ignorarAborto, type ItemDaAgenda } from '@/lib/api';
 import { textoDaConfirmacao } from '@/lib/bloqueio';
+import { contaComoMarcado, contarMarcados, primeiroQueFalta, textoDaDevolucao } from '@/lib/pix';
+import { PixDoItem } from '@/components/painel/PixDoItem';
 import { useAtualizacaoPeriodica } from '@/lib/useAtualizacaoPeriodica';
 import { PAINEL_ATUALIZACAO_MS } from '@/lib/config';
 import { useEu } from '@/components/painel/SessaoDoPainel';
@@ -103,7 +105,11 @@ export function AgendaDoDia() {
 
   async function cancelar(item: ItemDaAgenda) {
     if (!confirm(`Cancelar o horário de ${item.clienteNome} às ${hora(item.inicio)}?`)) return;
-    await painelApi.cancelar(item.id);
+    const r = await painelApi.cancelar(item.id);
+    // O Marcaí não move dinheiro: quem cancela um horário pago precisa saber
+    // que a devolução é com ele, no app do banco.
+    const devolucao = textoDaDevolucao(r.pagoCentavos);
+    if (devolucao) alert(devolucao);
     void carregar(dia);
   }
 
@@ -125,13 +131,16 @@ export function AgendaDoDia() {
   /// O primeiro que ainda não terminou. É a resposta da pergunta que o barbeiro
   /// faz o dia inteiro — "quem é o próximo?" — e a lista não respondia: doze
   /// linhas idênticas, todas com o mesmo peso.
-  const proximo = ehHoje
-    ? itens?.find((i) => minutosDe(i.fim) > minutosAgora) ?? null
+  /// Quem espera Pix (ou o deixou vencer) ainda não é horário vendido: não é o
+  /// próximo, nem entra na conta.
+  const proximo = ehHoje && itens
+    ? primeiroQueFalta(itens, (i) => minutosDe(i.fim) > minutosAgora)
     : null;
 
+  const marcados = itens ? contarMarcados(itens) : 0;
   const contagem = itens === null ? '…'
-    : itens.length === 0 ? 'nada marcado'
-    : `${itens.length} ${itens.length === 1 ? 'marcado' : 'marcados'}`;
+    : marcados === 0 ? 'nada marcado'
+    : `${marcados} ${marcados === 1 ? 'marcado' : 'marcados'}`;
 
   return (
     <>
@@ -216,6 +225,7 @@ export function AgendaDoDia() {
                   {i.clienteNome}
                 </span>
               </div>
+              <PixDoItem id={i.id} pix={i.pix} aoConfirmar={() => void carregar(dia, undefined, true)} />
               <div className="flex items-center justify-between gap-2 text-[12.5px] font-medium text-sub">
                 <span className="truncate">
                   {i.servicoNome}
@@ -231,18 +241,24 @@ export function AgendaDoDia() {
                      className="px-1.5 py-1 hover:text-acento">
                     whatsapp
                   </a>
-                  <span aria-hidden className="text-lbl">·</span>
-                  {/* Cinza, não âmbar: o âmbar deste produto marca o que
-                      CONCLUI e o agora. Cancelar é o contrário disso, e pintá-lo
-                      de acento punha a ação mais destrutiva da tela como a mais
-                      chamativa dela. A confirmação continua sendo a trava. */}
-                  <button onClick={() => cancelar(i)} className="px-1.5 py-1 hover:text-acento">
-                    cancelar
-                  </button>
-                  <span aria-hidden className="text-lbl">·</span>
-                  <button onClick={() => bloquear(i)} className="px-1.5 py-1 hover:text-acento">
-                    bloquear
-                  </button>
+                  {/* Quem espera Pix (ou o deixou vencer) só tem o "Recebi" acima:
+                      cancelar e bloquear ficam para o horário de verdade. */}
+                  {contaComoMarcado(i) && (
+                    <>
+                      <span aria-hidden className="text-lbl">·</span>
+                      {/* Cinza, não âmbar: o âmbar deste produto marca o que
+                          CONCLUI e o agora. Cancelar é o contrário disso, e pintá-lo
+                          de acento punha a ação mais destrutiva da tela como a mais
+                          chamativa dela. A confirmação continua sendo a trava. */}
+                      <button onClick={() => cancelar(i)} className="px-1.5 py-1 hover:text-acento">
+                        cancelar
+                      </button>
+                      <span aria-hidden className="text-lbl">·</span>
+                      <button onClick={() => bloquear(i)} className="px-1.5 py-1 hover:text-acento">
+                        bloquear
+                      </button>
+                    </>
+                  )}
                 </span>
               </div>
             </Cartao>

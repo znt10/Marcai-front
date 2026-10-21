@@ -76,6 +76,8 @@ export const MIGRADAS: readonly string[] = [
   // nenhum pedido chega ao Django, entao nem o log dele denuncia. Agora ha
   // teste que pega isso sozinho (tests/client-base.test.ts).
   '/painel/whatsapp',
+  // O Pix do próprio barbeiro (cobrar ao agendar, chave, titular).
+  '/painel/meu-pix',
   // A mensalidade da barbearia (ver e "ja paguei"). UMA entrada cobre as duas
   // rotas. Sem ela o pedido vai para o Next e o portao nunca ve a situacao.
   '/painel/mensalidade',
