@@ -49,7 +49,14 @@ export function ContaTela() {
 
   switch (estado.tipo) {
     case 'carregando': return <div className="min-h-[200px]" aria-busy />;
-    case 'fora': return <PortaDaConta aoEntrar={() => carregar()} />;
+    // Entrou ou confirmou o código: volta para a página do lugar (pedido de
+    // 21/10/2026), onde o botão do topo já mostra a inicial. Carregamento
+    // inteiro, como todo link do fluxo do cliente.
+    case 'fora': return <PortaDaConta aoEntrar={async () => {
+      const ok = await carregar();
+      if (ok) window.location.assign('/');
+      return ok;
+    }} />;
     case 'erro': return <p role="alert" className="text-[13px] text-acento">{estado.texto}</p>;
     case 'dentro':
       return <Historico nome={estado.nome} lugares={estado.lugares} aoMudar={() => carregar()} aoSair={sair} />;
