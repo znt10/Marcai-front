@@ -17,6 +17,8 @@ export type BarbeariaDaLista = {
   id: string; slug: string; nome: string; ativo: boolean; plano: Plano;
   /// Ausentes no back de antes deles: barbearia, preto e amarelo.
   tipo?: Tipo; paleta?: Paleta;
+  /// Cidade do BR Code do Pix; ausente no back de antes dela.
+  cidade?: string;
   barbeiros: number; agendamentos: number;
 };
 
@@ -91,6 +93,10 @@ export const adminApi = {
 
   alternarAtivo: (id: string, ativo: boolean) =>
     pedir<{ ok: true }>(`/admin/barbearias/${id}`, { metodo: 'PATCH', corpo: { ativo } }),
+
+  /// Vazio volta ao padrão ("BRASIL" no copia e cola). Até 40 caracteres.
+  mudarCidade: (id: string, cidade: string) =>
+    pedir<{ ok: true }>(`/admin/barbearias/${id}`, { metodo: 'PATCH', corpo: { cidade } }),
 
   whatsappCentral: (signal?: AbortSignal) =>
     pedir<WhatsappCentral>('/admin/whatsapp-central', { signal, loginEm: LOGIN_DO_ADMIN }),

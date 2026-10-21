@@ -72,6 +72,7 @@ export function ListaBarbearias({ tipo, recarregarEm }: { tipo: Tipo; recarregar
             <Chip onClick={() => alternar(b)}>{b.ativo ? 'desativar' : 'reativar'}</Chip>
             <Chip acento onClick={() => reemitir(b)}>novo convite</Chip>
           </div>
+          <CidadeDoPix b={b} aoSalvar={() => void carregar()} aoFalhar={setErro} />
         </Box>
       ))}
       {erro && <Sub className="text-acento">{erro}</Sub>}
@@ -83,5 +84,37 @@ export function ListaBarbearias({ tipo, recarregarEm }: { tipo: Tipo; recarregar
       )}
       <Sub>desativar leva até um minuto para tirar do ar</Sub>
     </>
+  );
+}
+
+/// A cidade que vai no copia e cola do Pix (BR Code). Vazia, o back usa
+/// "BRASIL": os bancos não conferem a cidade de um Pix estático.
+function CidadeDoPix({ b, aoSalvar, aoFalhar }: {
+  b: Barbearia; aoSalvar: () => void; aoFalhar: (msg: string) => void;
+}) {
+  const [cidade, setCidade] = useState(b.cidade ?? '');
+  const [salvando, setSalvando] = useState(false);
+  const mudou = cidade.trim() !== (b.cidade ?? '');
+
+  async function salvar() {
+    setSalvando(true); aoFalhar('');
+    try {
+      await adminApi.mudarCidade(b.id, cidade.trim());
+      aoSalvar();
+    } catch (e) {
+      aoFalhar(mensagemDoErro(e));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="flex w-full items-center gap-2">
+      <label htmlFor={`cidade-${b.id}`}><Lbl>cidade do pix</Lbl></label>
+      <input id={`cidade-${b.id}`} value={cidade} maxLength={40} placeholder="BRASIL"
+             onChange={(e) => setCidade(e.target.value)}
+             className="min-w-0 flex-1 rounded-[8px] border border-borda bg-transparent px-2 py-1 text-tinta" />
+      <Chip disabled={!mudou || salvando} onClick={salvar}>{salvando ? 'salvando…' : 'salvar'}</Chip>
+    </div>
   );
 }
