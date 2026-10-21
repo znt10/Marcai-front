@@ -29,3 +29,20 @@ export function separarHistorico(
   passados.sort((a, b) => hora(b) - hora(a));
   return { proximos, passados };
 }
+
+/// A letra do círculo do botão no topo: a inicial do primeiro nome.
+export function inicialDoNome(nome: string): string {
+  return nome.trim().charAt(0).toUpperCase() || '?';
+}
+
+/// "sex, 24/10 às 14:30" no fuso do Brasil, o mesmo em qualquer máquina.
+export function rotuloDoHorario(iso: string): string {
+  const d = new Date(iso);
+  const dia = new Intl.DateTimeFormat('pt-BR', {
+    weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo',
+  }).format(d).replace('.', '');
+  const hora = new Intl.DateTimeFormat('pt-BR', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+  }).format(d);
+  return `${dia} às ${hora}`;
+}

@@ -60,3 +60,16 @@ describe('codigoValido', () => {
 it('senha mínima é 6', () => {
   expect(SENHA_MINIMA_CONTA).toBe(6);
 });
+
+describe('inicialDoNome e rotuloDoHorario', () => {
+  it('pega a inicial maiúscula e tolera vazio', async () => {
+    const { inicialDoNome } = await import('@/lib/conta');
+    expect(inicialDoNome('  joão silva')).toBe('J');
+    expect(inicialDoNome('')).toBe('?');
+  });
+  it('formata no fuso do Brasil', async () => {
+    const { rotuloDoHorario } = await import('@/lib/conta');
+    // 17:30Z = 14:30 em São Paulo; 24/10/2026 é sábado.
+    expect(rotuloDoHorario('2026-10-24T17:30:00Z')).toMatch(/^sáb,? 24\/10 às 14:30$/);
+  });
+});
