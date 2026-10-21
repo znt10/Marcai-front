@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box, Sub } from '@/components/wf';
 import { Confirmado } from '@/components/Confirmado';
 import { publicoApi, type DetalheDoAgendamento } from '@/lib/api';
@@ -31,6 +31,18 @@ export function TelaDoAgendamento({ inicial }: { inicial: DetalheDoAgendamento }
 
   const estado = estadoDaTela(ag, agora);
 
+  // Respostas podem chegar fora de ordem (rede lenta, aba que voltou): uma
+  // antiga não pode desfazer o que a mais nova já mostrou. Cada pedido leva
+  // um número; só se aplica o que for mais novo que o último aplicado.
+  const emitido = useRef(0);
+  const aplicado = useRef(0);
+  const proximoPedido = () => ++emitido.current;
+  const aplicar = (pedido: number, d: DetalheDoAgendamento) => {
+    if (pedido < aplicado.current) return;
+    aplicado.current = pedido;
+    setAg(d);
+  };
+
   let tela: React.ReactNode;
   if (estado.tipo === 'confirmado' || estado.tipo === 'cancelado') {
     tela = <ConfirmadoOuCancelado ag={ag} />;
@@ -44,7 +56,7 @@ export function TelaDoAgendamento({ inicial }: { inicial: DetalheDoAgendamento }
 
   return (
     <>
-      {precisaConsultar(estado) && <Consulta codigo={ag.codigo} aoChegar={setAg} />}
+      {precisaConsultar(estado) && <Consulta codigo={ag.codigo} proximoPedido={proximoPedido} aplicar={aplicar} />}
       {tela}
     </>
   );
@@ -53,11 +65,13 @@ export function TelaDoAgendamento({ inicial }: { inicial: DetalheDoAgendamento }
 /// A consulta mora num componente próprio de propósito: ele só EXISTE nos
 /// estados em que algo pode mudar sozinho, então sair desses estados
 /// desmonta o ciclo (e ele para) sem nenhuma condição para esquecer.
-function Consulta({ codigo, aoChegar }: {
-  codigo: string; aoChegar: (d: DetalheDoAgendamento) => void;
+function Consulta({ codigo, proximoPedido, aplicar }: {
+  codigo: string; proximoPedido: () => number;
+  aplicar: (pedido: number, d: DetalheDoAgendamento) => void;
 }) {
   useAtualizacaoPeriodica(() => {
-    publicoApi.detalhe(codigo).then(aoChegar).catch(() => {
+    const pedido = proximoPedido();
+    publicoApi.detalhe(codigo).then((d) => aplicar(pedido, d)).catch(() => {
       /* sem rede por um instante: a próxima volta tenta de novo. */
     });
   }, CONSULTA_MS);
@@ -92,15 +106,18 @@ function Aguardando({ ag, pix, segundos, urgente }: {
   segundos: number; urgente: boolean;
 }) {
   const [copiado, setCopiado] = useState(false);
+  const [falhouCopiar, setFalhouCopiar] = useState(false);
 
   async function copiar() {
     try {
       await navigator.clipboard.writeText(pix.copiaECola);
+      setFalhouCopiar(false);
       setCopiado(true);
       setTimeout(() => setCopiado(false), 2500);
     } catch {
-      /* sem permissão de área de transferência: o texto está à mostra para
-         selecionar na mão. */
+      // Sem permissão de área de transferência: o texto está à mostra.
+      setCopiado(false);
+      setFalhouCopiar(true);
     }
   }
 
@@ -151,9 +168,15 @@ function Aguardando({ ag, pix, segundos, urgente }: {
 
       <Sub>Ou use o Pix copia e cola no app do seu banco:</Sub>
       <Box variante="copia" className="break-all text-[12px] select-all">{pix.copiaECola}</Box>
-      <Box variante="fill" className="text-center cursor-pointer" onClick={copiar}>
-        {copiado ? 'Copiado' : 'Copiar código'}
-      </Box>
+      <button type="button" onClick={copiar} className="w-full text-left">
+        <Box variante="fill" className="text-center cursor-pointer">Copiar código</Box>
+      </button>
+      <div aria-live="polite" role="status">
+        {copiado && <Sub>Copiado</Sub>}
+        {falhouCopiar && (
+          <Sub className="text-acento">Não deu para copiar, segure o código para copiar.</Sub>
+        )}
+      </div>
       <Sub>Assim que o Pix cair, essa tela muda sozinha e a gente confirma no WhatsApp.</Sub>
     </>
   );
@@ -162,10 +185,19 @@ function Aguardando({ ag, pix, segundos, urgente }: {
 function Expirado({ ag }: { ag: DetalheDoAgendamento }) {
   const zap = linkDoZap(ag.barbeiro.whatsapp);
 
+  // Ao entrar na tela de expirado, o rascunho sai da aba e fica só na memória
+  // do componente (o balcão é um aparelho só); "Escolher outro horário" o
+  // grava de novo logo antes de navegar.
+  const guardado = useRef({ nome: '', whats: '' });
+  useEffect(() => {
+    guardado.current = lerRascunho();
+    limparRascunho();
+  }, []);
+
   // O telefone não vem do servidor (§9.1), mas o formulário o deixou na aba;
   // o nome completa o que faltar. Quem usa `/agendar` lê isto em efeito.
   function guardarParaRemarcar() {
-    const r = lerRascunho();
+    const r = guardado.current;
     salvarRascunho({ nome: r.nome || ag.clienteNome, whats: r.whats });
   }
 
