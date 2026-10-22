@@ -4,12 +4,13 @@ import { Avatar } from '@/components/wf';
 import { formatar } from '@/lib/telefone';
 import { formatarPreco } from '@/lib/dinheiro';
 import {
-  publicoApi, ignorarAborto, mensagemDoErro, ErroApi,
+  publicoApi, contaApi, ignorarAborto, mensagemDoErro, ErroApi,
   type Barbeiro, type Servico, type Slot, type DiaComSlots as Dia,
 } from '@/lib/api';
 import { DIAS_NA_HOME } from '@/lib/config';
 import { urlCalendario } from '@/lib/escolha';
-import { lerRascunho, salvarRascunho } from '@/lib/rascunho';
+import { camposDoAgendar, EVENTO_CONTA } from '@/lib/conta';
+import { lerRascunho, salvarRascunho, limparRascunho } from '@/lib/rascunho';
 import {
   dadosCompletos, guiaJaVisto, marcarGuiaVisto, mostraDicaDoCalendario, proximoPasso,
   textoDoPasso, unicaPessoa, type Passo,
@@ -70,6 +71,30 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
     if (r.whats) setWhats(r.whats);
   }, []);
 
+  // Com conta, o WhatsApp é o dela e fica travado; o nome vem preenchido mas
+  // editável. Roda DEPOIS do efeito do rascunho (ordem de declaração) e a
+  // resposta chega ainda mais tarde, então `camposDoAgendar` relê o rascunho
+  // e o whats da conta vence o dele. Qualquer erro (401 inclusive) deixa o
+  // formulário exatamente como sempre foi.
+  const [logado, setLogado] = useState(false);
+  useEffect(() => {
+    const ctl = new AbortController();
+    contaApi.eu(ctl.signal)
+      .then((eu) => {
+        const c = camposDoAgendar(eu, lerRascunho());
+        setNome(c.nome); setWhats(c.whats); setLogado(c.travado);
+      })
+      .catch(() => { /* deslogado ou sem rede: formulário normal */ });
+    return () => ctl.abort();
+  }, []);
+
+  async function naoSouEu() {
+    // Se o sair falhar a sessão continua de pé: não destrava o campo.
+    try { await contaApi.sair(); } catch (e) { setErro(mensagemDoErro(e)); return; }
+    setLogado(false); setNome(''); setWhats('');
+    window.dispatchEvent(new Event(EVENTO_CONTA));
+  }
+
   // O guia da primeira vez. Lido em efeito pelo mesmo motivo do rascunho
   // acima: `localStorage` não existe no servidor.
   const [guia, setGuia] = useState(false);
@@ -77,7 +102,8 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
 
   // Grava a cada tecla. É barato (duas strings curtas) e é o que sobrevive a
   // fechar a aba sem querer no meio do preenchimento.
-  useEffect(() => { salvarRascunho({ nome, whats }); }, [nome, whats]);
+  // O número da conta nunca vai para o rascunho: ele vem da conta a cada visita.
+  useEffect(() => { salvarRascunho({ nome, whats: logado ? '' : whats }); }, [nome, whats, logado]);
 
   // Todo fetch em efeito leva `signal` e aborta na limpeza. Sem isso, trocar
   // de barbeiro ou de serviço rápido deixa buscas sobrepostas no ar, e a
@@ -325,13 +351,19 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
           </Campo>
           <Campo rotulo="WhatsApp">
             <input className={CAMPO + alvo('dados', whats.replace(/\D/g, '').length < 10)}
-                   inputMode="numeric"
+                   inputMode="numeric" readOnly={logado}
                    placeholder="(11) 9 ____-____" value={whats}
                    onChange={e => {
                      const d = e.target.value.replace(/\D/g, '').slice(0, 11);
                      setWhats(d.length >= 10 ? formatar(d) : d);
                    }} />
           </Campo>
+          {logado && (
+            <p className="text-[12px] md:text-[13px] text-tinta/60">
+              Não é você?{' '}
+              <button type="button" onClick={naoSouEu} className="font-bold underline">Sair</button>
+            </p>
+          )}
         </div>
 
         {erro && <p className="mt-3 text-[12px] md:text-[13px] text-acento">{erro}</p>}

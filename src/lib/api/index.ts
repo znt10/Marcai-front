@@ -11,14 +11,14 @@ export type {
 
 export {
   painelApi, equipeApi, horariosApi, servicosApi, quadroApi, barbeariaApi,
-  resumoApi, whatsappApi, clientesApi, mensalidadeApi, meuPixApi, LOGIN_DO_PAINEL,
+  resumoApi, custosApi, whatsappApi, clientesApi, mensalidadeApi, meuPixApi, LOGIN_DO_PAINEL,
 } from './painelAPI';
 export type {
   Eu, ItemDaAgenda, MembroDaEquipe, NovoBarbeiro,
   DiaDeTrabalho, Bloqueio, Conflito,
   ServicoDoCatalogo, VinculoDeServico,
   ColunaDoDia, ItemDoQuadro, DadosDaBarbearia,
-  LinhaDoResumo, Resumo, ServicoDoResumo,
+  LinhaDoResumo, Resumo, ServicoDoResumo, Custo,
   WhatsappDaBarbearia, MeuPix, PreviaDoBloqueio, ClienteBloqueado,
 } from './painelAPI';
 
@@ -27,3 +27,6 @@ export type {
   BarbeariaDaLista, NovaBarbearia, Plano, WhatsappCentral,
   LinhaDaMensalidade, MensalidadesDoAdmin, CamposDaMensalidade,
 } from './adminAPI';
+
+export { contaApi } from './contaAPI';
+export type { ContaEu, ItemHistorico, Lugar } from './contaAPI';
