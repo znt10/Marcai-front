@@ -6,6 +6,7 @@ import {
   resumoApi, mensagemDoErro, type LinhaDoResumo, type Resumo as Dados,
 } from '@/lib/api';
 import { PizzaDeServicos } from '@/components/painel/PizzaDeServicos';
+import { Custos } from '@/components/painel/Custos';
 import {
   MODOS, andar, coresPorServico, modoDoPeriodo, periodoDe, rotuloDe, type Periodo,
 } from '@/lib/resumo';
@@ -212,6 +213,10 @@ export function Resumo() {
           )}
         </>
       )}
+
+      {/* Mesmo período do seletor acima: o dono olha setembro e vê os
+          custos de setembro. */}
+      <Custos de={periodo.de} ate={periodo.ate} />
     </>
   );
 }
