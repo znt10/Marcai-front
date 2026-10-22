@@ -11,14 +11,14 @@ export type {
 
 export {
   painelApi, equipeApi, horariosApi, servicosApi, quadroApi, barbeariaApi,
-  resumoApi, whatsappApi, clientesApi, LOGIN_DO_PAINEL,
+  resumoApi, custosApi, whatsappApi, clientesApi, LOGIN_DO_PAINEL,
 } from './painelAPI';
 export type {
   Eu, ItemDaAgenda, MembroDaEquipe, NovoBarbeiro,
   DiaDeTrabalho, Bloqueio, Conflito,
   ServicoDoCatalogo, VinculoDeServico,
   ColunaDoDia, ItemDoQuadro, DadosDaBarbearia,
-  LinhaDoResumo, Resumo, ServicoDoResumo,
+  LinhaDoResumo, Resumo, ServicoDoResumo, Custo,
   WhatsappDaBarbearia, PreviaDoBloqueio, ClienteBloqueado,
 } from './painelAPI';
 

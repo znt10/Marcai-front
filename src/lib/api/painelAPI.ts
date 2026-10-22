@@ -321,6 +321,23 @@ export const resumoApi = {
     }),
 };
 
+/// Custos que o dono lança no Resumo. Só registro: não saem do faturamento.
+/// Sem data na tela — o custo vale no dia em que foi lançado.
+export type Custo = {
+  id: string; nome: string | null; valorCentavos: number; criadoEm: string;
+};
+
+export const custosApi = {
+  listar: (de: string, ate: string, signal?: AbortSignal) =>
+    pedir<{ custos: Custo[]; totalCentavos: number }>('/painel/custos', {
+      busca: { de, ate }, signal, loginEm: LOGIN_DO_PAINEL,
+    }),
+  lancar: (dados: { nome?: string; valorCentavos: number }) =>
+    pedir<{ id: string }>('/painel/custos', { metodo: 'POST', corpo: dados }),
+  apagar: (id: string) =>
+    pedir<{ ok: true }>(`/painel/custos/${id}`, { metodo: 'DELETE' }),
+};
+
 /// Bloquear cliente (spec 2026-10-13). A prévia é o que a confirmação mostra.
 export type PreviaDoBloqueio = {
   clienteId: string; nome: string; whatsapp: string; horarios: number; bloqueado: boolean;
