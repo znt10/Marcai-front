@@ -141,13 +141,13 @@ function Aguardando({ ag, pix, segundos, urgente }: {
           Pague o valor exato, com os centavos: é por eles que a gente sabe que o Pix é seu.
         </Sub>
 
-        {/* O SVG vem pronto do nosso servidor, mas entra como imagem e não como
+        {/* O QR vem do servidor já como data URI de SVG; entra como imagem e não como
             HTML: <img> não executa script, então nada que vier dentro do SVG
             roda aqui. Fundo branco fixo — o QR precisa de contraste claro/escuro
             em qualquer tema. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={`data:image/svg+xml;utf8,${encodeURIComponent(pix.qrSvg)}`}
+          src={pix.qrSvg}
           alt="QR code do Pix"
           width={220} height={220}
           className="bg-white p-2 rounded-wf w-[220px] h-[220px]"

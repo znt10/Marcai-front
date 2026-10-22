@@ -5,7 +5,7 @@ import {
 
 const AGORA = Date.parse('2026-10-21T15:00:00Z');
 const em = (seg: number) => new Date(AGORA + seg * 1000).toISOString();
-const pix = { copiaECola: '000201...', qrSvg: '<svg/>', valorCentavos: 3501 };
+const pix = { copiaECola: '000201...', qrSvg: 'data:image/svg+xml,<svg/>', valorCentavos: 3501 };
 const base: DetalheDaTela = { status: 'CONFIRMADO', pix: null, expiraEm: null };
 
 describe('estadoDaTela', () => {
