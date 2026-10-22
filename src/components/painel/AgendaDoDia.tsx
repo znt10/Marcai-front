@@ -6,7 +6,7 @@ import {
 } from '@/components/painel/pecas';
 import { painelApi, clientesApi, ignorarAborto, type ItemDaAgenda } from '@/lib/api';
 import { textoDaConfirmacao } from '@/lib/bloqueio';
-import { contaComoMarcado, contarMarcados, primeiroQueFalta, textoDaDevolucao } from '@/lib/pix';
+import { contaComoMarcado, contarMarcados, primeiroQueFalta, textoDaDevolucao, vaoLivreAntes } from '@/lib/pix';
 import { PixDoItem } from '@/components/painel/PixDoItem';
 import { useAtualizacaoPeriodica } from '@/lib/useAtualizacaoPeriodica';
 import { PAINEL_ATUALIZACAO_MS } from '@/lib/config';
@@ -180,11 +180,11 @@ export function AgendaDoDia() {
       )}
 
       {itens?.map((i, n) => {
-        const anterior = itens[n - 1];
         // O vão entre o fim do anterior e o começo deste. É o que o barbeiro
         // precisa saber para aceitar quem chega sem marcar — a lista antiga
         // mostrava só o que estava ocupado, nunca o que estava livre.
-        const vao = anterior ? minutosDe(i.inicio) - minutosDe(anterior.fim) : 0;
+        // O Pix vencido não conta: ele já soltou a vaga.
+        const vao = vaoLivreAntes(itens, n, minutosDe);
         const ehProximo = proximo?.id === i.id;
         const passou = ehHoje && minutosDe(i.fim) <= minutosAgora;
 
@@ -213,7 +213,7 @@ export function AgendaDoDia() {
             )}
 
             <Cartao variante={ehProximo ? 'sel' : 'normal'}
-                    className={`flex flex-col gap-2.5 ${passou ? 'opacity-45' : ''}`}>
+                    className={`flex flex-col gap-2.5 ${passou || i.pix?.estado === 'expirado' ? 'opacity-45' : ''}`}>
               <div className="flex items-baseline gap-2.5">
                 {/* A hora lidera e é o maior elemento da linha: é por ela que
                     se procura na lista, não pelo nome. */}

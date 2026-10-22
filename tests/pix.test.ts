@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   rotuloDoPix, contaComoMarcado, contarMarcados, primeiroQueFalta, textoDaConfirmacaoRecebi,
-  textoDaDevolucao, validarPixDoBarbeiro, corpoParaSalvar, TIPOS_DE_CHAVE, type BlocoPix,
+  textoDaDevolucao, vaoLivreAntes, validarPixDoBarbeiro, corpoParaSalvar, TIPOS_DE_CHAVE, type BlocoPix,
 } from '@/lib/pix';
 
 const sp = (s: string) => s.replace(/ /g, ' ');
@@ -74,5 +74,23 @@ describe('formulário do Pix', () => {
   it('corpo de salvar leva tudo com trim', () => {
     expect(corpoParaSalvar({ cobra: true, tipo: 'EMAIL', chave: ' a@b.c ', titular: ' Ana ' }))
       .toEqual({ cobraNoAgendamento: true, pixTipo: 'EMAIL', pixChave: 'a@b.c', pixTitular: 'Ana' });
+  });
+});
+
+describe('vaoLivreAntes', () => {
+  const min = (iso: string) => Number(iso.slice(0, 2)) * 60 + Number(iso.slice(3, 5));
+  const item = (inicio: string, fim: string, pix?: BlocoPix) => ({ inicio, fim, pix });
+  const expirado: BlocoPix = { estado: 'expirado', valorCentavos: 3501, expiraEm: null };
+
+  it('pula o Pix vencido: 09:00 corte, 09:30 vencido, 10:00 corte = livre 30', () => {
+    const itens = [item('09:00', '09:30'), item('09:30', '10:00', expirado), item('10:00', '10:30')];
+    expect(vaoLivreAntes(itens, 2, min)).toBe(30);
+  });
+  it('aguardando ainda segura a vaga', () => {
+    const itens = [item('09:00', '09:30'), item('09:30', '10:00', aguardando), item('10:00', '10:30')];
+    expect(vaoLivreAntes(itens, 2, min)).toBe(0);
+  });
+  it('primeiro item não tem vão', () => {
+    expect(vaoLivreAntes([item('09:00', '09:30')], 0, min)).toBe(0);
   });
 });

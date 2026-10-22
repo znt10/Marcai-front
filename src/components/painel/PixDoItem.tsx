@@ -24,6 +24,8 @@ export function PixDoItem({ id, pix, aoConfirmar, compacto = false }: {
       aoConfirmar();
     } catch (e) {
       setErro(mensagemDoErro(e));
+      // O estado real pode ter mudado (horário pego, já começou): recarrega.
+      aoConfirmar();
     } finally {
       setOcupado(false);
     }

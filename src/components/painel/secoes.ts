@@ -20,8 +20,9 @@ export const SECOES: Secao[] = [
   { href: '/painel/pix', rotulo: 'pix' },
   { href: '/painel/equipe', rotulo: 'equipe', soDono: true },
   // No fim, e junto de `equipe`, porque as duas são as seções de quem
-  // administra — e porque entrar no meio reordenaria cinco abas que a equipe
-  // já sabe onde ficam. O barbeiro comum continua vendo quatro.
+  // administra — e porque entrar no meio reordenaria as abas que a equipe
+  // já sabe onde ficam. O barbeiro comum vê cinco (agenda, quadro, horários,
+  // serviços e pix).
   { href: '/painel/resumo', rotulo: 'resumo', soDono: true },
   // O WhatsApp fica no fim, junto das outras duas de quem administra. Ele é
   // visitado duas vezes na vida da barbearia (o dia em que conecta e o dia em

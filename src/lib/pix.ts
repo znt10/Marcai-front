@@ -88,3 +88,16 @@ export const corpoParaSalvar = (f: FormPix) => ({
   pixChave: f.chave.trim(),
   pixTitular: f.titular.trim(),
 });
+
+/// O vão livre antes do item `n`, em minutos. Mede contra o último item
+/// anterior que NÃO está vencido: o Pix vencido já soltou a vaga no back, o
+/// aguardando ainda a segura.
+export function vaoLivreAntes<T extends { inicio: string; fim: string; pix?: BlocoPix | null }>(
+  itens: T[], n: number, minutosDe: (iso: string) => number,
+): number {
+  for (let k = n - 1; k >= 0; k--) {
+    if (itens[k].pix?.estado === 'expirado') continue;
+    return minutosDe(itens[n].inicio) - minutosDe(itens[k].fim);
+  }
+  return 0;
+}
