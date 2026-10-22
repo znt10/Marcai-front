@@ -9,9 +9,10 @@
 /// tem a sua tabela, menor, em `tenant/tipos.py` — as duas têm de concordar
 /// no que repetem. Tipo novo entra pelos dois lados.
 
-export type Tipo = 'BARBEARIA' | 'SOBRANCELHA' | 'OUTRO';
+export type Tipo = 'BARBEARIA' | 'SOBRANCELHA' | 'MANICURE' | 'MAQUIAGEM' | 'OUTRO';
 
-export const TIPOS: Tipo[] = ['BARBEARIA', 'SOBRANCELHA', 'OUTRO'];
+/// `SOBRANCELHA` é a Estética (o nome mudou em 22/10/2026; o valor no banco ficou).
+export const TIPOS: Tipo[] = ['BARBEARIA', 'SOBRANCELHA', 'MANICURE', 'MAQUIAGEM', 'OUTRO'];
 
 export type Vocabulario = {
   /// "barbearia", "estúdio" — no meio da frase.
@@ -65,6 +66,28 @@ export const VOCABULARIO: Record<Tipo, Vocabulario> = {
     quemPassouPorDois: 'quem passou por mais de uma profissional',
     slogan: ['Sobrancelha feita,', 'hora marcada.'],
     exemploServico: 'design com henna',
+  },
+  MANICURE: {
+    lugar: 'estúdio', Lugar: 'Estúdio', oLugar: 'o estúdio', doLugar: 'do estúdio',
+    noNome: (nome) => `no estúdio ${nome}`,
+    prof: 'profissional', Prof: 'Profissional', profs: 'profissionais',
+    oProf: 'a profissional', noProf: 'na profissional', nenhumProf: 'nenhuma profissional',
+    dele: 'dela',
+    atendimento: 'atendimento', atendimentos: 'atendimentos',
+    quemPassouPorDois: 'quem passou por mais de uma profissional',
+    slogan: ['Unha feita,', 'hora marcada.'],
+    exemploServico: 'pé e mão',
+  },
+  MAQUIAGEM: {
+    lugar: 'estúdio', Lugar: 'Estúdio', oLugar: 'o estúdio', doLugar: 'do estúdio',
+    noNome: (nome) => `no estúdio ${nome}`,
+    prof: 'profissional', Prof: 'Profissional', profs: 'profissionais',
+    oProf: 'a profissional', noProf: 'na profissional', nenhumProf: 'nenhuma profissional',
+    dele: 'dela',
+    atendimento: 'atendimento', atendimentos: 'atendimentos',
+    quemPassouPorDois: 'quem passou por mais de uma profissional',
+    slogan: ['Make feita,', 'hora marcada.'],
+    exemploServico: 'maquiagem social',
   },
   OUTRO: {
     lugar: 'espaço', Lugar: 'Espaço', oLugar: 'o espaço', doLugar: 'do espaço',

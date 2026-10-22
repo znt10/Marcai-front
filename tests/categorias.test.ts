@@ -17,7 +17,7 @@ describe('endereço da categoria', () => {
   });
 
   it('o que não é tipo não é categoria', () => {
-    expect(tipoDaCategoria('manicure')).toBeNull();
+    expect(tipoDaCategoria('unhas')).toBeNull();
     expect(tipoDaCategoria('BARBEARIA')).toBeNull();
     expect(tipoDaCategoria('')).toBeNull();
   });

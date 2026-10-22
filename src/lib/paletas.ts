@@ -123,6 +123,8 @@ export const PALETAS: Record<Paleta, DefinicaoDaPaleta> = {
 export const PALETA_PADRAO: Record<Tipo, Paleta> = {
   BARBEARIA: 'PRETO_AMARELO',
   SOBRANCELHA: 'BRANCO_ROSE',
+  MANICURE: 'BRANCO_ROSE',
+  MAQUIAGEM: 'BRANCO_ROSE',
   OUTRO: 'BRANCO_DOURADO',
 };
 
