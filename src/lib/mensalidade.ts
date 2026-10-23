@@ -69,6 +69,9 @@ export type Faixa = {
   /// esperar o bloqueio para ver o QR. Não em AGUARDANDO — ele já avisou, e
   /// um segundo Pix na cara só confunde.
   mostraPix: boolean;
+  /// Só o "vence em X dias" tem "Fechar": ainda não é atraso, e quem já viu
+  /// não precisa do lembrete em toda tela. Vencida, a faixa fica até pagar.
+  podeFechar: boolean;
 };
 
 /// A faixa acima do painel, ou `null` quando não há o que dizer.
@@ -85,7 +88,7 @@ export function faixaDaMensalidade(m: Mensalidade | null): Faixa | null {
   switch (m.situacao) {
     case 'VENCENDO': {
       const quando = dias === 0 ? 'vence hoje' : dias === 1 ? 'vence amanhã' : `vence em ${dias} dias`;
-      return { texto: `${mensalidade} ${quando}.`, mostraPix: true };
+      return { texto: `${mensalidade} ${quando}.`, mostraPix: true, podeFechar: true };
     }
     case 'ATRASADA': {
       const atraso = `${mensalidade} está vencida há ${dias} ${dias === 1 ? 'dia' : 'dias'}.`;
@@ -93,10 +96,10 @@ export function faixaDaMensalidade(m: Mensalidade | null): Faixa | null {
       const texto = m.bloqueiaEm
         ? `${atraso} O painel é bloqueado em ${diaEMes(m.bloqueiaEm)}.`
         : atraso;
-      return { texto, mostraPix: true };
+      return { texto, mostraPix: true, podeFechar: false };
     }
     case 'AGUARDANDO':
-      return { texto: 'Pagamento informado, aguardando confirmação.', mostraPix: false };
+      return { texto: 'Pagamento informado, aguardando confirmação.', mostraPix: false, podeFechar: false };
     default:
       return null;
   }
@@ -106,6 +109,17 @@ export type JeitoDePagar =
   | { tipo: 'link'; link: string; valorCentavos: number; rotulo: string; frase: string; jaPaguei: false }
   | { tipo: 'pix'; copiaECola: string; qrSvg: string; valorCentavos: number; jaPaguei: true }
   | { tipo: 'indisponivel'; texto: string; jaPaguei: true };
+
+/// O que se guarda ao fechar a faixa: o `pagaAte` do ciclo. Fechada vale só
+/// para ele — o mês seguinte traz a faixa de novo.
+export const chaveDaFaixaFechada = (m: Mensalidade): string => m.pagaAte ?? '';
+
+/// A faixa está fechada? `guardada` é o que ficou no aparelho (ou `null`).
+/// Só o "vence em X dias" obedece: vencida, a faixa volta mesmo fechada antes.
+export function faixaFechada(m: Mensalidade, guardada: string | null): boolean {
+  if (m.situacao !== 'VENCENDO' || !guardada) return false;
+  return guardada === chaveDaFaixaFechada(m);
+}
 
 /// O bloco de pagamento, o mesmo na tela de bloqueio e na faixa. Pela
 /// InfinitePay é só o botão do link: o aviso dela confirma sozinho, e um

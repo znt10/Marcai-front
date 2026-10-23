@@ -6,8 +6,11 @@ import {
   ErroApi, MENSALIDADE_BLOQUEADA, ignorarAborto, mensalidadeApi, mensagemDoErro,
 } from '@/lib/api';
 import {
-  estadoDoPortao, faixaDaMensalidade, jeitoDePagar, reais, rotuloDaFaixa, type Mensalidade,
+  chaveDaFaixaFechada, estadoDoPortao, faixaDaMensalidade, faixaFechada, jeitoDePagar, reais,
+  rotuloDaFaixa, type Mensalidade,
 } from '@/lib/mensalidade';
+
+const CHAVE_FAIXA_FECHADA = 'marcai:faixa-da-mensalidade-fechada';
 
 /// Entre a barra do topo e as telas do painel (ver `layout.tsx`).
 ///
@@ -21,6 +24,17 @@ import {
 export function PortaoDaMensalidade({ children }: { children: React.ReactNode }) {
   const naEntrada = usePathname() === '/painel/login';
   const [m, setM] = useState<Mensalidade | null>(null);
+  // Lido em efeito: o servidor não tem localStorage. Fechar é conveniência do
+  // aparelho; sem localStorage (aba anônima) a faixa só volta ao recarregar.
+  const [fechada, setFechada] = useState<string | null>(null);
+  useEffect(() => {
+    try { setFechada(localStorage.getItem(CHAVE_FAIXA_FECHADA)); } catch { /* sem storage */ }
+  }, []);
+  const fechar = (atual: Mensalidade) => {
+    const chave = chaveDaFaixaFechada(atual);
+    setFechada(chave);
+    try { localStorage.setItem(CHAVE_FAIXA_FECHADA, chave); } catch { /* sem storage */ }
+  };
 
   const ler = useCallback((signal?: AbortSignal) =>
     mensalidadeApi.ver(signal).then(setM).catch(ignorarAborto).catch(() => {}), []);
@@ -58,9 +72,12 @@ export function PortaoDaMensalidade({ children }: { children: React.ReactNode })
   const faixa = faixaDaMensalidade(m);
   return (
     <>
-      {faixa && m && (
+      {faixa && m && !faixaFechada(m, fechada) && (
         <div className="mx-auto max-w-[1440px] px-4 pt-4 md:px-10">
-          <FaixaDaMensalidade m={m} texto={faixa.texto} mostraPix={faixa.mostraPix} aoMudar={setM} />
+          <FaixaDaMensalidade
+            m={m} texto={faixa.texto} mostraPix={faixa.mostraPix} aoMudar={setM}
+            aoFechar={faixa.podeFechar ? () => fechar(m) : undefined}
+          />
         </div>
       )}
       {children}
@@ -73,19 +90,28 @@ export function PortaoDaMensalidade({ children }: { children: React.ReactNode })
 /// travar não precisa esperar o bloqueio para ver o QR. Depois do "Já
 /// paguei" a situação vira AGUARDANDO, a faixa perde o botão e o Pix fecha
 /// sozinho.
-function FaixaDaMensalidade({ m, texto, mostraPix, aoMudar }: {
+function FaixaDaMensalidade({ m, texto, mostraPix, aoMudar, aoFechar }: {
   m: Mensalidade; texto: string; mostraPix: boolean; aoMudar: (m: Mensalidade) => void;
+  /// Só o "vence em X dias" traz: a faixa de atraso não se fecha.
+  aoFechar?: () => void;
 }) {
   const [aberto, setAberto] = useState(false);
   return (
     <Cartao variante="dash" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Texto className="text-tinta">{texto}</Texto>
-        {mostraPix && (
-          <BotaoVazado onClick={() => setAberto((a) => !a)} aria-expanded={aberto}>
-            {aberto ? 'Fechar' : rotuloDaFaixa(m)}
-          </BotaoVazado>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {mostraPix && (
+            <BotaoVazado onClick={() => setAberto((a) => !a)} aria-expanded={aberto}>
+              {aberto ? 'Esconder' : rotuloDaFaixa(m)}
+            </BotaoVazado>
+          )}
+          {aoFechar && (
+            <BotaoVazado onClick={aoFechar} aria-label="Fechar o aviso da mensalidade">
+              Fechar
+            </BotaoVazado>
+          )}
+        </div>
       </div>
       {mostraPix && aberto && (
         <div className="mx-auto flex w-full max-w-[480px] flex-col items-center gap-3 text-center">
