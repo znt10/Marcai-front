@@ -78,6 +78,9 @@ export const MIGRADAS: readonly string[] = [
   // nenhum pedido chega ao Django, entao nem o log dele denuncia. Agora ha
   // teste que pega isso sozinho (tests/client-base.test.ts).
   '/painel/whatsapp',
+  // A mensalidade da barbearia (ver e "ja paguei"). UMA entrada cobre as duas
+  // rotas. Sem ela o pedido vai para o Next e o portao nunca ve a situacao.
+  '/painel/mensalidade',
   // Fecha a travessia — bloco C: as 3 rotas publicas que o cliente usa sem
   // sessao. '/agendamentos' e '/painel/agendamentos' se CHAMAM parecido mas
   // sao prefixos DIFERENTES (o casamento e por segmento, nao por comeco de
@@ -148,6 +151,9 @@ export function baseDe(caminho: string, migradas: readonly string[] = MIGRADAS):
   });
   return migrada ? `${origemDoTenant()}/api` : '/api';
 }
+
+/// O nome do evento que `pedir` dispara em `window` num 402 de mensalidade.
+export const MENSALIDADE_BLOQUEADA = 'mensalidade-bloqueada';
 
 export class ErroApi extends Error {
   /// `corpo` é a resposta inteira, e não só `erro`. Algumas recusas trazem
@@ -224,6 +230,12 @@ export async function pedir<T>(caminho: string, p: Pedido = {}): Promise<T> {
   // respostas que foram escritas com cuidado — inclusive a única resposta do
   // login, que existe para o formulário não enumerar a equipe.
   if (!r.ok) {
+    // A trava da mensalidade respondeu em qualquer rota do painel: avisa o
+    // portao para reler a situacao e trocar a tela, em vez de cada tela
+    // mostrar "O painel esta bloqueado" sozinha.
+    if (r.status === 402 && corpo?.code === 'mensalidade_bloqueada' && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(MENSALIDADE_BLOQUEADA));
+    }
     throw new ErroApi(r.status, corpo?.erro ?? 'Não deu certo. Tenta de novo?', corpo);
   }
 

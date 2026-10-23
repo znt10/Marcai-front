@@ -1,5 +1,6 @@
 import { pedir } from './client';
 import type { NovoAgendamento } from './publicoAPI';
+import type { Mensalidade } from '@/lib/mensalidade';
 
 /// As rotas do painel do barbeiro. Todas as de leitura passam `loginEm`:
 /// sessão morta manda para a tela de entrada em vez de deixar a tela vazia
@@ -386,5 +387,17 @@ export const whatsappApi = {
   mudarHoraDaLista: (hora: string) =>
     pedir<{ ok: true; horaDaLista: string }>('/painel/whatsapp/hora-da-lista', {
       metodo: 'POST', corpo: { hora }, loginEm: LOGIN_DO_PAINEL,
+    }),
+};
+
+/// A mensalidade da barbearia. `ver` responde para qualquer um da equipe,
+/// inclusive com o painel bloqueado; o Pix só vem para o dono. `jaPaguei` é do
+/// dono: recusa com 400 `{erro}` (a frase vai para a tela).
+export const mensalidadeApi = {
+  ver: (signal?: AbortSignal) =>
+    pedir<Mensalidade>('/painel/mensalidade', { signal, loginEm: LOGIN_DO_PAINEL }),
+  jaPaguei: () =>
+    pedir<Mensalidade>('/painel/mensalidade/ja-paguei', {
+      metodo: 'POST', loginEm: LOGIN_DO_PAINEL,
     }),
 };
