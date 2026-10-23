@@ -109,7 +109,8 @@ export const adminApi = {
   /// Pagamento recebido fora do Pix do Marcaí (dinheiro, transferência).
   registrarPagamento: (
     barbeariaId: string,
-    dados: { pagaAte: string; valorCentavos: number; observacao?: string },
+    /// Sem `pagaAte` o back avança um mês, como no Confirmar.
+    dados: { pagaAte?: string; valorCentavos: number; observacao?: string },
   ) =>
     pedir<LinhaDaMensalidade>(`/admin/mensalidades/${barbeariaId}/registrar`, {
       metodo: 'POST', corpo: dados,

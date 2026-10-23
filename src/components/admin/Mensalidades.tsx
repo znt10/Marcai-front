@@ -81,7 +81,6 @@ function Linha({ linha: l, aoMudar }: {
   const [ocupado, setOcupado] = useState(false);
   const [valor, setValor] = useState(emReais(l.valorCentavos));
   const [registrando, setRegistrando] = useState(false);
-  const [pagaAte, setPagaAte] = useState('');
   const [valorPago, setValorPago] = useState(emReais(l.valorCentavos));
   const [obs, setObs] = useState('');
   const [novaData, setNovaData] = useState(l.pagaAte ?? '');
@@ -120,11 +119,12 @@ function Linha({ linha: l, aoMudar }: {
   async function registrar() {
     const c = centavosDoTexto(valorPago);
     if (c === null || c <= 0) { setErro('Valor inválido. Use algo como 49,90.'); return; }
-    if (!pagaAte) { setErro('Escolha até que dia está pago.'); return; }
+    // Sem data: o back avança um mês, como no Confirmar. Para outra data,
+    // registra e depois ajusta no "pago até" da linha.
     const ok = await agir(() => adminApi.registrarPagamento(l.barbeariaId, {
-      pagaAte, valorCentavos: c, ...(obs.trim() && { observacao: obs.trim() }),
+      valorCentavos: c, ...(obs.trim() && { observacao: obs.trim() }),
     }));
-    if (ok) { setRegistrando(false); setPagaAte(''); setObs(''); }
+    if (ok) { setRegistrando(false); setObs(''); }
   }
 
   const inativa = !l.ativo || l.situacao === 'DESATIVADA';
@@ -190,9 +190,7 @@ function Linha({ linha: l, aoMudar }: {
 
       {registrando && (
         <div className="flex flex-wrap gap-2 items-center">
-          <label className="flex items-center gap-1"><Lbl>pago até</Lbl>
-            <input type="date" className={campo} value={pagaAte} onChange={(e) => setPagaAte(e.target.value)} />
-          </label>
+          <Lbl>avança um mês</Lbl>
           <label className="flex items-center gap-1"><Lbl>valor</Lbl>
             <input className={`${campo} w-24`} inputMode="decimal" value={valorPago}
                    onChange={(e) => setValorPago(e.target.value)} />
