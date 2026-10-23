@@ -37,6 +37,9 @@ export type Mensalidade = {
   pix: PixDaMensalidade | null;
   /// O Pix não pôde ser gerado agora.
   pixErro: string | null;
+  /// A InfinitePay está ligada: quem confirma é o aviso dela, e não há
+  /// "Já paguei" — nem quando o link não pôde ser gerado.
+  pagamentoAutomatico: boolean;
 };
 
 export type EstadoDoPortao = 'livre' | 'pagar' | 'falar-com-o-dono';
@@ -108,7 +111,7 @@ export function faixaDaMensalidade(m: Mensalidade | null): Faixa | null {
 export type JeitoDePagar =
   | { tipo: 'link'; link: string; valorCentavos: number; rotulo: string; frase: string; jaPaguei: false }
   | { tipo: 'pix'; copiaECola: string; qrSvg: string; valorCentavos: number; jaPaguei: true }
-  | { tipo: 'indisponivel'; texto: string; jaPaguei: true };
+  | { tipo: 'indisponivel'; texto: string; jaPaguei: boolean };
 
 /// O que se guarda ao fechar a faixa: o `pagaAte` do ciclo. Fechada vale só
 /// para ele — o mês seguinte traz a faixa de novo.
@@ -143,7 +146,7 @@ export function jeitoDePagar(m: Mensalidade): JeitoDePagar {
   return {
     tipo: 'indisponivel',
     texto: m.pixErro ?? 'O Pix ainda não está disponível. Fale com o Marcaí.',
-    jaPaguei: true,
+    jaPaguei: !m.pagamentoAutomatico,
   };
 }
 

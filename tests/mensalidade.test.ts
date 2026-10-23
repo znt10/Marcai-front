@@ -7,7 +7,7 @@ import {
 
 const m = (parcial: Partial<Mensalidade> = {}): Mensalidade => ({
   situacao: 'EM_DIA', dias: null, bloqueiaEm: null, pagaAte: null,
-  valorCentavos: 4900, souDono: true, pix: null, pixErro: null, ...parcial,
+  valorCentavos: 4900, souDono: true, pix: null, pixErro: null, pagamentoAutomatico: false, ...parcial,
 });
 
 describe('estadoDoPortao', () => {
@@ -121,6 +121,12 @@ describe('jeitoDePagar', () => {
   it('sem pix: o motivo e o "Já paguei" (como hoje)', () => {
     expect(jeitoDePagar(m({ pix: null, pixErro: 'Sem link agora.' }))).toEqual({
       tipo: 'indisponivel', texto: 'Sem link agora.', jaPaguei: true,
+    });
+  });
+
+  it('link que falhou com a InfinitePay ligada: o motivo e sem "Já paguei"', () => {
+    expect(jeitoDePagar(m({ pix: null, pixErro: 'Sem link agora.', pagamentoAutomatico: true }))).toEqual({
+      tipo: 'indisponivel', texto: 'Sem link agora.', jaPaguei: false,
     });
   });
 
