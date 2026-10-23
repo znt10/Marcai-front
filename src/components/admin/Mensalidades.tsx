@@ -74,6 +74,13 @@ export function Mensalidades() {
   );
 }
 
+/// "2026-10-23" do dia de hoje no fuso do aparelho — o do admin, que é o
+/// mesmo de quem recebeu o dinheiro.
+function hojeIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function Linha({ linha: l, aoMudar }: {
   linha: LinhaDaMensalidade; aoMudar: (l: LinhaDaMensalidade) => void;
 }) {
@@ -83,6 +90,7 @@ function Linha({ linha: l, aoMudar }: {
   const [registrando, setRegistrando] = useState(false);
   const [valorPago, setValorPago] = useState(emReais(l.valorCentavos));
   const [obs, setObs] = useState('');
+  const [pagoEm, setPagoEm] = useState(hojeIso());
   const [novaData, setNovaData] = useState(l.pagaAte ?? '');
 
   /// Toda ação: erro limpo, um clique por vez, linha trocada pela devolvida.
@@ -119,12 +127,12 @@ function Linha({ linha: l, aoMudar }: {
   async function registrar() {
     const c = centavosDoTexto(valorPago);
     if (c === null || c <= 0) { setErro('Valor inválido. Use algo como 49,90.'); return; }
-    // Sem data: o back avança um mês, como no Confirmar. Para outra data,
-    // registra e depois ajusta no "pago até" da linha.
+    if (!pagoEm) { setErro('Escolha o dia em que pagou.'); return; }
+    // O "pago até" sai do back, um mês adiante, como no Confirmar.
     const ok = await agir(() => adminApi.registrarPagamento(l.barbeariaId, {
-      valorCentavos: c, ...(obs.trim() && { observacao: obs.trim() }),
+      pagoEm, valorCentavos: c, ...(obs.trim() && { observacao: obs.trim() }),
     }));
-    if (ok) { setRegistrando(false); setObs(''); }
+    if (ok) { setRegistrando(false); setObs(''); setPagoEm(hojeIso()); }
   }
 
   const inativa = !l.ativo || l.situacao === 'DESATIVADA';
@@ -190,7 +198,10 @@ function Linha({ linha: l, aoMudar }: {
 
       {registrando && (
         <div className="flex flex-wrap gap-2 items-center">
-          <Lbl>avança um mês</Lbl>
+          <label className="flex items-center gap-1"><Lbl>pagou em</Lbl>
+            <input type="date" className={campo} value={pagoEm} max={hojeIso()}
+                   aria-label={`Dia em que ${l.nome} pagou`} onChange={(e) => setPagoEm(e.target.value)} />
+          </label>
           <label className="flex items-center gap-1"><Lbl>valor</Lbl>
             <input className={`${campo} w-24`} inputMode="decimal" value={valorPago}
                    onChange={(e) => setValorPago(e.target.value)} />
