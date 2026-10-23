@@ -8,7 +8,7 @@ describe('vocabulario', () => {
   it('tipo vazio ou desconhecido é a barbearia de sempre', () => {
     expect(vocabulario(undefined)).toBe(VOCABULARIO.BARBEARIA);
     expect(vocabulario(null)).toBe(VOCABULARIO.BARBEARIA);
-    expect(vocabulario('MANICURE')).toBe(VOCABULARIO.BARBEARIA);
+    expect(vocabulario('UNHAS')).toBe(VOCABULARIO.BARBEARIA);
   });
 
   it('todo tipo tem todas as palavras, e nenhuma vazia', () => {

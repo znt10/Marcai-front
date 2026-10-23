@@ -9,14 +9,15 @@ import { TIPOS, type Tipo } from './tipos';
 
 /// O nome no cartão e no título da tela de cada categoria.
 export const NOME_DA_CATEGORIA: Record<Tipo, string> = {
-  BARBEARIA: 'Barbearias', SOBRANCELHA: 'Sobrancelha', OUTRO: 'Outros',
+  BARBEARIA: 'Barbearias', SOBRANCELHA: 'Estética', MANICURE: 'Manicure',
+  MAQUIAGEM: 'Maquiagem', OUTRO: 'Outros',
 };
 
 /// O pedaço do endereço: `/admin/barbearia`, `/admin/sobrancelha`.
 export const slugDaCategoria = (tipo: Tipo) => tipo.toLowerCase();
 
 /// O contrário, para a página da categoria. `null` para o que não é tipo
-/// (`/admin/manicure`, `/admin/BARBEARIA`): a página responde 404.
+/// (`/admin/unhas`, `/admin/BARBEARIA`): a página responde 404.
 export function tipoDaCategoria(slug: string): Tipo | null {
   return TIPOS.find((t) => slugDaCategoria(t) === slug) ?? null;
 }

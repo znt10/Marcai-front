@@ -59,6 +59,8 @@ export const MIGRADAS: readonly string[] = [
   // causa. E' o mesmo esquecimento que `/painel/foto` levou na primeira
   // tentativa.
   '/painel/resumo',
+  // Os custos que o dono lanca no resumo.
+  '/painel/custos',
   '/painel/conflitos',
   '/painel/agendamentos',
   // Clientes bloqueados (spec 2026-10-13): listar e desbloquear. O bloquear
@@ -94,6 +96,11 @@ export const MIGRADAS: readonly string[] = [
   // os dois prefixos sao independentes (o casamento e por segmento), mas se
   // chamam parecido o bastante para confundir quem lê a lista com pressa.
   '/barbearia',
+  // A conta global do cliente (spec 2026-10-20). Nasceu no Django, nunca
+  // houve handler no Next. UMA entrada cobre criar, entrar, historico e o
+  // cancelar por conta ('/conta/agendamentos/...'). Sem esta linha o pedido
+  // vai para o Next, que responde 404 mudo.
+  '/conta',
 ];
 
 /// So a PORTA do Django (ou "porta:host" nao, so a porta — o host vem do

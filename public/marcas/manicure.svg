@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<defs>
+  <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#F6EBE6"/><stop offset="1" stop-color="#EEDDD6"/>
+  </linearGradient>
+  <radialGradient id="shade" cx=".15" cy=".05" r=".9">
+    <stop offset="0" stop-color="#000" stop-opacity=".07"/><stop offset=".5" stop-color="#000" stop-opacity="0"/>
+  </radialGradient>
+  <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="3" seed="4"/>
+    <feColorMatrix values="0 0 0 0 .45  0 0 0 0 .35  0 0 0 0 .32  0 0 0 1.4 -.4"/></filter>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#C98B76"/><stop offset=".35" stop-color="#B8705E"/>
+    <stop offset=".55" stop-color="#D9A493"/><stop offset=".8" stop-color="#A9604F"/>
+    <stop offset="1" stop-color="#BF7F6B"/>
+  </linearGradient>
+  <filter id="foil" x="-5%" y="-5%" width="110%" height="110%">
+    <feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="2" seed="9" result="n"/>
+    <feColorMatrix in="n" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .22 0" result="w"/>
+    <feComposite in="w" in2="SourceGraphic" operator="in" result="sp"/>
+    <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="sp"/></feMerge>
+  </filter>
+  <clipPath id="nailclip"><path d="M0 -232 C70 -220 135 -120 135 10 L135 120 C135 215 -135 215 -135 120 L-135 10 C-135 -120 -70 -220 0 -232 Z" transform="scale(.86)"/></clipPath>
+  <mask id="gap"><rect x="-600" y="-600" width="1200" height="1200" fill="#fff"/>
+    <g transform="translate(-60 40) rotate(38)"><rect x="-40" y="-420" width="80" height="840" rx="40" fill="#000"/></g>
+  </mask>
+</defs>
+
+  <rect width="1024" height="1024" fill="url(#paper)"/>
+  <rect width="1024" height="1024" filter="url(#grain)" opacity=".18"/>
+  <rect width="1024" height="1024" fill="url(#shade)"/>
+<g fill="url(#gold)" stroke="url(#gold)" filter="url(#foil)" transform="translate(560 500)">
+  <g mask="url(#gap)">
+    <!-- outer double ring -->
+    <path d="M0 -232 C70 -220 135 -120 135 10 L135 120 C135 215 -135 215 -135 120 L-135 10 C-135 -120 -70 -220 0 -232 Z" transform="scale(1.22)" fill="none" stroke-width="15"/>
+    <path d="M0 -232 C70 -220 135 -120 135 10 L135 120 C135 215 -135 215 -135 120 L-135 10 C-135 -120 -70 -220 0 -232 Z" transform="scale(1.09)" fill="none" stroke-width="5"/>
+    <!-- nail plate -->
+    <path d="M0 -232 C70 -220 135 -120 135 10 L135 120 C135 215 -135 215 -135 120 L-135 10 C-135 -120 -70 -220 0 -232 Z" transform="scale(.86)" fill="none" stroke-width="8"/>
+    <!-- polish (lower part) -->
+    <g clip-path="url(#nailclip)">
+      <path d="M-200 30 C-80 -10 60 70 200 10 L200 300 L-200 300 Z" stroke="none"/>
+      <path d="M-200 30 C-80 -10 60 70 200 10" fill="none" stroke="#F2E4DE" stroke-width="9"/>
+    </g>
+    <!-- shine -->
+    <path d="M-62 -125 C-78 -95 -86 -60 -86 -25" fill="none" stroke-width="9" stroke-linecap="round"/>
+    <path d="M-42 -152 C-48 -145 -53 -137 -57 -128" fill="none" stroke-width="9" stroke-linecap="round"/>
+  </g>
+  <!-- polish brush (cap + stem + flat bristles) -->
+  <g transform="translate(-60 40) rotate(38)">
+    <path d="M-11 -288 C-24 -315 -32 -350 -26 -380 Q0 -400 26 -380 C32 -350 24 -315 11 -288 Z" stroke="none"/>
+    <path d="M-4 -300 L-16 -372 M0 -300 L0 -382 M4 -300 L16 -372" fill="none" stroke="#F2E4DE" stroke-width="3.5" stroke-linecap="round"/>
+    <rect x="-7" y="-290" width="14" height="120" rx="4" stroke="none"/>
+    <path d="M-30 -170 L30 -170 L36 -140 L-36 -140 Z" stroke="none"/>
+    <path d="M-36 -132 L36 -132 L36 330 Q36 362 0 362 Q-36 362 -36 330 Z" stroke="none"/>
+    <path d="M-36 -100 L36 -100 M-36 -84 L36 -84" fill="none" stroke="#F2E4DE" stroke-width="6"/>
+    <path d="M-20 -60 L-20 300" fill="none" stroke="#F2E4DE" stroke-width="6" stroke-linecap="round" opacity=".55"/>
+  </g>
+  <!-- sparkle -->
+  <path d="M215 -235 Q219 -207 245 -203 Q219 -199 215 -171 Q211 -199 185 -203 Q211 -207 215 -235 Z" stroke="none"/>
+  <path d="M255 -150 Q257 -137 270 -135 Q257 -133 255 -120 Q253 -133 240 -135 Q253 -137 255 -150 Z" stroke="none"/>
+</g>
+</svg>
