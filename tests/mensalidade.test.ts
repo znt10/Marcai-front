@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  chaveDaFaixaFechada, estadoDoPortao, faixaDaMensalidade, faixaFechada, jeitoDePagar,
+  aindaRecolhida, estadoDoPortao, faixaDaMensalidade, jeitoDePagar,
   rotuloDaFaixa,
   type Mensalidade, type SituacaoDaMensalidade,
 } from '../src/lib/mensalidade';
@@ -32,33 +32,33 @@ describe('estadoDoPortao', () => {
 describe('faixaDaMensalidade', () => {
   it('VENCENDO: hoje, amanhã e em N dias', () => {
     expect(faixaDaMensalidade(m({ situacao: 'VENCENDO', dias: 0 })))
-      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 vence hoje.', mostraPix: true, podeFechar: true });
+      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 vence hoje.', mostraPix: true, podeRecolher: true });
     expect(faixaDaMensalidade(m({ situacao: 'VENCENDO', dias: 1 })))
-      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 vence amanhã.', mostraPix: true, podeFechar: true });
+      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 vence amanhã.', mostraPix: true, podeRecolher: true });
     expect(faixaDaMensalidade(m({ situacao: 'VENCENDO', dias: 4 })))
-      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 vence em 4 dias.', mostraPix: true, podeFechar: true });
+      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 vence em 4 dias.', mostraPix: true, podeRecolher: true });
   });
 
   it('ATRASADA: singular, plural e a data do bloqueio em dd/mm', () => {
     expect(faixaDaMensalidade(m({ situacao: 'ATRASADA', dias: 1, bloqueiaEm: '2026-10-05' })))
-      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 está vencida há 1 dia. O painel é bloqueado em 05/10.', mostraPix: true, podeFechar: false });
+      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 está vencida há 1 dia. O painel é bloqueado em 05/10.', mostraPix: true, podeRecolher: false });
     expect(faixaDaMensalidade(m({ situacao: 'ATRASADA', dias: 3, bloqueiaEm: '2026-12-31' })))
-      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 está vencida há 3 dias. O painel é bloqueado em 31/12.', mostraPix: true, podeFechar: false });
+      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 está vencida há 3 dias. O painel é bloqueado em 31/12.', mostraPix: true, podeRecolher: false });
   });
 
   it('ATRASADA sem data de bloqueio não promete bloqueio', () => {
     expect(faixaDaMensalidade(m({ situacao: 'ATRASADA', dias: 2, bloqueiaEm: null })))
-      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 está vencida há 2 dias.', mostraPix: true, podeFechar: false });
+      .toEqual({ texto: 'Sua mensalidade de R$ 49,00 está vencida há 2 dias.', mostraPix: true, podeRecolher: false });
   });
 
   it('sem valor, a frase não inventa um', () => {
     expect(faixaDaMensalidade(m({ situacao: 'VENCENDO', dias: 2, valorCentavos: null })))
-      .toEqual({ texto: 'Sua mensalidade vence em 2 dias.', mostraPix: true, podeFechar: true });
+      .toEqual({ texto: 'Sua mensalidade vence em 2 dias.', mostraPix: true, podeRecolher: true });
   });
 
   it('AGUARDANDO: aguardando confirmação', () => {
     expect(faixaDaMensalidade(m({ situacao: 'AGUARDANDO' })))
-      .toEqual({ texto: 'Pagamento informado, aguardando confirmação.', mostraPix: false, podeFechar: false });
+      .toEqual({ texto: 'Pagamento informado, aguardando confirmação.', mostraPix: false, podeRecolher: false });
   });
 
   it.each<SituacaoDaMensalidade>(['EM_DIA', 'ISENTA', 'DESATIVADA', 'BLOQUEADA'])(
@@ -137,17 +137,24 @@ describe('jeitoDePagar', () => {
   });
 });
 
-describe('faixa fechada', () => {
-  it('fechar vale para o ciclo: o mesmo pagaAte fica fechado, um novo volta a mostrar', () => {
-    const vencendo = m({ situacao: 'VENCENDO', dias: 2, pagaAte: '2026-10-25' });
-    expect(chaveDaFaixaFechada(vencendo)).toBe('2026-10-25');
-    expect(faixaFechada(vencendo, '2026-10-25')).toBe(true);
-    expect(faixaFechada(vencendo, '2026-09-25')).toBe(false);
-    expect(faixaFechada(vencendo, null)).toBe(false);
+describe('faixa recolhida', () => {
+  const vencendo = m({ situacao: 'VENCENDO', dias: 0, pagaAte: '2026-10-25' });
+  const H = 60 * 60 * 1000;
+  const agora = Date.UTC(2026, 9, 25, 12);
+
+  it('recolhida fica recolhida por 24 horas e depois volta aberta', () => {
+    expect(aindaRecolhida(vencendo, agora - 1 * H, agora)).toBe(true);
+    expect(aindaRecolhida(vencendo, agora - 23 * H, agora)).toBe(true);
+    expect(aindaRecolhida(vencendo, agora - 24 * H, agora)).toBe(false);
+    expect(aindaRecolhida(vencendo, null, agora)).toBe(false);
   });
 
-  it('atrasada nunca fica fechada, mesmo com o ciclo marcado', () => {
-    const atrasada = m({ situacao: 'ATRASADA', dias: 1, pagaAte: '2026-10-25', bloqueiaEm: '2026-10-30' });
-    expect(faixaFechada(atrasada, '2026-10-25')).toBe(false);
+  it('atrasada nunca fica recolhida', () => {
+    const atrasada = m({ situacao: 'ATRASADA', dias: 1, bloqueiaEm: '2026-10-30' });
+    expect(aindaRecolhida(atrasada, agora - H, agora)).toBe(false);
+  });
+
+  it('um recolhimento do futuro (relógio mexido) não segura a faixa', () => {
+    expect(aindaRecolhida(vencendo, agora + H, agora)).toBe(false);
   });
 });

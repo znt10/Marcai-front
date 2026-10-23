@@ -6,11 +6,12 @@ import {
   ErroApi, MENSALIDADE_BLOQUEADA, ignorarAborto, mensalidadeApi, mensagemDoErro,
 } from '@/lib/api';
 import {
-  chaveDaFaixaFechada, estadoDoPortao, faixaDaMensalidade, faixaFechada, jeitoDePagar, reais,
-  rotuloDaFaixa, type Mensalidade,
+  aindaRecolhida, estadoDoPortao, faixaDaMensalidade, jeitoDePagar, reais, rotuloDaFaixa,
+  type Mensalidade,
 } from '@/lib/mensalidade';
-
-const CHAVE_FAIXA_FECHADA = 'marcai:faixa-da-mensalidade-fechada';
+import {
+  carregarRecolhida, definirRecolhivel, recolher, useAvisoDaMensalidade,
+} from '@/components/painel/avisoDaMensalidade';
 
 /// Entre a barra do topo e as telas do painel (ver `layout.tsx`).
 ///
@@ -24,17 +25,9 @@ const CHAVE_FAIXA_FECHADA = 'marcai:faixa-da-mensalidade-fechada';
 export function PortaoDaMensalidade({ children }: { children: React.ReactNode }) {
   const naEntrada = usePathname() === '/painel/login';
   const [m, setM] = useState<Mensalidade | null>(null);
-  // Lido em efeito: o servidor não tem localStorage. Fechar é conveniência do
-  // aparelho; sem localStorage (aba anônima) a faixa só volta ao recarregar.
-  const [fechada, setFechada] = useState<string | null>(null);
-  useEffect(() => {
-    try { setFechada(localStorage.getItem(CHAVE_FAIXA_FECHADA)); } catch { /* sem storage */ }
-  }, []);
-  const fechar = (atual: Mensalidade) => {
-    const chave = chaveDaFaixaFechada(atual);
-    setFechada(chave);
-    try { localStorage.setItem(CHAVE_FAIXA_FECHADA, chave); } catch { /* sem storage */ }
-  };
+  // Lido em efeito: o servidor não tem localStorage.
+  const { recolhidaEm } = useAvisoDaMensalidade();
+  useEffect(() => { carregarRecolhida(); }, []);
 
   const ler = useCallback((signal?: AbortSignal) =>
     mensalidadeApi.ver(signal).then(setM).catch(ignorarAborto).catch(() => {}), []);
@@ -70,13 +63,16 @@ export function PortaoDaMensalidade({ children }: { children: React.ReactNode })
   }
 
   const faixa = faixaDaMensalidade(m);
+  const recolhivel = !!faixa?.podeRecolher;
+  const recolhida = !!m && aindaRecolhida(m, recolhidaEm, Date.now());
   return (
     <>
-      {faixa && m && !faixaFechada(m, fechada) && (
+      <AvisaARecolhivel recolhivel={recolhivel} />
+      {faixa && m && !recolhida && (
         <div className="mx-auto max-w-[1440px] px-4 pt-4 md:px-10">
           <FaixaDaMensalidade
             m={m} texto={faixa.texto} mostraPix={faixa.mostraPix} aoMudar={setM}
-            aoFechar={faixa.podeFechar ? () => fechar(m) : undefined}
+            aoRecolher={recolhivel ? recolher : undefined}
           />
         </div>
       )}
@@ -90,10 +86,18 @@ export function PortaoDaMensalidade({ children }: { children: React.ReactNode })
 /// travar não precisa esperar o bloqueio para ver o QR. Depois do "Já
 /// paguei" a situação vira AGUARDANDO, a faixa perde o botão e o Pix fecha
 /// sozinho.
-function FaixaDaMensalidade({ m, texto, mostraPix, aoMudar, aoFechar }: {
+/// Conta à barra de cima se a faixa de agora se recolhe — é ela que mostra o
+/// botão de reabrir. Efeito, e não render, porque muda estado de fora.
+function AvisaARecolhivel({ recolhivel }: { recolhivel: boolean }) {
+  useEffect(() => { definirRecolhivel(recolhivel); }, [recolhivel]);
+  useEffect(() => () => definirRecolhivel(false), []);
+  return null;
+}
+
+function FaixaDaMensalidade({ m, texto, mostraPix, aoMudar, aoRecolher }: {
   m: Mensalidade; texto: string; mostraPix: boolean; aoMudar: (m: Mensalidade) => void;
-  /// Só o "vence em X dias" traz: a faixa de atraso não se fecha.
-  aoFechar?: () => void;
+  /// Só o "vence em X dias" traz: a faixa de atraso não se recolhe.
+  aoRecolher?: () => void;
 }) {
   const [aberto, setAberto] = useState(false);
   return (
@@ -106,9 +110,9 @@ function FaixaDaMensalidade({ m, texto, mostraPix, aoMudar, aoFechar }: {
               {aberto ? 'Esconder' : rotuloDaFaixa(m)}
             </BotaoVazado>
           )}
-          {aoFechar && (
-            <BotaoVazado onClick={aoFechar} aria-label="Fechar o aviso da mensalidade">
-              Fechar
+          {aoRecolher && (
+            <BotaoVazado onClick={aoRecolher} aria-label="Recolher o aviso da mensalidade para a barra de cima">
+              Recolher
             </BotaoVazado>
           )}
         </div>
