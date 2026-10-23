@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  estadoDoPortao, faixaDaMensalidade, type Mensalidade, type SituacaoDaMensalidade,
+  estadoDoPortao, faixaDaMensalidade, jeitoDePagar, rotuloDaFaixa,
+  type Mensalidade, type SituacaoDaMensalidade,
 } from '../src/lib/mensalidade';
 
 const m = (parcial: Partial<Mensalidade> = {}): Mensalidade => ({
@@ -80,5 +81,51 @@ describe('faixaDaMensalidade', () => {
     for (const situacao of ['VENCENDO', 'ATRASADA', 'AGUARDANDO'] as const) {
       expect(faixaDaMensalidade(m({ situacao, dias: 2, souDono: false }))).toBeNull();
     }
+  });
+});
+
+describe('jeitoDePagar', () => {
+  const pixEstatico = {
+    copiaECola: '000201...', qrSvg: 'data:image/svg+xml;base64,x', valorCentavos: 4901,
+    link: null, automatico: false,
+  };
+  const pelaInfinitePay = {
+    copiaECola: null, qrSvg: null, valorCentavos: 4900,
+    link: 'https://checkout.infinitepay.io/x', automatico: true,
+  };
+
+  it('com link: botão que abre o link, a frase e sem "Já paguei"', () => {
+    const j = jeitoDePagar(m({ pix: pelaInfinitePay }));
+    expect(j).toEqual({
+      tipo: 'link',
+      link: 'https://checkout.infinitepay.io/x',
+      valorCentavos: 4900,
+      rotulo: 'Pagar mensalidade',
+      frase: 'Pix ou cartão. Assim que o pagamento cair, o painel libera sozinho.',
+      jaPaguei: false,
+    });
+  });
+
+  it('sem link: QR, copia e cola e "Já paguei" como sempre', () => {
+    const j = jeitoDePagar(m({ pix: pixEstatico }));
+    expect(j).toEqual({
+      tipo: 'pix',
+      copiaECola: '000201...',
+      qrSvg: 'data:image/svg+xml;base64,x',
+      valorCentavos: 4901,
+      jaPaguei: true,
+    });
+  });
+
+  it('sem pix: o motivo e o "Já paguei" (como hoje)', () => {
+    expect(jeitoDePagar(m({ pix: null, pixErro: 'Sem link agora.' }))).toEqual({
+      tipo: 'indisponivel', texto: 'Sem link agora.', jaPaguei: true,
+    });
+  });
+
+  it('o botão da faixa diz "Pagar mensalidade" quando é pelo link', () => {
+    expect(rotuloDaFaixa(m({ pix: pelaInfinitePay }))).toBe('Pagar mensalidade');
+    expect(rotuloDaFaixa(m({ pix: pixEstatico }))).toBe('Pagar com Pix');
+    expect(rotuloDaFaixa(m({ pix: null }))).toBe('Pagar com Pix');
   });
 });

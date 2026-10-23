@@ -6,7 +6,7 @@ import {
   ErroApi, MENSALIDADE_BLOQUEADA, ignorarAborto, mensalidadeApi, mensagemDoErro,
 } from '@/lib/api';
 import {
-  estadoDoPortao, faixaDaMensalidade, reais, type Mensalidade,
+  estadoDoPortao, faixaDaMensalidade, jeitoDePagar, reais, rotuloDaFaixa, type Mensalidade,
 } from '@/lib/mensalidade';
 
 /// Entre a barra do topo e as telas do painel (ver `layout.tsx`).
@@ -83,7 +83,7 @@ function FaixaDaMensalidade({ m, texto, mostraPix, aoMudar }: {
         <Texto className="text-tinta">{texto}</Texto>
         {mostraPix && (
           <BotaoVazado onClick={() => setAberto((a) => !a)} aria-expanded={aberto}>
-            {aberto ? 'Fechar' : 'Pagar com Pix'}
+            {aberto ? 'Fechar' : rotuloDaFaixa(m)}
           </BotaoVazado>
         )}
       </div>
@@ -112,19 +112,20 @@ function TelaDePagamento({ m, aoMudar }: { m: Mensalidade; aoMudar: (m: Mensalid
   );
 }
 
-/// O pagamento em si, o mesmo na tela de bloqueio e na faixa: o valor com os
-/// centavos próprios (é por eles que o Pix é reconhecido), o QR, o copia e
-/// cola e o "Já paguei".
+/// O pagamento em si, o mesmo na tela de bloqueio e na faixa. Pelo Pix
+/// estático: o valor com os centavos próprios (é por eles que o Pix é
+/// reconhecido), o QR, o copia e cola e o "Já paguei". Pela InfinitePay: o
+/// valor e o botão que abre o link numa aba nova.
 function PagamentoPix({ m, aoMudar }: { m: Mensalidade; aoMudar: (m: Mensalidade) => void }) {
   const [copiado, setCopiado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
-  const pix = m.pix;
+  const jeito = jeitoDePagar(m);
 
   async function copiar() {
-    if (!pix) return;
+    if (jeito.tipo !== 'pix') return;
     try {
-      await navigator.clipboard.writeText(pix.copiaECola);
+      await navigator.clipboard.writeText(jeito.copiaECola);
       setCopiado(true);
     } catch {
       setCopiado(false);
@@ -146,18 +147,37 @@ function PagamentoPix({ m, aoMudar }: { m: Mensalidade; aoMudar: (m: Mensalidade
 
   return (
     <>
-      {pix ? (
+      {jeito.tipo === 'link' && (
         <>
           <p className="text-[22px] font-bold text-tinta tabular-nums md:text-[26px]">
-            {reais(pix.valorCentavos)}
+            {reais(jeito.valorCentavos)}
+          </p>
+          <a
+            href={jeito.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            // O mesmo desenho do `BotaoCheio`, mas é link: abre o checkout.
+            className="w-full rounded-[11px] bg-acento px-6 py-[15px] text-center text-[14.5px]
+                       font-bold text-no-acento transition-opacity hover:opacity-90
+                       md:rounded-[13px] md:px-7 md:py-[17px] md:text-[16px]"
+          >
+            {jeito.rotulo}
+          </a>
+          <Texto>{jeito.frase}</Texto>
+        </>
+      )}
+      {jeito.tipo === 'pix' && (
+        <>
+          <p className="text-[22px] font-bold text-tinta tabular-nums md:text-[26px]">
+            {reais(jeito.valorCentavos)}
           </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={pix.qrSvg} alt={`QR Code Pix de ${reais(pix.valorCentavos)}`}
+          <img src={jeito.qrSvg} alt={`QR Code Pix de ${reais(jeito.valorCentavos)}`}
                className="size-[220px] rounded-[10px] bg-white p-2" />
           <div className="flex w-full gap-2">
             <input
               readOnly
-              value={pix.copiaECola}
+              value={jeito.copiaECola}
               aria-label="Pix copia e cola"
               onFocus={(e) => e.target.select()}
               className="min-w-0 flex-1 rounded-[10px] border border-borda bg-superficie2
@@ -166,12 +186,13 @@ function PagamentoPix({ m, aoMudar }: { m: Mensalidade; aoMudar: (m: Mensalidade
             <BotaoVazado onClick={copiar}>{copiado ? 'Copiado' : 'Copiar'}</BotaoVazado>
           </div>
         </>
-      ) : (
-        <Texto>{m.pixErro ?? 'O Pix ainda não está disponível. Fale com o Marcaí.'}</Texto>
       )}
-      <BotaoCheio largura="cheia" onClick={jaPaguei} disabled={enviando}>
-        {enviando ? 'Avisando...' : 'Já paguei'}
-      </BotaoCheio>
+      {jeito.tipo === 'indisponivel' && <Texto>{jeito.texto}</Texto>}
+      {jeito.jaPaguei && (
+        <BotaoCheio largura="cheia" onClick={jaPaguei} disabled={enviando}>
+          {enviando ? 'Avisando...' : 'Já paguei'}
+        </BotaoCheio>
+      )}
       {erro && <Texto className="text-acento">{erro}</Texto>}
     </>
   );

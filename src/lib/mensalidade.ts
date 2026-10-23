@@ -10,12 +10,18 @@ export type SituacaoDaMensalidade =
   | 'VENCENDO' | 'ATRASADA' | 'BLOQUEADA';
 
 export type PixDaMensalidade = {
-  copiaECola: string;
-  /// Data URI de SVG: vai direto em `<img src>`.
-  qrSvg: string;
+  /// `null` quando a cobrança é pelo link da InfinitePay.
+  copiaECola: string | null;
+  /// Data URI de SVG: vai direto em `<img src>`. `null` com a InfinitePay.
+  qrSvg: string | null;
   /// O valor COM os centavos próprios da cobrança, que é o que o banco vai
   /// receber e o que a tela tem de mostrar — não o valor base da assinatura.
+  /// Pela InfinitePay é o valor redondo.
   valorCentavos: number;
+  /// O link do checkout da InfinitePay (Pix ou cartão).
+  link: string | null;
+  /// O pagamento se confirma sozinho: sem "Já paguei".
+  automatico: boolean;
 };
 
 export type Mensalidade = {
@@ -95,3 +101,38 @@ export function faixaDaMensalidade(m: Mensalidade | null): Faixa | null {
       return null;
   }
 }
+
+export type JeitoDePagar =
+  | { tipo: 'link'; link: string; valorCentavos: number; rotulo: string; frase: string; jaPaguei: false }
+  | { tipo: 'pix'; copiaECola: string; qrSvg: string; valorCentavos: number; jaPaguei: true }
+  | { tipo: 'indisponivel'; texto: string; jaPaguei: true };
+
+/// O bloco de pagamento, o mesmo na tela de bloqueio e na faixa. Pela
+/// InfinitePay é só o botão do link: o aviso dela confirma sozinho, e um
+/// "Já paguei" ali só seguraria o painel à toa.
+export function jeitoDePagar(m: Mensalidade): JeitoDePagar {
+  const pix = m.pix;
+  if (pix?.link) {
+    return {
+      tipo: 'link', link: pix.link, valorCentavos: pix.valorCentavos,
+      rotulo: 'Pagar mensalidade',
+      frase: 'Pix ou cartão. Assim que o pagamento cair, o painel libera sozinho.',
+      jaPaguei: false,
+    };
+  }
+  if (pix?.copiaECola && pix.qrSvg) {
+    return {
+      tipo: 'pix', copiaECola: pix.copiaECola, qrSvg: pix.qrSvg,
+      valorCentavos: pix.valorCentavos, jaPaguei: true,
+    };
+  }
+  return {
+    tipo: 'indisponivel',
+    texto: m.pixErro ?? 'O Pix ainda não está disponível. Fale com o Marcaí.',
+    jaPaguei: true,
+  };
+}
+
+/// O botão da faixa que abre o pagamento.
+export const rotuloDaFaixa = (m: Mensalidade): string =>
+  m.pix?.link ? 'Pagar mensalidade' : 'Pagar com Pix';
