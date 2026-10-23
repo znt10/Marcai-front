@@ -6,8 +6,12 @@ import {
   ErroApi, MENSALIDADE_BLOQUEADA, ignorarAborto, mensalidadeApi, mensagemDoErro,
 } from '@/lib/api';
 import {
-  estadoDoPortao, faixaDaMensalidade, reais, type Mensalidade,
+  aindaRecolhida, estadoDoPortao, faixaDaMensalidade, jeitoDePagar, reais, rotuloDaFaixa,
+  type Mensalidade,
 } from '@/lib/mensalidade';
+import {
+  carregarRecolhida, definirRecolhivel, recolher, useAvisoDaMensalidade,
+} from '@/components/painel/avisoDaMensalidade';
 
 /// Entre a barra do topo e as telas do painel (ver `layout.tsx`).
 ///
@@ -21,6 +25,9 @@ import {
 export function PortaoDaMensalidade({ children }: { children: React.ReactNode }) {
   const naEntrada = usePathname() === '/painel/login';
   const [m, setM] = useState<Mensalidade | null>(null);
+  // Lido em efeito: o servidor não tem localStorage.
+  const { recolhidaEm } = useAvisoDaMensalidade();
+  useEffect(() => { carregarRecolhida(); }, []);
 
   const ler = useCallback((signal?: AbortSignal) =>
     mensalidadeApi.ver(signal).then(setM).catch(ignorarAborto).catch(() => {}), []);
@@ -56,11 +63,17 @@ export function PortaoDaMensalidade({ children }: { children: React.ReactNode })
   }
 
   const faixa = faixaDaMensalidade(m);
+  const recolhivel = !!faixa?.podeRecolher;
+  const recolhida = !!m && aindaRecolhida(m, recolhidaEm, Date.now());
   return (
     <>
-      {faixa && m && (
+      <AvisaARecolhivel recolhivel={recolhivel} />
+      {faixa && m && !recolhida && (
         <div className="mx-auto max-w-[1440px] px-4 pt-4 md:px-10">
-          <FaixaDaMensalidade m={m} texto={faixa.texto} mostraPix={faixa.mostraPix} aoMudar={setM} />
+          <FaixaDaMensalidade
+            m={m} texto={faixa.texto} mostraPix={faixa.mostraPix} aoMudar={setM}
+            aoRecolher={recolhivel ? recolher : undefined}
+          />
         </div>
       )}
       {children}
@@ -73,19 +86,36 @@ export function PortaoDaMensalidade({ children }: { children: React.ReactNode })
 /// travar não precisa esperar o bloqueio para ver o QR. Depois do "Já
 /// paguei" a situação vira AGUARDANDO, a faixa perde o botão e o Pix fecha
 /// sozinho.
-function FaixaDaMensalidade({ m, texto, mostraPix, aoMudar }: {
+/// Conta à barra de cima se a faixa de agora se recolhe — é ela que mostra o
+/// botão de reabrir. Efeito, e não render, porque muda estado de fora.
+function AvisaARecolhivel({ recolhivel }: { recolhivel: boolean }) {
+  useEffect(() => { definirRecolhivel(recolhivel); }, [recolhivel]);
+  useEffect(() => () => definirRecolhivel(false), []);
+  return null;
+}
+
+function FaixaDaMensalidade({ m, texto, mostraPix, aoMudar, aoRecolher }: {
   m: Mensalidade; texto: string; mostraPix: boolean; aoMudar: (m: Mensalidade) => void;
+  /// Só o "vence em X dias" traz: a faixa de atraso não se recolhe.
+  aoRecolher?: () => void;
 }) {
   const [aberto, setAberto] = useState(false);
   return (
     <Cartao variante="dash" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Texto className="text-tinta">{texto}</Texto>
-        {mostraPix && (
-          <BotaoVazado onClick={() => setAberto((a) => !a)} aria-expanded={aberto}>
-            {aberto ? 'Fechar' : 'Pagar com Pix'}
-          </BotaoVazado>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {mostraPix && (
+            <BotaoVazado onClick={() => setAberto((a) => !a)} aria-expanded={aberto}>
+              {aberto ? 'Esconder' : rotuloDaFaixa(m)}
+            </BotaoVazado>
+          )}
+          {aoRecolher && (
+            <BotaoVazado onClick={aoRecolher} aria-label="Recolher o aviso da mensalidade para a barra de cima">
+              Recolher
+            </BotaoVazado>
+          )}
+        </div>
       </div>
       {mostraPix && aberto && (
         <div className="mx-auto flex w-full max-w-[480px] flex-col items-center gap-3 text-center">
@@ -112,19 +142,20 @@ function TelaDePagamento({ m, aoMudar }: { m: Mensalidade; aoMudar: (m: Mensalid
   );
 }
 
-/// O pagamento em si, o mesmo na tela de bloqueio e na faixa: o valor com os
-/// centavos próprios (é por eles que o Pix é reconhecido), o QR, o copia e
-/// cola e o "Já paguei".
+/// O pagamento em si, o mesmo na tela de bloqueio e na faixa. Pelo Pix
+/// estático: o valor com os centavos próprios (é por eles que o Pix é
+/// reconhecido), o QR, o copia e cola e o "Já paguei". Pela InfinitePay: o
+/// valor e o botão que abre o link numa aba nova.
 function PagamentoPix({ m, aoMudar }: { m: Mensalidade; aoMudar: (m: Mensalidade) => void }) {
   const [copiado, setCopiado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
-  const pix = m.pix;
+  const jeito = jeitoDePagar(m);
 
   async function copiar() {
-    if (!pix) return;
+    if (jeito.tipo !== 'pix') return;
     try {
-      await navigator.clipboard.writeText(pix.copiaECola);
+      await navigator.clipboard.writeText(jeito.copiaECola);
       setCopiado(true);
     } catch {
       setCopiado(false);
@@ -146,18 +177,37 @@ function PagamentoPix({ m, aoMudar }: { m: Mensalidade; aoMudar: (m: Mensalidade
 
   return (
     <>
-      {pix ? (
+      {jeito.tipo === 'link' && (
         <>
           <p className="text-[22px] font-bold text-tinta tabular-nums md:text-[26px]">
-            {reais(pix.valorCentavos)}
+            {reais(jeito.valorCentavos)}
+          </p>
+          <a
+            href={jeito.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            // O mesmo desenho do `BotaoCheio`, mas é link: abre o checkout.
+            className="w-full rounded-[11px] bg-acento px-6 py-[15px] text-center text-[14.5px]
+                       font-bold text-no-acento transition-opacity hover:opacity-90
+                       md:rounded-[13px] md:px-7 md:py-[17px] md:text-[16px]"
+          >
+            {jeito.rotulo}
+          </a>
+          <Texto>{jeito.frase}</Texto>
+        </>
+      )}
+      {jeito.tipo === 'pix' && (
+        <>
+          <p className="text-[22px] font-bold text-tinta tabular-nums md:text-[26px]">
+            {reais(jeito.valorCentavos)}
           </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={pix.qrSvg} alt={`QR Code Pix de ${reais(pix.valorCentavos)}`}
+          <img src={jeito.qrSvg} alt={`QR Code Pix de ${reais(jeito.valorCentavos)}`}
                className="size-[220px] rounded-[10px] bg-white p-2" />
           <div className="flex w-full gap-2">
             <input
               readOnly
-              value={pix.copiaECola}
+              value={jeito.copiaECola}
               aria-label="Pix copia e cola"
               onFocus={(e) => e.target.select()}
               className="min-w-0 flex-1 rounded-[10px] border border-borda bg-superficie2
@@ -166,12 +216,13 @@ function PagamentoPix({ m, aoMudar }: { m: Mensalidade; aoMudar: (m: Mensalidade
             <BotaoVazado onClick={copiar}>{copiado ? 'Copiado' : 'Copiar'}</BotaoVazado>
           </div>
         </>
-      ) : (
-        <Texto>{m.pixErro ?? 'O Pix ainda não está disponível. Fale com o Marcaí.'}</Texto>
       )}
-      <BotaoCheio largura="cheia" onClick={jaPaguei} disabled={enviando}>
-        {enviando ? 'Avisando...' : 'Já paguei'}
-      </BotaoCheio>
+      {jeito.tipo === 'indisponivel' && <Texto>{jeito.texto}</Texto>}
+      {jeito.jaPaguei && (
+        <BotaoCheio largura="cheia" onClick={jaPaguei} disabled={enviando}>
+          {enviando ? 'Avisando...' : 'Já paguei'}
+        </BotaoCheio>
+      )}
       {erro && <Texto className="text-acento">{erro}</Texto>}
     </>
   );
