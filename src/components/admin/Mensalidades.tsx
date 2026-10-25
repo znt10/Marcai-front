@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Box, Chip, Lbl, Sub } from '@/components/wf';
 import {
   adminApi, mensagemDoErro, type LinhaDaMensalidade,
@@ -84,6 +85,7 @@ function hojeIso(): string {
 function Linha({ linha: l, aoMudar }: {
   linha: LinhaDaMensalidade; aoMudar: (l: LinhaDaMensalidade) => void;
 }) {
+  const router = useRouter();
   const [erro, setErro] = useState('');
   const [ocupado, setOcupado] = useState(false);
   const [valor, setValor] = useState(emReais(l.valorCentavos));
@@ -184,6 +186,7 @@ function Linha({ linha: l, aoMudar }: {
           Nunca bloquear
         </Chip>
         <Chip ativo={registrando} onClick={() => setRegistrando((v) => !v)}>Registrar pagamento</Chip>
+        <Chip onClick={() => router.push(`/admin/mensalidades/${l.barbeariaId}`)}>Histórico</Chip>
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">

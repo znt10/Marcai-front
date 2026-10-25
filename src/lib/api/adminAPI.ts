@@ -46,6 +46,25 @@ export type WhatsappCentral = {
 /// Uma linha da tela de mensalidades: a barbearia e como ela está com a
 /// assinatura. Tudo vem calculado do back (`dias` é de atraso em ATRASADA e
 /// BLOQUEADA, e o que falta em EM_DIA e VENCENDO).
+export type PagamentoDoHistorico = {
+  id: string;
+  /// Dia e hora do pagamento (ISO).
+  pagaEm: string | null;
+  /// Quando foi lançado no sistema (ISO).
+  registradaEm: string;
+  valorCentavos: number;
+  como: string | null;
+  pagaAteDepois: string | null;
+  observacao: string;
+  /// Quem apertou "Já paguei", quando houve aviso.
+  avisadoPor: string | null;
+};
+
+export type HistoricoDaMensalidade = {
+  barbearia: { id: string; nome: string; tipo?: Tipo };
+  pagamentos: PagamentoDoHistorico[];
+};
+
 export type LinhaDaMensalidade = {
   barbeariaId: string; nome: string; tipo?: Tipo; ativo: boolean;
   situacao: SituacaoDaMensalidade;
@@ -122,4 +141,13 @@ export const adminApi = {
 
   recusarCobranca: (cobrancaId: string) =>
     pedir<LinhaDaMensalidade>(`/admin/cobrancas/${cobrancaId}/recusar`, { metodo: 'POST' }),
+
+  historicoDaMensalidade: (barbeariaId: string, signal?: AbortSignal) =>
+    pedir<HistoricoDaMensalidade>(`/admin/mensalidades/${barbeariaId}/historico`, {
+      signal, loginEm: LOGIN_DO_ADMIN,
+    }),
+
+  /// Tira do histórico; o "pago até" não muda. Devolve o histórico já sem ele.
+  removerPagamento: (cobrancaId: string) =>
+    pedir<HistoricoDaMensalidade>(`/admin/cobrancas/${cobrancaId}/remover`, { metodo: 'POST' }),
 };

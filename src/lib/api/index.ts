@@ -26,6 +26,7 @@ export { adminApi, LOGIN_DO_ADMIN } from './adminAPI';
 export type {
   BarbeariaDaLista, NovaBarbearia, Plano, WhatsappCentral,
   LinhaDaMensalidade, MensalidadesDoAdmin, CamposDaMensalidade,
+  PagamentoDoHistorico, HistoricoDaMensalidade,
 } from './adminAPI';
 
 export { contaApi } from './contaAPI';
