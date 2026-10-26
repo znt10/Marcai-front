@@ -56,7 +56,7 @@ export default async function Agendar({
       </header>
 
       <main className="mx-auto max-w-[1100px] px-[18px] pt-[18px] pb-8 sm:px-7 md:px-10 md:pt-8">
-        <FormAgendamento inicial={{ barbeiroId, servicoId, inicio }} />
+        <FormAgendamento inicial={{ barbeiroId, servicoId, inicio }} whatsappAoCliente={b.whatsappAoCliente !== false} />
       </main>
     </div>
   );

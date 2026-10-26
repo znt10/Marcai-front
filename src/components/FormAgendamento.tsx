@@ -29,7 +29,7 @@ const diaLocalDe = (iso: string) => {
 /// O que o calendário devolve na volta (`/?barbeiroId=…&servicoId=…&inicio=…`).
 type Inicial = { barbeiroId?: string; servicoId?: string; inicio?: string };
 
-export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
+export function FormAgendamento({ inicial = {}, whatsappAoCliente = true }: { inicial?: Inicial; whatsappAoCliente?: boolean }) {
   const v = useVocabulario();
   const [barbeiros, setBarbeiros] = useState<Barbeiro[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
@@ -387,7 +387,7 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
                             disabled:border-borda disabled:bg-superficie disabled:text-apagado`}>
           {enviando ? 'Confirmando…' : 'Confirmar horário'}
         </button>
-        <Nota className="mt-2.5 text-center">Por enquanto a confirmação não chega no WhatsApp</Nota>
+        <Nota className="mt-2.5 text-center">{whatsappAoCliente ? 'A confirmação chega no seu WhatsApp' : 'Por enquanto a confirmação não chega no WhatsApp'}</Nota>
       </Etapa>
     </div>
   );

@@ -24,6 +24,10 @@ export type Barbearia = {
   /// sempre.
   tipo?: Tipo;
   paleta?: Paleta;
+  /// Se o cliente recebe confirmação e lembrete no WhatsApp. Falso durante a
+  /// pausa (Marcai-back, `cliente_sem_whatsapp`); ausente = back antigo, que
+  /// sempre mandava.
+  whatsappAoCliente?: boolean;
 };
 
 /// Reexportada daqui porque e daqui que o resto do sistema a le. A
