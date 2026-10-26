@@ -34,7 +34,7 @@ const TEXTO_COMUM: Record<Exclude<Passo, 'barbeiro'>, string> = {
   horario: 'Escolha um horário livre',
   'outro-dia': 'Esse dia está cheio. Toque em outro dia',
   calendario: 'Esses dias estão cheios. Toque aqui para ver outro dia do mês',
-  dados: 'Escreva seu nome e seu WhatsApp. A confirmação chega por lá',
+  dados: 'Escreva seu nome e seu WhatsApp',
   confirmar: 'Pronto! Toque em Confirmar horário',
 };
 

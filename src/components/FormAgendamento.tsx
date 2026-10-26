@@ -387,7 +387,7 @@ export function FormAgendamento({ inicial = {} }: { inicial?: Inicial }) {
                             disabled:border-borda disabled:bg-superficie disabled:text-apagado`}>
           {enviando ? 'Confirmando…' : 'Confirmar horário'}
         </button>
-        <Nota className="mt-2.5 text-center">A confirmação chega no seu WhatsApp</Nota>
+        <Nota className="mt-2.5 text-center">Por enquanto a confirmação não chega no WhatsApp</Nota>
       </Etapa>
     </div>
   );
