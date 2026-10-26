@@ -95,7 +95,10 @@ export function Confirmado(p: Props) {
         </div>
       </div>
 
-      <Sub>Mandamos o lembrete no WhatsApp 1h antes.</Sub>
+      {/* Temporário, enquanto a API oficial do WhatsApp não libera: o back
+          não manda nada ao cliente (Marcai-back, `CLIENTE_SEM_WHATSAPP`).
+          Voltar para "Mandamos o lembrete no WhatsApp 1h antes." junto. */}
+      <Sub>Por enquanto não mandamos confirmação nem lembrete no WhatsApp. Tire um print desta tela para não esquecer.</Sub>
 
       {/* Aqui ficavam os dois botões de calendário (`.ics` e Google Agenda).
           Saíram inteiros a pedido do dono: dois botões disputando a tela
