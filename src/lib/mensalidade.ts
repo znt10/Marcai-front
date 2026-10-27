@@ -10,12 +10,18 @@ export type SituacaoDaMensalidade =
   | 'VENCENDO' | 'ATRASADA' | 'BLOQUEADA';
 
 export type PixDaMensalidade = {
-  copiaECola: string;
-  /// Data URI de SVG: vai direto em `<img src>`.
-  qrSvg: string;
+  /// `null` quando a cobrança é pelo link da InfinitePay.
+  copiaECola: string | null;
+  /// Data URI de SVG: vai direto em `<img src>`. `null` com a InfinitePay.
+  qrSvg: string | null;
   /// O valor COM os centavos próprios da cobrança, que é o que o banco vai
   /// receber e o que a tela tem de mostrar — não o valor base da assinatura.
+  /// Pela InfinitePay é o valor redondo.
   valorCentavos: number;
+  /// O link do checkout da InfinitePay (Pix ou cartão).
+  link: string | null;
+  /// O pagamento se confirma sozinho: sem "Já paguei".
+  automatico: boolean;
 };
 
 export type Mensalidade = {
@@ -31,6 +37,9 @@ export type Mensalidade = {
   pix: PixDaMensalidade | null;
   /// O Pix não pôde ser gerado agora.
   pixErro: string | null;
+  /// A InfinitePay está ligada: quem confirma é o aviso dela, e não há
+  /// "Já paguei" — nem quando o link não pôde ser gerado.
+  pagamentoAutomatico: boolean;
 };
 
 export type EstadoDoPortao = 'livre' | 'pagar' | 'falar-com-o-dono';
@@ -63,6 +72,9 @@ export type Faixa = {
   /// esperar o bloqueio para ver o QR. Não em AGUARDANDO — ele já avisou, e
   /// um segundo Pix na cara só confunde.
   mostraPix: boolean;
+  /// Só o "vence em X dias" se recolhe: ainda não é atraso, e quem já viu
+  /// não precisa do lembrete em toda tela. Vencida, a faixa fica até pagar.
+  podeRecolher: boolean;
 };
 
 /// A faixa acima do painel, ou `null` quando não há o que dizer.
@@ -79,7 +91,7 @@ export function faixaDaMensalidade(m: Mensalidade | null): Faixa | null {
   switch (m.situacao) {
     case 'VENCENDO': {
       const quando = dias === 0 ? 'vence hoje' : dias === 1 ? 'vence amanhã' : `vence em ${dias} dias`;
-      return { texto: `${mensalidade} ${quando}.`, mostraPix: true };
+      return { texto: `${mensalidade} ${quando}.`, mostraPix: true, podeRecolher: true };
     }
     case 'ATRASADA': {
       const atraso = `${mensalidade} está vencida há ${dias} ${dias === 1 ? 'dia' : 'dias'}.`;
@@ -87,11 +99,58 @@ export function faixaDaMensalidade(m: Mensalidade | null): Faixa | null {
       const texto = m.bloqueiaEm
         ? `${atraso} O painel é bloqueado em ${diaEMes(m.bloqueiaEm)}.`
         : atraso;
-      return { texto, mostraPix: true };
+      return { texto, mostraPix: true, podeRecolher: false };
     }
     case 'AGUARDANDO':
-      return { texto: 'Pagamento informado, aguardando confirmação.', mostraPix: false };
+      return { texto: 'Pagamento informado, aguardando confirmação.', mostraPix: false, podeRecolher: false };
     default:
       return null;
   }
 }
+
+export type JeitoDePagar =
+  | { tipo: 'link'; link: string; valorCentavos: number; rotulo: string; frase: string; jaPaguei: false }
+  | { tipo: 'pix'; copiaECola: string; qrSvg: string; valorCentavos: number; jaPaguei: true }
+  | { tipo: 'indisponivel'; texto: string; jaPaguei: boolean };
+
+/// Recolhida, a faixa vira o botão da barra de cima por um dia e depois volta
+/// aberta: quem recolheu no dia do vencimento não fica sem ver o aviso.
+export const RECOLHIDA_POR_MS = 24 * 60 * 60 * 1000;
+
+/// A faixa segue recolhida? `recolhidaEm` é o instante (ms) guardado no
+/// aparelho, ou `null`. Só o "vence em X dias" obedece.
+export function aindaRecolhida(m: Mensalidade, recolhidaEm: number | null, agora: number): boolean {
+  if (m.situacao !== 'VENCENDO' || recolhidaEm == null) return false;
+  const passou = agora - recolhidaEm;
+  return passou >= 0 && passou < RECOLHIDA_POR_MS;
+}
+
+/// O bloco de pagamento, o mesmo na tela de bloqueio e na faixa. Pela
+/// InfinitePay é só o botão do link: o aviso dela confirma sozinho, e um
+/// "Já paguei" ali só seguraria o painel à toa.
+export function jeitoDePagar(m: Mensalidade): JeitoDePagar {
+  const pix = m.pix;
+  if (pix?.link) {
+    return {
+      tipo: 'link', link: pix.link, valorCentavos: pix.valorCentavos,
+      rotulo: 'Pagar mensalidade',
+      frase: 'Pix ou cartão. Assim que o pagamento cair, o painel libera sozinho.',
+      jaPaguei: false,
+    };
+  }
+  if (pix?.copiaECola && pix.qrSvg) {
+    return {
+      tipo: 'pix', copiaECola: pix.copiaECola, qrSvg: pix.qrSvg,
+      valorCentavos: pix.valorCentavos, jaPaguei: true,
+    };
+  }
+  return {
+    tipo: 'indisponivel',
+    texto: m.pixErro ?? 'O Pix ainda não está disponível. Fale com o Marcaí.',
+    jaPaguei: !m.pagamentoAutomatico,
+  };
+}
+
+/// O botão da faixa que abre o pagamento.
+export const rotuloDaFaixa = (m: Mensalidade): string =>
+  m.pix?.link ? 'Pagar mensalidade' : 'Pagar com Pix';

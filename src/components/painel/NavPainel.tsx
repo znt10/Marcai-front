@@ -9,6 +9,7 @@ import { lembrar, esquecer } from '@/lib/eu-lembrado';
 import { SECOES } from '@/components/painel/secoes';
 import { SeletorDeSecao } from '@/components/painel/SeletorDeSecao';
 import { BotaoDeTema } from '@/components/painel/Tema';
+import { BotaoDoAvisoRecolhido } from '@/components/painel/BotaoDoAvisoRecolhido';
 import { AppDoBarbeiro } from '@/components/painel/AppDoBarbeiro';
 import { useVocabulario } from '@/components/Vocabulario';
 
@@ -160,6 +161,7 @@ export function NavPainel() {
             {/* Claro ou escuro. Ao lado do "sair" e na mesma voz dele: são as
                 duas coisas da barra que não são navegação, e nenhuma das duas
                 merece mais peso que o nome da pessoa. */}
+            <BotaoDoAvisoRecolhido />
             <BotaoDeTema />
             <button onClick={sair} className="text-[12.5px] lg:text-[16px] font-medium text-sub hover:text-acento">
               sair
