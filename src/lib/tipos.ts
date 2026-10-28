@@ -9,10 +9,10 @@
 /// tem a sua tabela, menor, em `tenant/tipos.py` — as duas têm de concordar
 /// no que repetem. Tipo novo entra pelos dois lados.
 
-export type Tipo = 'BARBEARIA' | 'SOBRANCELHA' | 'MANICURE' | 'MAQUIAGEM' | 'OUTRO';
+export type Tipo = 'BARBEARIA' | 'SOBRANCELHA' | 'MANICURE' | 'MAQUIAGEM' | 'CABELEIREIRA' | 'OUTRO';
 
 /// `SOBRANCELHA` é a Estética (o nome mudou em 22/10/2026; o valor no banco ficou).
-export const TIPOS: Tipo[] = ['BARBEARIA', 'SOBRANCELHA', 'MANICURE', 'MAQUIAGEM', 'OUTRO'];
+export const TIPOS: Tipo[] = ['BARBEARIA', 'SOBRANCELHA', 'MANICURE', 'MAQUIAGEM', 'CABELEIREIRA', 'OUTRO'];
 
 export type Vocabulario = {
   /// "barbearia", "estúdio" — no meio da frase.
@@ -88,6 +88,18 @@ export const VOCABULARIO: Record<Tipo, Vocabulario> = {
     quemPassouPorDois: 'quem passou por mais de uma profissional',
     slogan: ['Make feita,', 'hora marcada.'],
     exemploServico: 'maquiagem social',
+  },
+  /// Salão é masculino ("no salão", "do salão"); quem atende, "a profissional".
+  CABELEIREIRA: {
+    lugar: 'salão', Lugar: 'Salão', oLugar: 'o salão', doLugar: 'do salão',
+    noNome: (nome) => `no salão ${nome}`,
+    prof: 'profissional', Prof: 'Profissional', profs: 'profissionais',
+    oProf: 'a profissional', noProf: 'na profissional', nenhumProf: 'nenhuma profissional',
+    dele: 'dela',
+    atendimento: 'atendimento', atendimentos: 'atendimentos',
+    quemPassouPorDois: 'quem passou por mais de uma profissional',
+    slogan: ['Cabelo feito,', 'hora marcada.'],
+    exemploServico: 'escova',
   },
   OUTRO: {
     lugar: 'espaço', Lugar: 'Espaço', oLugar: 'o espaço', doLugar: 'do espaço',
