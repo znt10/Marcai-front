@@ -75,18 +75,22 @@ const ROSE_NO_PAINEL: DefinicaoDaPaleta['painel'] = {
 export const PALETAS: Record<Paleta, DefinicaoDaPaleta> = {
   PRETO_AMARELO,
 
+  /// O tema Rosé do kit (`Marcai-kit/tema/tema-rose.css`, 28/10/2026): fundo
+  /// nude e o rosé da logo nos botões, para logo e tela ficarem no mesmo tom.
+  /// O rosé do kit (#a35a57) dá 4.4 no fundo nude; o `acento` desce um tom
+  /// (#9c5452) para passar dos 4.5 — as logos ficam no do kit.
   BRANCO_ROSE: {
-    nome: 'Branco e rosé',
+    nome: 'Rosé',
     esquema: 'light',
     tokens: {
-      fundo: '#fbf6f4', superficie: '#ffffff', borda: '#ead9d6', tinta: '#2b1d1f', sub: '#6e5a5d',
-      lbl: '#7a6568', apagado: '#a8979a', acento: '#a4505e', latao: '#d4a0a8', livre: '#3f7a57',
-      mut: '#f4ecea', 'mut-borda': '#e6d8d5', linha: '#f1e6e4', superficie2: '#f6e6e8',
-      'borda-suave': '#eee0de', 'acento-forte': '#8f4250', 'no-acento': '#ffffff',
+      fundo: '#f9ede8', superficie: '#fff9f7', borda: '#eed5ce', tinta: '#3b2220', sub: '#7d5d58',
+      lbl: '#806560', apagado: '#b39a95', acento: '#9c5452', latao: '#d4a49c', livre: '#3f7a57',
+      mut: '#f4e3dd', 'mut-borda': '#e8cfc8', linha: '#f2e1db', superficie2: '#f3dfd8',
+      'borda-suave': '#f0ddd6', 'acento-forte': '#8a4a47', 'no-acento': '#ffffff',
     },
-    superficieDoFluxo: '#f7eaec',
+    superficieDoFluxo: '#f5e4de',
     painel: ROSE_NO_PAINEL,
-    barra: { escuro: '#fbf6f4', claro: '#fbf6f4' },
+    barra: { escuro: '#f9ede8', claro: '#f9ede8' },
   },
 
   /// O chão da barbearia com o destaque rosé.
