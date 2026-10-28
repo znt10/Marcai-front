@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { barbeariaAtual } from '@/lib/tenant';
+import { iconesDoApp } from '@/lib/icones';
 import { vocabulario, type Tipo } from '@/lib/tipos';
 
 /// O app instalável do BARBEIRO.
@@ -36,6 +37,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     // fica o padrão
   }
 
+  const icones = iconesDoApp(tipo);
   return {
     name: `${nome} — painel`,
     // O que cabe embaixo do ícone na tela inicial: uns 12 caracteres antes de
@@ -54,14 +56,15 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     theme_color: '#1c1814',
     categories: ['business', 'productivity'],
     icons: [
-      { src: '/marca.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-      { src: '/marca-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      // O desenho do tipo (`lib/icones.ts`): a manicure instala as unhas.
+      { src: icones.p192, sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: icones.p512, sizes: '512x512', type: 'image/png', purpose: 'any' },
       // O Android recorta o ícone em círculo ou squircle conforme o aparelho.
       // Sem uma versão `maskable`, ele desenha a marca dentro de um quadrado
       // branco com cantos — a "etiqueta" que denuncia site instalado. Esta
       // aqui tem o desenho reduzido sobre o próprio fundo da marca, dentro da
       // zona segura de 80%.
-      { src: '/marca-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: icones.maskable, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   };
 }
