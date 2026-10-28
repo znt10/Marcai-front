@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { contaApi } from '@/lib/api';
 import {
-  EVENTO_CONTA, guiaDaContaVisto, inicialDoNome, marcarGuiaDaContaVisto,
+  CONTA_ABERTA, EVENTO_CONTA, guiaDaContaVisto, inicialDoNome, marcarGuiaDaContaVisto,
 } from '@/lib/conta';
 
 /// O botão do topo: "Entrar" para quem não tem sessão, a inicial do nome em
@@ -17,6 +17,11 @@ import {
 /// ao do guia de agendar. Flutua (absoluto) em vez de empurrar o cabeçalho,
 /// porque o topo não tem onde caber um balão em linha.
 export function BotaoConta() {
+  if (!CONTA_ABERTA) return null;
+  return <BotaoContaAberto />;
+}
+
+function BotaoContaAberto() {
   const [estado, setEstado] = useState<'carregando' | 'fora' | { nome: string }>('carregando');
   // Lido em efeito, como o guia de agendar: o servidor não tem localStorage.
   const [guia, setGuia] = useState(false);
