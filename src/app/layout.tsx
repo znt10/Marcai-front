@@ -3,6 +3,7 @@ import { Poppins, Archivo, Space_Mono } from 'next/font/google';
 import './globals.css';
 import { SCRIPT_DO_TEMA } from '@/components/painel/Tema';
 import { ProvedorDoVocabulario } from '@/components/Vocabulario';
+import { iconesDoApp } from '@/lib/icones';
 import { estiloDaPaleta, paleta } from '@/lib/paletas';
 import { barbeariaOuNada } from '@/lib/tenant';
 
@@ -37,20 +38,26 @@ const dado = Space_Mono({
   weight: ['400', '700'], subsets: ['latin'], variable: '--fonte-dado', display: 'swap',
 });
 
-export const metadata: Metadata = {
-  title: 'Agendamento',
-  // O iPhone não lê o manifesto para decidir como abrir um app instalado: ele
-  // lê estas três coisas. Sem `capable`, o painel adicionado à tela de início
-  // abre com a barra de endereço do Safari por cima — que é justamente o que
-  // instalar queria tirar.
-  appleWebApp: {
-    capable: true,
-    title: 'Painel',
-    // A barra de status vira translúcida sobre o fundo do app, em vez de uma
-    // tira branca em cima da nogueira.
-    statusBarStyle: 'black-translucent',
-  },
-};
+/// Função, e não objeto fixo: o ícone de quem adiciona o painel à tela de
+/// início do iPhone é o do tipo (`lib/icones.ts`). Ele não mora mais em
+/// `app/apple-icon.png`, porque o arquivo ganharia desta configuração.
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: 'Agendamento',
+    icons: { apple: iconesDoApp((await barbeariaOuNada())?.tipo).apple },
+    // O iPhone não lê o manifesto para decidir como abrir um app instalado: ele
+    // lê estas três coisas. Sem `capable`, o painel adicionado à tela de início
+    // abre com a barra de endereço do Safari por cima — que é justamente o que
+    // instalar queria tirar.
+    appleWebApp: {
+      capable: true,
+      title: 'Painel',
+      // A barra de status vira translúcida sobre o fundo do app, em vez de uma
+      // tira branca em cima da nogueira.
+      statusBarStyle: 'black-translucent',
+    },
+  };
+}
 
 /// A cor da barra do navegador — a mesma do fundo do painel, nos dois modos,
 /// ou o fundo da paleta clara do estabelecimento (`paletas.ts`, `barra`).

@@ -5,8 +5,9 @@ import type { Tipo } from '@/lib/tipos';
 /// O desenho da marca do Marcaí é uma NAVALHA com o poste de barbearia: na
 /// barbearia ele é o de sempre, mas na página de um estúdio seria a "cara de
 /// barbearia" que o tipo existe para tirar (spec 2026-10-08). Estética,
-/// manicure e maquiagem têm o desenho delas (22/10/2026, em `public/marcas`);
-/// o "outro" fica com a inicial do estabelecimento, nas cores da paleta dele.
+/// manicure e maquiagem têm o desenho delas (22/10/2026, em `public/marcas`),
+/// a cabeleireira a tesoura (28/10/2026); o "outro" fica com a inicial do
+/// estabelecimento, nas cores da paleta dele.
 ///
 /// Os desenhos são o rosé do kit (#A35A57) sem fundo (28/10/2026): no tema
 /// Rosé a logo fica no tom da tela, e não um quadrado colado nela. Nem todo
@@ -21,6 +22,7 @@ const DESENHO: Partial<Record<Tipo, string>> = {
   SOBRANCELHA: '/marcas/estetica.png',
   MANICURE: '/marcas/manicure.svg',
   MAQUIAGEM: '/marcas/maquiagem.png',
+  CABELEIREIRA: '/marcas/cabeleireira.svg',
 };
 
 export function Marca({ tipo, nome, tamanho, className = '' }: {
