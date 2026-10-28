@@ -5,6 +5,7 @@ import { Box, Lbl, Sub, Sep } from '@/components/wf';
 import { useVocabulario } from '@/components/Vocabulario';
 import { publicoApi, contaApi, mensagemDoErro, ErroApi } from '@/lib/api';
 import { formatarPreco } from '@/lib/dinheiro';
+import { CONTA_ABERTA } from '@/lib/conta';
 
 type Props = {
   codigo: string; clienteNome: string; barbeiroNome: string; servicoNome: string;
@@ -24,6 +25,7 @@ export function Confirmado(p: Props) {
   // rede ou 500 não diz nada sobre a pessoa, então não mostra nada.
   const [convidar, setConvidar] = useState(false);
   useEffect(() => {
+    if (!CONTA_ABERTA) return;
     const ctl = new AbortController();
     contaApi.eu(ctl.signal)
       .catch((e) => { if (!ctl.signal.aborted && e instanceof ErroApi && e.status === 401) setConvidar(true); });

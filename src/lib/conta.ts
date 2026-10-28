@@ -7,6 +7,12 @@ export type { ItemHistorico };
 /// (sair); o `BotaoConta` do cabeçalho escuta e consulta de novo.
 export const EVENTO_CONTA = 'marcai:conta';
 
+/// A porta da conta (o "Entrar" do topo e o convite da confirmação) está
+/// fechada até a Meta aprovar o número central (28/10/2026): criar conta e
+/// "esqueci a senha" mandam código e link pelo WhatsApp, que ainda não sai
+/// para o cliente. A conta continua opcional; para reabrir, é só `true`.
+export const CONTA_ABERTA = false;
+
 /// Espelha `CONTA_SENHA_MINIMA` do back (`tenant/config.py`).
 export const SENHA_MINIMA_CONTA = 6;
 
