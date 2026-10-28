@@ -10,7 +10,7 @@ import { TIPOS, type Tipo } from './tipos';
 /// O nome no cartão e no título da tela de cada categoria.
 export const NOME_DA_CATEGORIA: Record<Tipo, string> = {
   BARBEARIA: 'Barbearias', SOBRANCELHA: 'Estética', MANICURE: 'Manicure',
-  MAQUIAGEM: 'Maquiagem', OUTRO: 'Outros',
+  MAQUIAGEM: 'Maquiagem', CABELEIREIRA: 'Cabeleireira', OUTRO: 'Outros',
 };
 
 /// O pedaço do endereço: `/admin/barbearia`, `/admin/sobrancelha`.
