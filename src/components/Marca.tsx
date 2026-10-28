@@ -8,20 +8,27 @@ import type { Tipo } from '@/lib/tipos';
 /// manicure e maquiagem têm o desenho delas (22/10/2026, em `public/marcas`);
 /// o "outro" fica com a inicial do estabelecimento, nas cores da paleta dele.
 ///
+/// Os desenhos são o rosé do kit (#A35A57) sem fundo (28/10/2026): no tema
+/// Rosé a logo fica no tom da tela, e não um quadrado colado nela. Nem todo
+/// desenho é quadrado (a sobrancelha é larga), daí o `object-contain`. A
+/// barbearia também perdeu o quadrado marrom (`marcas/barbearia.png`, o
+/// dourado do `marca-512.png` recortado); o `marca.png` com fundo fica só
+/// para o ícone de instalar, que precisa de fundo.
+///
 /// Sem hook: serve ao Server Component (o cabeçalho) e ao Client Component (a
 /// vitrine) do mesmo jeito.
 const DESENHO: Partial<Record<Tipo, string>> = {
-  SOBRANCELHA: '/marcas/estetica.jpg',
+  SOBRANCELHA: '/marcas/estetica.png',
   MANICURE: '/marcas/manicure.svg',
-  MAQUIAGEM: '/marcas/maquiagem.jpg',
+  MAQUIAGEM: '/marcas/maquiagem.png',
 };
 
 export function Marca({ tipo, nome, tamanho, className = '' }: {
   tipo?: Tipo; nome: string; tamanho: number; className?: string;
 }) {
   if (!tipo || tipo === 'BARBEARIA' || DESENHO[tipo]) {
-    const src = (tipo && DESENHO[tipo]) || '/marca.png';
-    return <img src={src} alt="" width={tamanho} height={tamanho} className={`shrink-0 ${className}`} />;
+    const src = (tipo && DESENHO[tipo]) || '/marcas/barbearia.png';
+    return <img src={src} alt="" width={tamanho} height={tamanho} className={`shrink-0 object-contain ${className}`} />;
   }
   return (
     <span aria-hidden style={{ width: tamanho, height: tamanho, fontSize: Math.round(tamanho * 0.56) }}

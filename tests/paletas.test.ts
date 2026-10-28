@@ -69,8 +69,8 @@ describe('contraste (WCAG AA, 4.5:1)', () => {
 describe('estiloDaPaleta', () => {
   it('põe os tokens do cliente, o fluxo e o destaque do painel', () => {
     const e = estiloDaPaleta('BRANCO_ROSE') as Record<string, string>;
-    expect(e['--color-acento']).toBe('#a4505e');
-    expect(e['--color-fundo']).toBe('#fbf6f4');
+    expect(e['--color-acento']).toBe('#9c5452');
+    expect(e['--color-fundo']).toBe('#f9ede8');
     expect(e['--fluxo-superficie2']).toBe(PALETAS.BRANCO_ROSE.superficieDoFluxo);
     expect(e['--painel-acento-escuro']).toBe(PALETAS.BRANCO_ROSE.painel.escuro.acento);
     expect(e['--painel-acento-claro']).toBe(PALETAS.BRANCO_ROSE.painel.claro.acento);
