@@ -112,8 +112,11 @@ export async function proxy(req: NextRequest) {
   if (ehHostAdmin(host, DOMINIO_BASE)) {
     const autenticado = await lerSessao(req.cookies.get(COOKIE_ADMIN)?.value);
     const ehLogin = caminho === '/admin/login' || caminho === '/api/admin/auth/login';
+    // O webhook da Meta vem de um servidor, sem sessão. Quem barra estranho
+    // é a assinatura do App Secret, conferida no Django (`WhatsappMetaView`).
+    const ehWebhookDaMeta = caminho === '/api/interno/whatsapp/meta';
 
-    if (!autenticado && !ehLogin) {
+    if (!autenticado && !ehLogin && !ehWebhookDaMeta) {
       return caminho.startsWith('/api/')
         ? NextResponse.json({ erro: 'não autorizado' }, { status: 401 })
         : NextResponse.redirect(new URL('/admin/login', req.url));
