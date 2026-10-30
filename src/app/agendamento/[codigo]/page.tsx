@@ -49,6 +49,7 @@ export default async function Pagina({ params }: { params: Promise<{ codigo: str
   if (r.status === 404) notFound();
   if (!r.ok) throw new Error(`GET /api/agendamentos/${codigo} devolveu ${r.status}`);
   const ag: Detalhe = await r.json();
+  const b = await barbeariaAtual();
 
   return (
     <Frame>
@@ -64,6 +65,7 @@ export default async function Pagina({ params }: { params: Promise<{ codigo: str
         endereco={ag.endereco}
         whatsappBarbearia={ag.whatsappBarbearia}
         precoCentavos={ag.precoCentavos}
+        whatsappAoCliente={b.whatsappAoCliente !== false}
       />
     </Frame>
   );

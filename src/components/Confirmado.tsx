@@ -10,7 +10,7 @@ import { CONTA_ABERTA } from '@/lib/conta';
 type Props = {
   codigo: string; clienteNome: string; barbeiroNome: string; servicoNome: string;
   inicioIso: string; fimIso: string; status: string; podeCancelar: boolean;
-  endereco: string; whatsappBarbearia: string;
+  endereco: string; whatsappBarbearia: string; whatsappAoCliente: boolean;
   /// Snapshot do momento de marcar — nulo quando o barbeiro não tinha
   /// preço definido pra aquele serviço naquela hora.
   precoCentavos: number | null;
@@ -97,10 +97,9 @@ export function Confirmado(p: Props) {
         </div>
       </div>
 
-      {/* Temporário, enquanto a API oficial do WhatsApp não libera: o back
-          não manda nada ao cliente (Marcai-back, `CLIENTE_SEM_WHATSAPP`).
-          Voltar para "Mandamos o lembrete no WhatsApp 1h antes." junto. */}
-      <Sub>Por enquanto não mandamos confirmação nem lembrete no WhatsApp. Tire um print desta tela para não esquecer.</Sub>
+      {p.whatsappAoCliente
+        ? <Sub>Mandamos o lembrete no WhatsApp 1h antes.</Sub>
+        : <Sub>Por enquanto não mandamos confirmação nem lembrete no WhatsApp. Tire um print desta tela para não esquecer.</Sub>}
 
       {/* Aqui ficavam os dois botões de calendário (`.ics` e Google Agenda).
           Saíram inteiros a pedido do dono: dois botões disputando a tela
