@@ -134,14 +134,22 @@ export function Confirmado(p: Props) {
           O botão é o destaque logo abaixo do cupom porque sem ele não chega
           nada — nem a confirmação. Nova aba para esta tela continuar aqui
           quando a pessoa voltar. */}
+      {/* A pergunta, e não só um botão (ideia do cunhado do José, 03/11):
+          "Quer receber o lembrete 1 hora antes?" é o que a pessoa responde
+          sem pensar. Cartão no mesmo papel do cupom, com o título na cor de
+          destaque, para não passar batido logo abaixo do horário. */}
       {pedeOToque && !p.lembretePedido && (
-        <>
+        <div className="bg-superficie border border-borda rounded-wf shadow-[var(--shadow-sel)]
+                        px-5 py-5 md:px-7 md:py-6 flex flex-col gap-3">
+          <div className="font-bold text-[22px] md:text-[26px] leading-tight text-acento">
+            Quer receber o lembrete 1 hora antes?
+          </div>
           <a href={linkDoLembrete(p.whatsappCentral!, p.barbeariaNome, p.codigo)}
              target="_blank" rel="noopener noreferrer" onClick={() => setToques((n) => n + 1)}>
-            <Box variante="fill" className="text-center">Quero o lembrete no WhatsApp</Box>
+            <Box variante="fill" className="text-center">Sim, quero no WhatsApp</Box>
           </a>
-          <Sub>Toque, envie a mensagem que aparece, e a gente te lembra 1h antes.</Sub>
-        </>
+          <Sub>Abre o WhatsApp com a mensagem pronta. É só enviar.</Sub>
+        </div>
       )}
       {pedeOToque && p.lembretePedido && <Sub>Lembrete ligado ✓ · chega no WhatsApp 1h antes</Sub>}
       {!pedeOToque && (p.whatsappAoCliente
