@@ -21,6 +21,8 @@ type Detalhe = {
   podeCancelar: boolean;
   endereco: string;
   whatsappBarbearia: string;
+  /// Lembrete por toque: ausente no back de antes dele.
+  lembretePedido?: boolean;
 };
 
 /// O link que a confirmação (e o bot) manda. O cartão fala da barbearia e não
@@ -66,6 +68,9 @@ export default async function Pagina({ params }: { params: Promise<{ codigo: str
         whatsappBarbearia={ag.whatsappBarbearia}
         precoCentavos={ag.precoCentavos}
         whatsappAoCliente={b.whatsappAoCliente !== false}
+        whatsappCentral={b.whatsappCentral ?? null}
+        lembretePedido={ag.lembretePedido === true}
+        barbeariaNome={b.nome}
       />
     </Frame>
   );

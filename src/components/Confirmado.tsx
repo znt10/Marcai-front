@@ -1,11 +1,13 @@
 'use client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Box, Lbl, Sub, Sep } from '@/components/wf';
 import { useVocabulario } from '@/components/Vocabulario';
 import { publicoApi, contaApi, mensagemDoErro, ErroApi } from '@/lib/api';
 import { formatarPreco } from '@/lib/dinheiro';
 import { CONTA_ABERTA } from '@/lib/conta';
+import { linkDoLembrete } from '@/lib/lembretePorToque';
 
 type Props = {
   codigo: string; clienteNome: string; barbeiroNome: string; servicoNome: string;
@@ -14,12 +16,30 @@ type Props = {
   /// Snapshot do momento de marcar — nulo quando o barbeiro não tinha
   /// preço definido pra aquele serviço naquela hora.
   precoCentavos: number | null;
+  /// Lembrete por toque: o número central (nulo = back sem a chave, fica o
+  /// texto de antes), se este agendamento já pediu o lembrete, e o nome que
+  /// vai na mensagem pronta.
+  whatsappCentral: string | null;
+  lembretePedido: boolean;
+  barbeariaNome: string;
 };
 
 export function Confirmado(p: Props) {
   const v = useVocabulario();
   const [status, setStatus] = useState(p.status);
   const [erro, setErro] = useState('');
+  const router = useRouter();
+  const pedeOToque = p.whatsappAoCliente && p.whatsappCentral !== null;
+
+  // Quem tocou no botão foi para o WhatsApp e volta para esta aba depois de
+  // mandar: buscar de novo faz a tela trocar sozinha para "Lembrete ligado".
+  const esperandoToque = pedeOToque && !p.lembretePedido;
+  useEffect(() => {
+    if (!esperandoToque) return;
+    const aoVoltar = () => { if (document.visibilityState === 'visible') router.refresh(); };
+    document.addEventListener('visibilitychange', aoVoltar);
+    return () => document.removeEventListener('visibilitychange', aoVoltar);
+  }, [esperandoToque, router]);
 
   // O convite só aparece para quem sabidamente NÃO tem sessão (401). Erro de
   // rede ou 500 não diz nada sobre a pessoa, então não mostra nada.
@@ -97,9 +117,23 @@ export function Confirmado(p: Props) {
         </div>
       </div>
 
-      {p.whatsappAoCliente
+      {/* Lembrete por toque: só recebe WhatsApp quem manda a mensagem pronta.
+          O botão é o destaque logo abaixo do cupom porque sem ele não chega
+          nada — nem a confirmação. Nova aba para esta tela continuar aqui
+          quando a pessoa voltar. */}
+      {pedeOToque && !p.lembretePedido && (
+        <>
+          <a href={linkDoLembrete(p.whatsappCentral!, p.barbeariaNome, p.codigo)}
+             target="_blank" rel="noopener noreferrer">
+            <Box variante="fill" className="text-center">Quero o lembrete no WhatsApp</Box>
+          </a>
+          <Sub>Toque, envie a mensagem que aparece, e a gente te lembra 1h antes.</Sub>
+        </>
+      )}
+      {pedeOToque && p.lembretePedido && <Sub>Lembrete ligado ✓ · chega no WhatsApp 1h antes</Sub>}
+      {!pedeOToque && (p.whatsappAoCliente
         ? <Sub>Mandamos o lembrete no WhatsApp 1h antes.</Sub>
-        : <Sub>Por enquanto não mandamos confirmação nem lembrete no WhatsApp. Tire um print desta tela para não esquecer.</Sub>}
+        : <Sub>Por enquanto não mandamos confirmação nem lembrete no WhatsApp. Tire um print desta tela para não esquecer.</Sub>)}
 
       {/* Aqui ficavam os dois botões de calendário (`.ics` e Google Agenda).
           Saíram inteiros a pedido do dono: dois botões disputando a tela
