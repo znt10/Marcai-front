@@ -7,7 +7,7 @@ import { useVocabulario } from '@/components/Vocabulario';
 import { publicoApi, contaApi, mensagemDoErro, ErroApi } from '@/lib/api';
 import { formatarPreco } from '@/lib/dinheiro';
 import { CONTA_ABERTA } from '@/lib/conta';
-import { linkDoLembrete } from '@/lib/lembretePorToque';
+import { criarEsperaDoToque, linkDoLembrete } from '@/lib/lembretePorToque';
 
 type Props = {
   codigo: string; clienteNome: string; barbeiroNome: string; servicoNome: string;
@@ -32,14 +32,27 @@ export function Confirmado(p: Props) {
   const pedeOToque = p.whatsappAoCliente && p.whatsappCentral !== null;
 
   // Quem tocou no botão foi para o WhatsApp e volta para esta aba depois de
-  // mandar: buscar de novo faz a tela trocar sozinha para "Lembrete ligado".
-  const esperandoToque = pedeOToque && !p.lembretePedido;
+  // mandar: buscar de novo (por um tempo, o webhook pode atrasar) faz a tela
+  // trocar sozinha para "Lembrete ligado". Só depois do toque — quem só
+  // olha a tela não busca nada.
+  // Contador, e não booleano: tocar de novo depois que a espera acabou
+  // recomeça a espera.
+  const [toques, setToques] = useState(0);
+  const esperandoToque = toques > 0 && pedeOToque && !p.lembretePedido;
   useEffect(() => {
     if (!esperandoToque) return;
-    const aoVoltar = () => { if (document.visibilityState === 'visible') router.refresh(); };
-    document.addEventListener('visibilitychange', aoVoltar);
-    return () => document.removeEventListener('visibilitychange', aoVoltar);
-  }, [esperandoToque, router]);
+    const espera = criarEsperaDoToque({
+      atualizar: () => router.refresh(),
+      visivel: () => document.visibilityState === 'visible',
+    });
+    espera.iniciar();
+    const aoMudar = () => espera.aoMudarVisibilidade();
+    document.addEventListener('visibilitychange', aoMudar);
+    return () => {
+      document.removeEventListener('visibilitychange', aoMudar);
+      espera.parar();
+    };
+  }, [esperandoToque, toques, router]);
 
   // O convite só aparece para quem sabidamente NÃO tem sessão (401). Erro de
   // rede ou 500 não diz nada sobre a pessoa, então não mostra nada.
@@ -124,7 +137,7 @@ export function Confirmado(p: Props) {
       {pedeOToque && !p.lembretePedido && (
         <>
           <a href={linkDoLembrete(p.whatsappCentral!, p.barbeariaNome, p.codigo)}
-             target="_blank" rel="noopener noreferrer">
+             target="_blank" rel="noopener noreferrer" onClick={() => setToques((n) => n + 1)}>
             <Box variante="fill" className="text-center">Quero o lembrete no WhatsApp</Box>
           </a>
           <Sub>Toque, envie a mensagem que aparece, e a gente te lembra 1h antes.</Sub>
