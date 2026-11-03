@@ -6,7 +6,7 @@ describe('linkDoLembrete', () => {
   it('abre o WhatsApp do número central com a mensagem pronta', () => {
     expect(linkDoLembrete('83988982852', 'Brutus', 'k7p2q9abcd')).toBe(
       'https://wa.me/5583988982852?text=' +
-        encodeURIComponent('Quero o lembrete do meu horário na Brutus. Código: k7p2q9abcd'),
+        encodeURIComponent('Quero o lembrete do meu horário em Brutus. Código: k7p2q9abcd'),
     );
   });
 
@@ -21,7 +21,7 @@ describe('linkDoLembrete', () => {
 describe('textoProntoDoLembrete', () => {
   it('é o mesmo texto do back (lembrete_por_toque.texto_pronto)', () => {
     expect(textoProntoDoLembrete('Brutus', 'k7p2q9abcd')).toBe(
-      'Quero o lembrete do meu horário na Brutus. Código: k7p2q9abcd',
+      'Quero o lembrete do meu horário em Brutus. Código: k7p2q9abcd',
     );
   });
 });

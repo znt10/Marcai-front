@@ -5,11 +5,12 @@ import { relogioDoNavegador, type Relogio } from './atualizacao-periodica';
 /// número central, e só quem manda recebe a confirmação e o lembrete de 1h
 /// antes — de graça, porque foi ele quem escreveu primeiro.
 ///
-/// O texto é o MESMO de `lembrete_por_toque.texto_pronto` no back. O back
+/// O texto é o MESMO de `lembrete_por_toque.texto_pronto` no back ("em", e
+/// não "na": o nome pode ser "Dom Tony" ou "Espaço Bela"). O back
 /// procura só o código, então o cliente pode apagar o resto.
 
 export function textoProntoDoLembrete(barbeariaNome: string, codigo: string): string {
-  return `Quero o lembrete do meu horário na ${barbeariaNome}. Código: ${codigo}`;
+  return `Quero o lembrete do meu horário em ${barbeariaNome}. Código: ${codigo}`;
 }
 
 /// `central` em dígitos nacionais (`83988982852`), como vem em
