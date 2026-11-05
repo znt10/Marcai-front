@@ -28,6 +28,10 @@ export type Barbearia = {
   /// pausa (Marcai-back, `cliente_sem_whatsapp`); ausente = back antigo, que
   /// sempre mandava.
   whatsappAoCliente?: boolean;
+  /// A logo da casa como data URL, ou nulo (= o desenho do tipo). Ausente =
+  /// back de antes da logo. Não vai assim para o navegador: as telas apontam
+  /// para `/logo?v=…` (`srcDaLogo` em `lib/logo.ts`).
+  logoUrl?: string | null;
 };
 
 /// Reexportada daqui porque e daqui que o resto do sistema a le. A

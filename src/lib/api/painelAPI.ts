@@ -1,6 +1,8 @@
 import { pedir } from './client';
 import type { NovoAgendamento } from './publicoAPI';
 import type { Mensalidade } from '@/lib/mensalidade';
+import type { Paleta } from '@/lib/paletas';
+import type { Tipo } from '@/lib/tipos';
 
 /// As rotas do painel do barbeiro. Todas as de leitura passam `loginEm`:
 /// sessão morta manda para a tela de entrada em vez de deixar a tela vazia
@@ -34,6 +36,13 @@ export const painelApi = {
   definirFoto: (foto: string | null, barbeiroId?: string) =>
     pedir<{ ok: true }>('/painel/foto', {
       metodo: 'PUT', corpo: { foto, barbeiroId }, loginEm: LOGIN_DO_PAINEL,
+    }),
+
+  /// Só o dono (403 para o barbeiro). `logo: null` tira a logo e a casa volta
+  /// ao desenho do tipo.
+  definirLogo: (logo: string | null) =>
+    pedir<{ ok: true }>('/painel/logo', {
+      metodo: 'PUT', corpo: { logo }, loginEm: LOGIN_DO_PAINEL,
     }),
 
   eu: (signal?: AbortSignal) =>
@@ -219,6 +228,11 @@ export type DadosDaBarbearia = {
   /// `null` = o dono ainda não escreveu, e a home não mostra horário nenhum.
   /// Diferente de string vazia, que não existe aqui.
   horarioResumo: string | null;
+  /// O ramo e as cores, para a tela Equipe mostrar a logo sobre o fundo que o
+  /// cliente vê. E a logo em si: data URL, ou nulo (= o desenho do tipo).
+  tipo: Tipo;
+  paleta: Paleta;
+  logoUrl: string | null;
 };
 
 export const barbeariaApi = {
