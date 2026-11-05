@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { Cartao, BotaoVazado, Texto, Titulo } from '@/components/painel/pecas';
-import { Marca } from '@/components/Marca';
+import { LogoDaCasa } from '@/components/LogoDaCasa';
 import { barbeariaApi, painelApi, mensagemDoErro, type DadosDaBarbearia } from '@/lib/api';
-import { prepararLogo, ErroDeLogo } from '@/lib/logo';
+import { prepararLogo, ErroDeLogo, logoParaTela } from '@/lib/logo';
 import { paleta } from '@/lib/paletas';
 
 /// O bloco "Logo da casa" no alto da Equipe (spec 2026-11-05). Só o dono vê:
@@ -48,10 +48,15 @@ export function LogoDaCasaPainel() {
       <Titulo>Logo da casa</Titulo>
       <div className="flex h-[120px] items-center justify-center rounded-[10px] p-3"
            style={{ background: fundo }}>
-        {dados?.logoUrl
-          ? <img src={dados.logoUrl} alt="logo da casa"
-                 className="max-h-full max-w-full w-auto h-auto object-contain" />
-          : dados && <Marca tipo={dados.tipo} nome={dados.nome} tamanho={80} className="rounded-wf" />}
+        {/* O MESMO componente das telas do cliente, com a data URL no lugar
+            do endereço: redonda ou banner aparece aqui como lá. */}
+        {dados && (
+          <LogoDaCasa tipo={dados.tipo} nome={dados.nome} altura={96}
+                      logo={(() => {
+                        const l = logoParaTela(dados.logoUrl);
+                        return l && dados.logoUrl ? { ...l, src: dados.logoUrl } : null;
+                      })()} />
+        )}
       </div>
       <Texto>Assim ela aparece para o cliente.</Texto>
       <input ref={seletor} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only"

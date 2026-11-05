@@ -9,7 +9,7 @@ import { respostaDaLogo } from '@/lib/logo';
 /// o celular a guarda.
 ///
 /// O cache é de um ano e `immutable` porque o endereço muda junto com a logo:
-/// as telas pedem `/logo?v=<versão>` (`srcDaLogo`), e a versão é um resumo do
+/// as telas pedem `/logo?v=<versão>` (`logoParaTela`), e a versão é um resumo do
 /// conteúdo. O host faz parte da chave do cache, então uma casa não vê a logo
 /// da outra.
 ///
