@@ -4,7 +4,8 @@ import { vocabulario } from '@/lib/tipos';
 import { cartaoDestaPagina } from '@/lib/miniatura';
 import { cardapioPorBarbeiro } from '@/lib/vitrine';
 import { Vitrine } from '@/components/Vitrine';
-import { Marca } from '@/components/Marca';
+import { TopoDaCasa } from '@/components/TopoDaCasa';
+import { srcDaLogo } from '@/lib/logo';
 import { BotaoConta } from '@/components/conta/BotaoConta';
 import { Frame, Box } from '@/components/wf';
 import { formatar } from '@/lib/telefone';
@@ -41,14 +42,9 @@ export default async function Barbearia() {
 
   return (
     <Frame>
-      {/* O topo do desenho: marca de 30px à esquerda do nome. A marca é do
-          MARCAÍ, não desta barbearia — não há campo de logo por barbearia no
-          banco. Quando houver, é este `src` que passa a variar. */}
-      <div className="flex items-center gap-3">
-        <Marca tipo={b.tipo} nome={b.nome} tamanho={30} className="rounded-[3px]" />
-        <h1 className="!text-[19px] md:!text-[22px] min-w-0 flex-1">{v.lugar} {b.nome}</h1>
-        <BotaoConta />
-      </div>
+      {/* O topo do desenho: o desenho do tipo à esquerda do nome. A logo da
+          casa, quando há, vai grande dentro do cartaz, não aqui. */}
+      <TopoDaCasa b={b}><BotaoConta /></TopoDaCasa>
 
       {/* O cartaz e a tabela de preços moram num Client Component só: a
           grade de rostos é o SELETOR da tabela, e o estado precisa ficar
@@ -56,7 +52,7 @@ export default async function Barbearia() {
           troca não custa rede — e o HTML do servidor já sai com o primeiro
           barbeiro e os preços dele. */}
       <Vitrine nome={b.nome} tipo={b.tipo} endereco={b.endereco} horarioResumo={b.horarioResumo}
-               cardapios={cardapios} />
+               logoSrc={srcDaLogo(b.logoUrl)} cardapios={cardapios} />
 
       {/* Por último, como no desenho: a decisão vem depois de ler a casa. */}
       <Link href="/agendar" aria-label={`Marcar horário ${v.noNome(b.nome)}`}>
