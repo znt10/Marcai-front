@@ -76,3 +76,28 @@ describe('a imagem que a rota /logo devolve', async () => {
     expect(srcDaLogo(pngDataUrl)).toBe(`/logo?v=${versaoDaLogo(pngDataUrl)}`);
   });
 });
+
+describe('a ordem das tentativas ao reduzir a logo (iPhone não gera WebP)', async () => {
+  const { tentativasDaLogo } = await import('@/lib/logo');
+
+  it('tenta PNG menor antes de cair no JPEG, que perde o fundo transparente', () => {
+    const t = tentativasDaLogo(2000, 500);
+    const primeiroJpeg = t.findIndex((x) => x.tipo === 'image/jpeg');
+    const pngs = t.filter((x) => x.tipo === 'image/png');
+    expect(t[0].tipo).toBe('image/webp');
+    expect(pngs.map((x) => x.largura)).toEqual([512, 384, 256]);
+    expect(t.slice(primeiroJpeg).every((x) => x.tipo === 'image/jpeg')).toBe(true);
+    expect(primeiroJpeg).toBeGreaterThan(t.lastIndexOf(pngs[pngs.length - 1]));
+  });
+
+  it('o PNG menor mantém a proporção', () => {
+    const png256 = tentativasDaLogo(2000, 500).find((x) => x.tipo === 'image/png' && x.largura === 256);
+    expect(png256).toMatchObject({ largura: 256, altura: 64 });
+  });
+
+  it('logo já pequena não ganha tentativa ampliada nem repetida', () => {
+    const pngs = tentativasDaLogo(300, 100).filter((x) => x.tipo === 'image/png');
+    expect(pngs.map((x) => x.largura)).toEqual([300, 256]);
+    expect(tentativasDaLogo(80, 80).filter((x) => x.tipo === 'image/png').map((x) => x.largura)).toEqual([80]);
+  });
+});

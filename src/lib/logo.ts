@@ -93,7 +93,47 @@ const carregar = (arquivo: File) =>
 const bytesDe = (url: string) => Math.ceil((url.length - url.indexOf(',') - 1) * 0.75);
 
 /// Devolve a data URL pronta para o `PUT /painel/logo`.
-export async function prepararLogo(arquivo: File): Promise<string> {
+export type Tentativa = {
+  tipo: 'image/webp' | 'image/png' | 'image/jpeg';
+  largura: number;
+  altura: number;
+  qualidade?: number;
+};
+
+/// A ordem em que `prepararLogo` tenta caber nos 60 KB. O que importa é não
+/// perder o fundo transparente:
+///
+/// 1. WebP no tamanho cheio (alfa e pequeno), com a qualidade caindo.
+/// 2. PNG no tamanho cheio e depois MENOR (384 e 256 no lado maior). O Safari
+///    do iPhone não gera WebP, e uma PNG de 512 com detalhe passa fácil de
+///    60 KB: sem os degraus menores, ela ia direto para o JPEG.
+/// 3. JPEG por último. Ele não tem alfa, e o canvas pinta o transparente de
+///    PRETO; por isso `prepararLogo` pinta antes o fundo da tela do cliente.
+///
+/// Nenhum degrau amplia a logo, e um degrau igual ao anterior não se repete.
+export function tentativasDaLogo(largura: number, altura: number): Tentativa[] {
+  const cheia = medidasDaLogo(largura, altura);
+  const lados = [cheia.largura >= cheia.altura ? cheia.largura : cheia.altura];
+  for (const lado of [384, 256]) if (lado < lados[lados.length - 1]) lados.push(lado);
+  const qualidades = [0.85, 0.75, 0.6, 0.45];
+  const doLado = (lado: number) => {
+    const fator = lado / Math.max(cheia.largura, cheia.altura);
+    return {
+      largura: Math.max(1, Math.round(cheia.largura * fator)),
+      altura: Math.max(1, Math.round(cheia.altura * fator)),
+    };
+  };
+  return [
+    ...qualidades.map((qualidade) => ({ tipo: 'image/webp' as const, ...cheia, qualidade })),
+    ...lados.map((lado) => ({ tipo: 'image/png' as const, ...doLado(lado) })),
+    ...qualidades.map((qualidade) => ({ tipo: 'image/jpeg' as const, ...cheia, qualidade })),
+  ];
+}
+
+/// Devolve a data URL pronta para o `PUT /painel/logo`. `fundo` é a cor do
+/// fundo da tela do cliente: só é usada se a logo tiver de virar JPEG, para o
+/// transparente sair no tom da tela, e não preto.
+export async function prepararLogo(arquivo: File, fundo: string): Promise<string> {
   // O `accept` do input é sugestão: o seletor deixa escolher qualquer arquivo.
   if (!TIPOS.includes(arquivo.type)) {
     throw new ErroDeLogo('Escolhe uma imagem (JPG, PNG ou WebP).');
@@ -106,28 +146,27 @@ export async function prepararLogo(arquivo: File): Promise<string> {
     throw new ErroDeLogo('Não consegui abrir essa imagem. Tenta outra?');
   }
 
-  const { largura, altura } = medidasDaLogo(img.naturalWidth, img.naturalHeight);
   const tela = document.createElement('canvas');
-  tela.width = largura;
-  tela.height = altura;
   const pincel = tela.getContext('2d');
   if (!pincel) throw new ErroDeLogo('Não consegui preparar a logo aqui. Tenta outra?');
-  // A imagem INTEIRA, sem recorte e sem pintar fundo: o canvas nasce
-  // transparente, e é isso que deixa a logo no tom da tela do cliente.
-  pincel.drawImage(img, 0, 0, largura, altura);
+  const semSuporte = new Set<string>();
 
-  // WebP primeiro (guarda alfa e é pequeno), PNG depois (alfa, sem
-  // qualidade), JPEG por último (perde o fundo transparente, mas é melhor que
-  // recusar num aparelho sem os outros dois).
-  for (const tipo of ['image/webp', 'image/png', 'image/jpeg']) {
-    const qualidades = tipo === 'image/png' ? [undefined] : [0.85, 0.75, 0.6, 0.45];
-    for (const qualidade of qualidades) {
-      const url = tela.toDataURL(tipo, qualidade);
-      // `toDataURL` cai para PNG quando o tipo não é suportado: sem conferir
-      // o prefixo, mandaríamos um PNG achando que é WebP.
-      if (!url.startsWith(`data:${tipo}`)) break;
-      if (bytesDe(url) <= TETO_BYTES) return url;
+  for (const t of tentativasDaLogo(img.naturalWidth, img.naturalHeight)) {
+    if (semSuporte.has(t.tipo)) continue;
+    // Mudar o tamanho do canvas o limpa: ele volta transparente.
+    tela.width = t.largura;
+    tela.height = t.altura;
+    if (t.tipo === 'image/jpeg') {
+      pincel.fillStyle = fundo;
+      pincel.fillRect(0, 0, t.largura, t.altura);
     }
+    // A imagem INTEIRA, sem recorte.
+    pincel.drawImage(img, 0, 0, t.largura, t.altura);
+    const url = tela.toDataURL(t.tipo, t.qualidade);
+    // `toDataURL` cai para PNG quando o tipo não é suportado (o WebP no
+    // Safari): sem conferir o prefixo, mandaríamos um PNG achando que é WebP.
+    if (!url.startsWith(`data:${t.tipo}`)) { semSuporte.add(t.tipo); continue; }
+    if (bytesDe(url) <= TETO_BYTES) return url;
   }
   throw new ErroDeLogo('Essa logo é pesada demais. Tenta uma mais simples?');
 }

@@ -58,7 +58,7 @@ export function LogoDaCasaPainel() {
              onChange={(e) => {
                const arquivo = e.target.files?.[0];
                e.target.value = '';
-               if (arquivo) void gravar(() => prepararLogo(arquivo));
+               if (arquivo) void gravar(() => prepararLogo(arquivo, fundo));
              }} />
       <div className="flex gap-2">
         <BotaoVazado disabled={!dados || enviando} onClick={() => seletor.current?.click()}>
