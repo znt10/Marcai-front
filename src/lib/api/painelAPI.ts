@@ -237,6 +237,10 @@ export type MembroDaEquipe = {
   servicos: number; expediente: number;
   /// O que impede desativar.
   agendamentosFuturos: number;
+  /// Nunca criou senha e nunca teve horário marcado: o cadastro que nasceu
+  /// errado (celular trocado) e pode sumir de vez. Quem não passa nisso só
+  /// desativa — o servidor confere de novo e responde 409.
+  podeApagar: boolean;
 };
 
 export type NovoBarbeiro = { nome: string; whatsapp: string; papel: Eu['papel'] };
@@ -275,6 +279,11 @@ export const equipeApi = {
   reativar: (id: string) =>
     pedir<{ ok: true }>(`/painel/equipe/${id}/reativar`, {
       metodo: 'POST', loginEm: LOGIN_DO_PAINEL,
+    }),
+
+  apagar: (id: string) =>
+    pedir<{ ok: true }>(`/painel/equipe/${id}`, {
+      metodo: 'DELETE', loginEm: LOGIN_DO_PAINEL,
     }),
 };
 

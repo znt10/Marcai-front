@@ -115,6 +115,16 @@ export function Equipe({ recarregarEm, euId }: { recarregarEm?: number; euId?: s
                   reativar
                 </BotaoVazado>}
           </div>
+          {/* Linha própria, e não um quarto botão: ao lado dos outros três
+              ficaria espremido no celular, e é a única ação sem volta. */}
+          {m.podeApagar && m.id !== euId && (
+            <BotaoVazado onClick={() => {
+              if (!confirm(`Apagar ${m.nome} da equipe? Não tem como desfazer — se foi o celular errado, depois é só cadastrar de novo.`)) return;
+              void agir(() => equipeApi.apagar(m.id));
+            }}>
+              apagar cadastro
+            </BotaoVazado>
+          )}
         </Cartao>
       ))}
 
