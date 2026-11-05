@@ -19,7 +19,7 @@ export function podeDesativar(p: {
   // Ordem por proximidade de quem lê: quem tenta se desativar precisa ouvir
   // isso primeiro, não a contagem de agendamentos de outra pessoa.
   if (p.ehEuMesmo) {
-    return 'Você não pode se desativar — pede para outro dono fazer isso.';
+    return 'Você não pode se arquivar — pede para outro dono fazer isso.';
   }
   if (p.papel === 'DONO' && p.donosAtivos <= 1) {
     return 'Esse é o único dono ativo. Promove outra pessoa antes.';
@@ -32,7 +32,7 @@ export function podeDesativar(p: {
       ? ` até ${formatarDiaCurto(p.proximoEm)}`
       : '';
     return `Tem ${p.agendamentosFuturos} horário(s) marcado(s)${quando}. ` +
-           'Cancela ou remarca antes de desativar.';
+           'Cancela ou remarca antes de arquivar.';
   }
   return null;
 }
