@@ -6,6 +6,8 @@ import { Equipe } from '@/components/painel/Equipe';
 import { FormBarbeiro } from '@/components/painel/FormBarbeiro';
 import { ClientesBloqueados } from '@/components/painel/ClientesBloqueados';
 import { useEu } from '@/components/painel/SessaoDoPainel';
+import { LogoDaCasaPainel } from '@/components/painel/LogoDaCasaPainel';
+import { SuaFoto } from '@/components/painel/SuaFoto';
 
 export default function EquipeDoPainel() {
   // `eu` vem do provider do layout, buscado uma vez por sessão — não mais
@@ -31,6 +33,13 @@ export default function EquipeDoPainel() {
           ? <Texto>Só o dono mexe na equipe.</Texto>
           : (
             <>
+              {/* A cara da casa e a do dono, lado a lado, antes da equipe
+                  (spec 2026-11-05). No celular, uma embaixo da outra. */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <LogoDaCasaPainel />
+                <SuaFoto />
+              </div>
+              <Fio className="my-1" />
               <Equipe recarregarEm={versao} euId={eu?.id} />
               <Fio className="my-1" />
               <FormBarbeiro aoCriar={() => setVersao((v) => v + 1)} />
