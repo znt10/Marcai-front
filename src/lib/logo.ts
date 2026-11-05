@@ -50,6 +50,33 @@ export function versaoDaLogo(dataUrl: string): string {
   return (hex(a) + hex(b)).slice(0, 12);
 }
 
+/// Os bytes que a rota `/logo` devolve, ou nulo — sem logo, mime fora da
+/// lista ou base64 estragado. Nulo vira 404, nunca 500: a tela cai no desenho
+/// do tipo, e uma logo ruim no banco não derruba a vitrine.
+///
+/// Confere o mime de novo, e não só no back: SVG servido do domínio da casa
+/// é script, e esta rota é a última porta antes do navegador.
+const DATA_URL = /^data:([a-z0-9.+/-]+);base64,([A-Za-z0-9+/=\s]+)$/i;
+
+export function respostaDaLogo(logoUrl: string | null | undefined): { tipo: string; bytes: Uint8Array<ArrayBuffer> } | null {
+  if (!logoUrl) return null;
+  const casou = DATA_URL.exec(logoUrl.trim());
+  if (!casou) return null;
+  const tipo = casou[1].toLowerCase();
+  if (!TIPOS.includes(tipo)) return null;
+  try {
+    const binario = atob(casou[2].replace(/\s/g, ''));
+    return { tipo, bytes: Uint8Array.from(binario, (c) => c.charCodeAt(0)) };
+  } catch {
+    return null;
+  }
+}
+
+/// O `src` das telas do cliente: `/logo?v=<versão>`, ou nulo sem logo.
+export function srcDaLogo(logoUrl: string | null | undefined): string | null {
+  return logoUrl ? `/logo?v=${versaoDaLogo(logoUrl)}` : null;
+}
+
 export class ErroDeLogo extends Error {}
 
 const carregar = (arquivo: File) =>

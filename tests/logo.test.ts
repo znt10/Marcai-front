@@ -44,3 +44,35 @@ describe('a versão da logo no endereço', () => {
     expect(versaoDaLogo(a)).toMatch(/^[0-9a-f]{12}$/);
   });
 });
+
+describe('a imagem que a rota /logo devolve', async () => {
+  const { respostaDaLogo, srcDaLogo } = await import('@/lib/logo');
+  const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const pngDataUrl = `data:image/png;base64,${Buffer.from(png).toString('base64')}`;
+
+  it('sem logo, nada: a rota responde 404 e a tela mostra o desenho do tipo', () => {
+    expect(respostaDaLogo(null)).toBeNull();
+    expect(respostaDaLogo(undefined)).toBeNull();
+  });
+
+  it('SVG no banco não sai, nem que alguém o tenha posto lá por fora', () => {
+    expect(respostaDaLogo('data:image/svg+xml;base64,PHN2Zy8+')).toBeNull();
+  });
+
+  it('base64 estragado vira 404, nunca 500', () => {
+    expect(respostaDaLogo('data:image/png;base64,@@@')).toBeNull();
+    expect(respostaDaLogo('https://exemplo.com/logo.png')).toBeNull();
+  });
+
+  it('a logo válida sai com o tipo e os bytes originais', () => {
+    const r = respostaDaLogo(pngDataUrl);
+    expect(r?.tipo).toBe('image/png');
+    expect(Array.from(r!.bytes)).toEqual(Array.from(png));
+  });
+
+  it('o endereço da logo leva a versão; sem logo, nenhum endereço', () => {
+    expect(srcDaLogo(null)).toBeNull();
+    expect(srcDaLogo(undefined)).toBeNull();
+    expect(srcDaLogo(pngDataUrl)).toBe(`/logo?v=${versaoDaLogo(pngDataUrl)}`);
+  });
+});
