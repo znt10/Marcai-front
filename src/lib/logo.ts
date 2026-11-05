@@ -72,9 +72,79 @@ export function respostaDaLogo(logoUrl: string | null | undefined): { tipo: stri
   }
 }
 
-/// O `src` das telas do cliente: `/logo?v=<versão>`, ou nulo sem logo.
-export function srcDaLogo(logoUrl: string | null | undefined): string | null {
-  return logoUrl ? `/logo?v=${versaoDaLogo(logoUrl)}` : null;
+type Medidas = { largura: number; altura: number };
+
+/// Largura e altura lidas do cabeçalho da imagem, sem decodificá-la: PNG
+/// (IHDR), WebP (VP8X, VP8 e VP8L, os três que o canvas escreve) e JPEG (o
+/// primeiro SOF). Nulo quando não reconhece — e aí a logo é tratada como
+/// banner, que nunca recorta.
+export function medidasDosBytes(tipo: string, b: Uint8Array): Medidas | null {
+  const u16be = (i: number) => (b[i] << 8) | b[i + 1];
+  const u24le = (i: number) => b[i] | (b[i + 1] << 8) | (b[i + 2] << 16);
+  const texto = (i: number, n: number) => String.fromCharCode(...b.subarray(i, i + n));
+  const ok = (m: Medidas) => (m.largura > 0 && m.altura > 0 ? m : null);
+
+  if (tipo === 'image/png') {
+    if (b.length < 24 || texto(12, 4) !== 'IHDR') return null;
+    const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+    return ok({ largura: v.getUint32(16), altura: v.getUint32(20) });
+  }
+  if (tipo === 'image/webp') {
+    if (b.length < 30 || texto(0, 4) !== 'RIFF' || texto(8, 4) !== 'WEBP') return null;
+    const bloco = texto(12, 4);
+    if (bloco === 'VP8X') return ok({ largura: u24le(24) + 1, altura: u24le(27) + 1 });
+    if (bloco === 'VP8 ') return ok({ largura: (b[26] | (b[27] << 8)) & 0x3fff, altura: (b[28] | (b[29] << 8)) & 0x3fff });
+    if (bloco === 'VP8L' && b[20] === 0x2f) {
+      const bits = b[21] | (b[22] << 8) | (b[23] << 16) | (b[24] << 24);
+      return ok({ largura: (bits & 0x3fff) + 1, altura: ((bits >>> 14) & 0x3fff) + 1 });
+    }
+    return null;
+  }
+  if (tipo === 'image/jpeg') {
+    if (b[0] !== 0xff || b[1] !== 0xd8) return null;
+    let i = 2;
+    while (i + 9 < b.length) {
+      if (b[i] !== 0xff) return null;
+      const marca = b[i + 1];
+      // SOF0..SOF15, menos DHT (C4), JPG (C8) e DAC (CC), que não são quadro.
+      if (marca >= 0xc0 && marca <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marca)) {
+        return ok({ altura: u16be(i + 5), largura: u16be(i + 7) });
+      }
+      i += 2 + u16be(i + 2);
+    }
+    return null;
+  }
+  return null;
+}
+
+/// Quadrada (até 25% de diferença entre os lados) aparece REDONDA, como a
+/// foto dos profissionais; comprida é banner e aparece como veio, para não
+/// cortar o nome escrito nela (José, 06/11/2026).
+export function formatoDaLogo(largura: number, altura: number): 'redonda' | 'banner' {
+  return Math.max(largura, altura) / Math.min(largura, altura) <= 1.25 ? 'redonda' : 'banner';
+}
+
+export type LogoNaTela = {
+  src: string;
+  redonda: boolean;
+  /// As medidas reais, para a tela reservar o espaço antes de a logo chegar.
+  largura: number | null;
+  altura: number | null;
+};
+
+/// O que as telas precisam para desenhar a logo, ou nulo — e nulo também
+/// para a logo estragada: aí a tela mostra o desenho do tipo, e não uma
+/// imagem quebrada apontando para um `/logo` que vai dar 404.
+export function logoParaTela(logoUrl: string | null | undefined): LogoNaTela | null {
+  const imagem = respostaDaLogo(logoUrl);
+  if (!imagem || !logoUrl) return null;
+  const m = medidasDosBytes(imagem.tipo, imagem.bytes);
+  return {
+    src: `/logo?v=${versaoDaLogo(logoUrl)}`,
+    redonda: m ? formatoDaLogo(m.largura, m.altura) === 'redonda' : false,
+    largura: m?.largura ?? null,
+    altura: m?.altura ?? null,
+  };
 }
 
 export class ErroDeLogo extends Error {}

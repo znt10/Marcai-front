@@ -5,7 +5,7 @@ import { cartaoDestaPagina } from '@/lib/miniatura';
 import { cardapioPorBarbeiro } from '@/lib/vitrine';
 import { Vitrine } from '@/components/Vitrine';
 import { TopoDaCasa } from '@/components/TopoDaCasa';
-import { srcDaLogo } from '@/lib/logo';
+import { logoParaTela } from '@/lib/logo';
 import { BotaoConta } from '@/components/conta/BotaoConta';
 import { Frame, Box } from '@/components/wf';
 import { formatar } from '@/lib/telefone';
@@ -52,7 +52,7 @@ export default async function Barbearia() {
           troca não custa rede — e o HTML do servidor já sai com o primeiro
           barbeiro e os preços dele. */}
       <Vitrine nome={b.nome} tipo={b.tipo} endereco={b.endereco} horarioResumo={b.horarioResumo}
-               logoSrc={srcDaLogo(b.logoUrl)} cardapios={cardapios} />
+               logo={logoParaTela(b.logoUrl)} cardapios={cardapios} />
 
       {/* Por último, como no desenho: a decisão vem depois de ler a casa. */}
       <Link href="/agendar" aria-label={`Marcar horário ${v.noNome(b.nome)}`}>

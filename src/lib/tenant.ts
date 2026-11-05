@@ -30,7 +30,7 @@ export type Barbearia = {
   whatsappAoCliente?: boolean;
   /// A logo da casa como data URL, ou nulo (= o desenho do tipo). Ausente =
   /// back de antes da logo. Não vai assim para o navegador: as telas apontam
-  /// para `/logo?v=…` (`srcDaLogo` em `lib/logo.ts`).
+  /// para `/logo?v=…` (`logoParaTela` em `lib/logo.ts`).
   logoUrl?: string | null;
 };
 

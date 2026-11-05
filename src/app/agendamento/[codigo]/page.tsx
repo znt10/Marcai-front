@@ -5,7 +5,7 @@ import { Frame } from '@/components/wf';
 import { Confirmado } from '@/components/Confirmado';
 import { TopoDaCasa } from '@/components/TopoDaCasa';
 import { LogoDaCasa } from '@/components/LogoDaCasa';
-import { srcDaLogo } from '@/lib/logo';
+import { logoParaTela } from '@/lib/logo';
 
 /// O `podeCancelar` vem PRONTO do Django desde a fatia 8. Ele era calculado
 /// aqui (`minutosAte > PRAZO_CANCELAMENTO_MIN`) sobre o relogio do servidor
@@ -61,7 +61,7 @@ export default async function Pagina({ params }: { params: Promise<{ codigo: str
           página, e não no `Confirmado`, para valer também no cancelado. */}
       <TopoDaCasa b={b} />
       <div className="pt-2">
-        <LogoDaCasa src={srcDaLogo(b.logoUrl)} tipo={b.tipo} nome={b.nome} altura={96} />
+        <LogoDaCasa logo={logoParaTela(b.logoUrl)} tipo={b.tipo} nome={b.nome} altura={96} />
       </div>
       <Confirmado
         codigo={ag.codigo}

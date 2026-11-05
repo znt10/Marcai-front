@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Box, Lbl, Sub, Avatar } from '@/components/wf';
 import { useVocabulario } from '@/components/Vocabulario';
 import { LogoDaCasa } from '@/components/LogoDaCasa';
+import type { LogoNaTela } from '@/lib/logo';
 import type { Tipo } from '@/lib/tipos';
 import { formatarPreco } from '@/lib/dinheiro';
 import type { CardapioDoBarbeiro } from '@/lib/vitrine';
@@ -32,12 +33,12 @@ import type { CardapioDoBarbeiro } from '@/lib/vitrine';
 /// que devia responder "quanto custa um corte aqui". Escolhendo o rosto, a
 /// resposta é sempre três linhas — e comparar dois barbeiros é um toque.
 export function Vitrine({
-  nome, tipo, endereco, horarioResumo, logoSrc, cardapios,
+  nome, tipo, endereco, horarioResumo, logo, cardapios,
 }: {
   nome: string;
   tipo?: Tipo;
-  /// `/logo?v=…` quando a casa subiu logo; nulo = o desenho do tipo.
-  logoSrc: string | null;
+  /// A logo da casa (`logoParaTela`); nulo = o desenho do tipo.
+  logo: LogoNaTela | null;
   endereco: string;
   horarioResumo: string | null;
   cardapios: CardapioDoBarbeiro[];
@@ -56,7 +57,7 @@ export function Vitrine({
             DE HOMEM, HORA MARCADA."), que era igual para toda casa do mesmo
             tipo: com ou sem logo, o cartaz é a marca, a rua e a equipe
             (José, 05/11/2026). O nome já está no topo e não se repete. */}
-        <LogoDaCasa src={logoSrc} tipo={tipo} nome={nome} altura={120} />
+        <LogoDaCasa logo={logo} tipo={tipo} nome={nome} altura={120} />
 
         <div className="flex flex-col gap-0.5">
           <Sub>{endereco}</Sub>
