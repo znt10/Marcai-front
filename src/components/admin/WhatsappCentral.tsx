@@ -5,12 +5,13 @@ import { adminApi, mensagemDoErro, type WhatsappCentral as Central } from '@/lib
 import { formatar } from '@/lib/telefone';
 import { proximaConferencia } from '@/lib/whatsapp-central';
 
-/// O número central do Marcaí no topo do admin.
+/// O chip da equipe (Evolution) no topo do admin.
 ///
-/// Desde a etapa 1 ele carrega tudo — lista, avisos, confirmação, lembrete.
-/// Se ele cai, cai para todas as barbearias de uma vez; por isso o estado
-/// fica à vista, e o QR para reconectar fica aqui, sem precisar expor o
-/// manager da Evolution.
+/// Desde a API oficial (Meta), o cliente recebe pelo número da Meta e este
+/// chip leva só o que vai para os barbeiros: a lista do dia e os avisos. Se
+/// ele cai, cai para a equipe de todas as barbearias de uma vez; por isso o
+/// estado fica à vista, e o QR para reconectar fica aqui, sem precisar expor
+/// o manager da Evolution.
 export function WhatsappCentral() {
   const [dados, setDados] = useState<Central | null>(null);
   const [erro, setErro] = useState('');
@@ -46,7 +47,7 @@ export function WhatsappCentral() {
 
   return (
     <>
-      <Lbl>whatsapp do marcaí</Lbl>
+      <Lbl>chip da equipe (whatsapp dos barbeiros)</Lbl>
       {erro && <Sub className="text-acento">{erro}</Sub>}
       {!dados ? <Sub>carregando…</Sub>
         : !dados.configurado ? <Box variante="mut">sem Evolution configurada neste ambiente</Box>
@@ -54,15 +55,15 @@ export function WhatsappCentral() {
           <Box variante="sel">conectado{dados.numero ? ` · ${formatar(dados.numero)}` : ''}</Box>
         ) : dados.qrBase64 ? (
           <>
-            <Box variante="alerta">desconectado — nada sai para equipe nem cliente</Box>
+            <Box variante="alerta">desconectado — os barbeiros não recebem a lista nem os avisos. Os clientes continuam recebendo pela Meta.</Box>
             {/* `data:image/png;base64,...` vem pronto da Evolution. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={dados.qrBase64}
-              alt="QR code para conectar o WhatsApp do Marcaí"
+              alt="QR code para conectar o chip da equipe"
               className="w-full max-w-[280px] self-center rounded-wf border border-borda bg-white p-2"
             />
-            <Sub>No celular do chip do Marcaí: WhatsApp → Aparelhos conectados → Conectar um aparelho.</Sub>
+            <Sub>No celular do chip da equipe: WhatsApp → Aparelhos conectados → Conectar um aparelho.</Sub>
           </>
         ) : (
           <Box variante="alerta">desconectado, e a Evolution não mandou QR — tenta de novo em instantes</Box>
