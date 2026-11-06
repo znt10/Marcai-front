@@ -1,11 +1,13 @@
 'use client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Box, Lbl, Sub, Sep } from '@/components/wf';
 import { useVocabulario } from '@/components/Vocabulario';
 import { publicoApi, contaApi, mensagemDoErro, ErroApi } from '@/lib/api';
 import { formatarPreco } from '@/lib/dinheiro';
 import { CONTA_ABERTA } from '@/lib/conta';
+import { criarEsperaDoToque, linkDoLembrete } from '@/lib/lembretePorToque';
 
 type Props = {
   codigo: string; clienteNome: string; barbeiroNome: string; servicoNome: string;
@@ -14,12 +16,43 @@ type Props = {
   /// Snapshot do momento de marcar — nulo quando o barbeiro não tinha
   /// preço definido pra aquele serviço naquela hora.
   precoCentavos: number | null;
+  /// Lembrete por toque: o número central (nulo = back sem a chave, fica o
+  /// texto de antes), se este agendamento já pediu o lembrete, e o nome que
+  /// vai na mensagem pronta.
+  whatsappCentral: string | null;
+  lembretePedido: boolean;
+  barbeariaNome: string;
 };
 
 export function Confirmado(p: Props) {
   const v = useVocabulario();
   const [status, setStatus] = useState(p.status);
   const [erro, setErro] = useState('');
+  const router = useRouter();
+  const pedeOToque = p.whatsappAoCliente && p.whatsappCentral !== null;
+
+  // Quem tocou no botão foi para o WhatsApp e volta para esta aba depois de
+  // mandar: buscar de novo (por um tempo, o webhook pode atrasar) faz a tela
+  // trocar sozinha para "Lembrete ligado". Só depois do toque — quem só
+  // olha a tela não busca nada.
+  // Contador, e não booleano: tocar de novo depois que a espera acabou
+  // recomeça a espera.
+  const [toques, setToques] = useState(0);
+  const esperandoToque = toques > 0 && pedeOToque && !p.lembretePedido;
+  useEffect(() => {
+    if (!esperandoToque) return;
+    const espera = criarEsperaDoToque({
+      atualizar: () => router.refresh(),
+      visivel: () => document.visibilityState === 'visible',
+    });
+    espera.iniciar();
+    const aoMudar = () => espera.aoMudarVisibilidade();
+    document.addEventListener('visibilitychange', aoMudar);
+    return () => {
+      document.removeEventListener('visibilitychange', aoMudar);
+      espera.parar();
+    };
+  }, [esperandoToque, toques, router]);
 
   // O convite só aparece para quem sabidamente NÃO tem sessão (401). Erro de
   // rede ou 500 não diz nada sobre a pessoa, então não mostra nada.
@@ -97,9 +130,31 @@ export function Confirmado(p: Props) {
         </div>
       </div>
 
-      {p.whatsappAoCliente
+      {/* Lembrete por toque: só recebe WhatsApp quem manda a mensagem pronta.
+          O botão é o destaque logo abaixo do cupom porque sem ele não chega
+          nada — nem a confirmação. Nova aba para esta tela continuar aqui
+          quando a pessoa voltar. */}
+      {/* A pergunta, e não só um botão (ideia do cunhado do José, 03/11):
+          "Quer receber o lembrete 1 hora antes?" é o que a pessoa responde
+          sem pensar. Cartão no mesmo papel do cupom, com o título na cor de
+          destaque, para não passar batido logo abaixo do horário. */}
+      {pedeOToque && !p.lembretePedido && (
+        <div className="bg-superficie border border-borda rounded-wf shadow-[var(--shadow-sel)]
+                        px-5 py-5 md:px-7 md:py-6 flex flex-col gap-3">
+          <div className="font-bold text-[22px] md:text-[26px] leading-tight text-acento">
+            Quer receber o lembrete 1 hora antes?
+          </div>
+          <a href={linkDoLembrete(p.whatsappCentral!, p.barbeariaNome, p.codigo)}
+             target="_blank" rel="noopener noreferrer" onClick={() => setToques((n) => n + 1)}>
+            <Box variante="fill" className="text-center">Sim, quero no WhatsApp</Box>
+          </a>
+          <Sub>Abre o WhatsApp com a mensagem pronta. É só enviar.</Sub>
+        </div>
+      )}
+      {pedeOToque && p.lembretePedido && <Sub>Lembrete ligado ✓ · chega no WhatsApp 1h antes</Sub>}
+      {!pedeOToque && (p.whatsappAoCliente
         ? <Sub>Mandamos o lembrete no WhatsApp 1h antes.</Sub>
-        : <Sub>Por enquanto não mandamos confirmação nem lembrete no WhatsApp. Tire um print desta tela para não esquecer.</Sub>}
+        : <Sub>Por enquanto não mandamos confirmação nem lembrete no WhatsApp. Tire um print desta tela para não esquecer.</Sub>)}
 
       {/* Aqui ficavam os dois botões de calendário (`.ics` e Google Agenda).
           Saíram inteiros a pedido do dono: dois botões disputando a tela

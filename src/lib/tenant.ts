@@ -28,6 +28,10 @@ export type Barbearia = {
   /// pausa (Marcai-back, `cliente_sem_whatsapp`); ausente = back antigo, que
   /// sempre mandava.
   whatsappAoCliente?: boolean;
+  /// Lembrete por toque: o número central do botão "Quero o lembrete no
+  /// WhatsApp", em dígitos nacionais. Nulo com a chave desligada; ausente =
+  /// back de antes dele. Nos dois casos o site fica como era.
+  whatsappCentral?: string | null;
   /// A logo da casa como data URL, ou nulo (= o desenho do tipo). Ausente =
   /// back de antes da logo. Não vai assim para o navegador: as telas apontam
   /// para `/logo?v=…` (`logoParaTela` em `lib/logo.ts`).
