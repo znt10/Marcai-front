@@ -40,6 +40,9 @@ export function ListaBarbearias({ tipo, recarregarEm }: { tipo: Tipo; recarregar
   }, [recarregarEm]);
 
   async function alternar(b: Barbearia) {
+    // Só para arquivar: um clique sem querer tira o lugar do ar. Reativar
+    // não pergunta — é o caminho de volta.
+    if (b.ativo && !confirm(`Arquivar ${b.nome}? Sai do ar em até um minuto; reativar traz de volta.`)) return;
     setErro('');
     try {
       await adminApi.alternarAtivo(b.id, !b.ativo);
