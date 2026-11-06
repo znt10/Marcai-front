@@ -1,4 +1,5 @@
 import type { LinhaDaMensalidade } from '@/lib/api';
+import type { Tipo } from '@/lib/tipos';
 
 /// Quem pede o olho do admin primeiro. "Avisou que pagou" vem antes de tudo:
 /// tem gente esperando o admin conferir o Pix. AGUARDANDO é o mesmo caso
@@ -55,4 +56,20 @@ export function centavosDoTexto(texto: string): number | null {
   const inteiro = (m[1] ?? m[3] ?? m[5]).replace(/\./g, '');
   const frac = (m[2] ?? m[4] ?? '').padEnd(2, '0');
   return Number(inteiro) * 100 + Number(frac);
+}
+
+/// Para a busca: "Estética Ágata" e "estetica agata" são o mesmo texto.
+const semAcento = (t: string) =>
+  t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+/// O que a busca e o filtro de categoria deixam na tela de mensalidades.
+/// Não reordena: a lista chega já na ordem de urgência. `categoria` null =
+/// todas; sem tipo conta como barbearia, como em `daCategoria`.
+export function filtrarMensalidades(
+  linhas: LinhaDaMensalidade[], busca: string, categoria: Tipo | null,
+): LinhaDaMensalidade[] {
+  const termo = semAcento(busca);
+  return linhas.filter((l) =>
+    (categoria === null || (l.tipo ?? 'BARBEARIA') === categoria)
+    && (termo === '' || semAcento(l.nome).includes(termo)));
 }

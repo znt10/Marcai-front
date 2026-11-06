@@ -9,9 +9,10 @@ import {
 import { formatarDiaCurto, formatarHora } from '@/lib/datas';
 import { reais } from '@/lib/mensalidade';
 import {
-  centavosDoTexto, ordenarMensalidades, rotuloDaSituacao,
+  centavosDoTexto, filtrarMensalidades, ordenarMensalidades, rotuloDaSituacao,
 } from '@/lib/ordemDasMensalidades';
-import { NOME_DA_CATEGORIA } from '@/lib/categorias';
+import { NOME_DA_CATEGORIA, daCategoria } from '@/lib/categorias';
+import { TIPOS, type Tipo } from '@/lib/tipos';
 
 const dataCurta = (iso: string) => {
   const [, mes, dia] = iso.slice(0, 10).split('-');
@@ -27,6 +28,11 @@ const emReais = (centavos: number | null) =>
 export function Mensalidades() {
   const [linhas, setLinhas] = useState<LinhaDaMensalidade[] | null>(null);
   const [erro, setErro] = useState('');
+  // Busca pelo nome e categoria (pedido de 05/11/2026): com todos os ramos
+  // na mesma lista ficava tudo amontoado. Só esconde; a ordem continua a de
+  // urgência.
+  const [busca, setBusca] = useState('');
+  const [categoria, setCategoria] = useState<Tipo | null>(null);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -43,7 +49,11 @@ export function Mensalidades() {
 
   // Contados aqui, a partir das linhas: depois de uma ação os números do topo
   // acompanham sem outra ida ao servidor.
-  const lista = linhas ?? [];
+  const todas = linhas ?? [];
+  const lista = filtrarMensalidades(todas, busca, categoria);
+  // Só as categorias que têm alguém: um chip "Maquiagem" que mostra nada é
+  // clique perdido. Com uma categoria só, os chips nem aparecem.
+  const categorias = TIPOS.filter((t) => daCategoria(todas, t).length > 0);
   const informadas = lista.filter((l) => l.informada).length;
   const atrasadas = lista.filter((l) => l.situacao === 'ATRASADA').length;
   const bloqueadas = lista.filter((l) => l.situacao === 'BLOQUEADA').length;
@@ -70,6 +80,25 @@ export function Mensalidades() {
       {!linhas && !erro && <Sub>carregando…</Sub>}
       {erro && <Sub className="text-acento">{erro}</Sub>}
       {linhas?.length === 0 && <Sub>nenhuma barbearia ainda</Sub>}
+      {todas.length > 0 && (
+        <Box variante={busca ? 'normal' : 'dash'}>
+          <input className="w-full outline-none bg-transparent" placeholder="buscar pelo nome"
+                 type="search" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        </Box>
+      )}
+      {categorias.length > 1 && (
+        <div className="flex gap-2 flex-wrap">
+          <Chip ativo={categoria === null} onClick={() => setCategoria(null)}>
+            todas · {todas.length}
+          </Chip>
+          {categorias.map((t) => (
+            <Chip key={t} ativo={categoria === t} onClick={() => setCategoria(t)}>
+              {NOME_DA_CATEGORIA[t].toLowerCase()} · {daCategoria(todas, t).length}
+            </Chip>
+          ))}
+        </div>
+      )}
+      {todas.length > 0 && lista.length === 0 && <Sub>nenhuma com esse nome</Sub>}
       {lista.map((l) => <Linha key={l.barbeariaId} linha={l} aoMudar={trocar} />)}
     </>
   );

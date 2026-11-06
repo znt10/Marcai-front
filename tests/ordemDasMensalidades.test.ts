@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  centavosDoTexto, ordenarMensalidades, rotuloDaSituacao,
+  centavosDoTexto, filtrarMensalidades, ordenarMensalidades, rotuloDaSituacao,
 } from '../src/lib/ordemDasMensalidades';
 import type { LinhaDaMensalidade } from '../src/lib/api';
 
@@ -59,4 +59,32 @@ describe('centavosDoTexto', () => {
 
   it.each(['', 'abc', '-5', '49,999', '4,9,0', '49,', ',50', '1.234'])('rejeita %j', (t) =>
     expect(centavosDoTexto(t)).toBeNull());
+});
+
+describe('filtrarMensalidades', () => {
+  const l = [
+    linha({ barbeariaId: '1', nome: 'Barbearia do Zé', tipo: 'BARBEARIA' }),
+    linha({ barbeariaId: '2', nome: 'Estética Ágata', tipo: 'SOBRANCELHA' }),
+    linha({ barbeariaId: '3', nome: 'Antiga' }), // sem tipo = barbearia
+    linha({ barbeariaId: '4', nome: 'Unhas da Bia', tipo: 'MANICURE' }),
+  ];
+  const ids = (x: LinhaDaMensalidade[]) => x.map((y) => y.barbeariaId);
+
+  it('sem busca e sem categoria devolve tudo, na mesma ordem', () =>
+    expect(ids(filtrarMensalidades(l, '', null))).toEqual(['1', '2', '3', '4']));
+
+  it('categoria, com o sem tipo contando como barbearia', () => {
+    expect(ids(filtrarMensalidades(l, '', 'BARBEARIA'))).toEqual(['1', '3']);
+    expect(ids(filtrarMensalidades(l, '', 'SOBRANCELHA'))).toEqual(['2']);
+  });
+
+  it('busca ignora maiúscula, acento e espaço sobrando', () => {
+    expect(ids(filtrarMensalidades(l, '  agata ', null))).toEqual(['2']);
+    expect(ids(filtrarMensalidades(l, 'ZÉ', null))).toEqual(['1']);
+  });
+
+  it('busca e categoria juntas', () => {
+    expect(ids(filtrarMensalidades(l, 'bia', 'MANICURE'))).toEqual(['4']);
+    expect(ids(filtrarMensalidades(l, 'bia', 'BARBEARIA'))).toEqual([]);
+  });
 });
