@@ -32,6 +32,10 @@ export type Barbearia = {
   /// WhatsApp", em dígitos nacionais. Nulo com a chave desligada; ausente =
   /// back de antes dele. Nos dois casos o site fica como era.
   whatsappCentral?: string | null;
+  /// A logo da casa como data URL, ou nulo (= o desenho do tipo). Ausente =
+  /// back de antes da logo. Não vai assim para o navegador: as telas apontam
+  /// para `/logo?v=…` (`logoParaTela` em `lib/logo.ts`).
+  logoUrl?: string | null;
 };
 
 /// Reexportada daqui porque e daqui que o resto do sistema a le. A

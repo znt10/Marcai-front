@@ -3,6 +3,9 @@ import { barbeariaAtual, buscarNoDjango } from '@/lib/tenant';
 import { cartaoDestaPagina } from '@/lib/miniatura';
 import { Frame } from '@/components/wf';
 import { Confirmado } from '@/components/Confirmado';
+import { TopoDaCasa } from '@/components/TopoDaCasa';
+import { LogoDaCasa } from '@/components/LogoDaCasa';
+import { logoParaTela } from '@/lib/logo';
 
 /// O `podeCancelar` vem PRONTO do Django desde a fatia 8. Ele era calculado
 /// aqui (`minutosAte > PRAZO_CANCELAMENTO_MIN`) sobre o relogio do servidor
@@ -55,6 +58,13 @@ export default async function Pagina({ params }: { params: Promise<{ codigo: str
 
   return (
     <Frame>
+      {/* O mesmo topo da vitrine e a logo da casa acima do "Tá marcado": o
+          print do cupom sai com a cara da casa (spec 2026-11-05). Aqui na
+          página, e não no `Confirmado`, para valer também no cancelado. */}
+      <TopoDaCasa b={b} />
+      <div className="pt-2">
+        <LogoDaCasa logo={logoParaTela(b.logoUrl)} tipo={b.tipo} nome={b.nome} altura={96} />
+      </div>
       <Confirmado
         codigo={ag.codigo}
         clienteNome={ag.clienteNome}

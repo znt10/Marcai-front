@@ -1,11 +1,11 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { painelApi, mensagemDoErro } from '@/lib/api';
-import { prepararFoto, ErroDeFoto } from '@/lib/foto';
+import { painelApi } from '@/lib/api';
+import { useTrocarMinhaFoto } from '@/components/painel/useTrocarMinhaFoto';
 import { useEu } from '@/components/painel/SessaoDoPainel';
-import { lembrar, esquecer } from '@/lib/eu-lembrado';
+import { esquecer } from '@/lib/eu-lembrado';
 import { SECOES } from '@/components/painel/secoes';
 import { SeletorDeSecao } from '@/components/painel/SeletorDeSecao';
 import { BotaoDeTema } from '@/components/painel/Tema';
@@ -71,32 +71,14 @@ export function NavPainel() {
   // `eu` vem do provider montado no layout, não de uma busca própria: era
   // aqui que uma das seis buscas independentes de `painelApi.eu()` vivia.
   // Ver `SessaoDoPainel.tsx` para a busca em si.
-  const { eu, carregando, setEu } = useEu();
-  const [erroFoto, setErroFoto] = useState('');
+  const { eu, carregando } = useEu();
+  const { trocar: trocarFoto, erro: erroFoto } = useTrocarMinhaFoto();
   const seletor = useRef<HTMLInputElement>(null);
   const naEntrada = caminho === '/painel/login';
 
   if (naEntrada) return null;
 
   const dono = eu?.papel === 'DONO';
-
-  async function trocarFoto(arquivo: File | undefined) {
-    if (!arquivo) return;
-    setErroFoto('');
-    try {
-      // Recorta e reduz AQUI: a foto de câmera tem megabytes, e o que vai para
-      // o banco tem ~6 KB. O servidor confere de novo — cliente é conveniência.
-      const pronta = await prepararFoto(arquivo);
-      await painelApi.definirFoto(pronta);
-      setEu((atual) => (atual ? { ...atual, fotoUrl: pronta } : atual));
-      // A cópia lembrada também: sem isto, a próxima carga de página pintaria
-      // por um instante a foto ANTIGA — o pisca de volta, só que pior, porque
-      // mostraria dado errado em vez de dado nenhum.
-      if (eu) lembrar({ ...eu, fotoUrl: pronta });
-    } catch (e) {
-      setErroFoto(e instanceof ErroDeFoto ? e.message : mensagemDoErro(e));
-    }
-  }
 
   async function sair() {
     // O painel não tinha saída: `painelApi.sair()` existia e não era chamada de

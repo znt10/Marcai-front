@@ -50,6 +50,7 @@ export const MIGRADAS: readonly string[] = [
   // manda o PUT para o Next, que responde 404 sem nenhum handler — foi
   // exatamente o que aconteceu na primeira tentativa.
   '/painel/foto',
+  '/painel/logo',
   '/painel/bloqueios',
   '/painel/equipe',
   '/painel/agenda',

@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { Box, Lbl, Sub, Avatar } from '@/components/wf';
 import { useVocabulario } from '@/components/Vocabulario';
-import { Marca } from '@/components/Marca';
+import { LogoDaCasa } from '@/components/LogoDaCasa';
+import type { LogoNaTela } from '@/lib/logo';
 import type { Tipo } from '@/lib/tipos';
 import { formatarPreco } from '@/lib/dinheiro';
 import type { CardapioDoBarbeiro } from '@/lib/vitrine';
@@ -32,10 +33,12 @@ import type { CardapioDoBarbeiro } from '@/lib/vitrine';
 /// que devia responder "quanto custa um corte aqui". Escolhendo o rosto, a
 /// resposta é sempre três linhas — e comparar dois barbeiros é um toque.
 export function Vitrine({
-  nome, tipo, endereco, horarioResumo, cardapios,
+  nome, tipo, endereco, horarioResumo, logo, cardapios,
 }: {
   nome: string;
   tipo?: Tipo;
+  /// A logo da casa (`logoParaTela`); nulo = o desenho do tipo.
+  logo: LogoNaTela | null;
   endereco: string;
   horarioResumo: string | null;
   cardapios: CardapioDoBarbeiro[];
@@ -50,16 +53,11 @@ export function Vitrine({
   return (
     <>
       <Box className="flex flex-col items-center gap-3 pt-6 pb-5 md:pt-7 text-center">
-        <Marca tipo={tipo} nome={nome} tamanho={96} className="rounded-wf" />
-
-        {/* A frase é do RAMO, não desta barbearia (`tipos.ts`, `slogan`): não
-            há campo para ela no banco, então toda barbearia diz o mesmo, e
-            todo estúdio também. Quando existir uma manchete por
-            estabelecimento, é aqui que ela entra. */}
-        <p className="font-letreiro uppercase font-semibold leading-[1.05]
-                      tracking-[0.02em] text-[26px] md:text-[34px] text-tinta">
-          {v.slogan[0]}<br />{v.slogan[1]}
-        </p>
+        {/* A logo da casa no lugar do desenho, e sem a frase do ramo ("CORTE
+            DE HOMEM, HORA MARCADA."), que era igual para toda casa do mesmo
+            tipo: com ou sem logo, o cartaz é a marca, a rua e a equipe
+            (José, 05/11/2026). O nome já está no topo e não se repete. */}
+        <LogoDaCasa logo={logo} tipo={tipo} nome={nome} altura={120} />
 
         <div className="flex flex-col gap-0.5">
           <Sub>{endereco}</Sub>
