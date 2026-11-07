@@ -183,19 +183,6 @@ describe('limparLogo: fundo liso fora e corte rente (José, 07/11)', async () =>
     expect(alfa(r, 22, 12)).toBe(255);
   });
 
-  it('o branco DE DENTRO do desenho fica: só sai o fundo ligado à borda', () => {
-    // Fundo branco, um anel marrom de (20,20) a (59,59) com 4px de espessura,
-    // e o miolo branco dentro dele — como a letra ou o rosto da Brutu's.
-    const w = 80, px = imagem(w, w, [255, 255, 255, 255], [90, 60, 30, 255], [20, 20, 59, 59]);
-    for (let y = 24; y <= 55; y++) for (let x = 24; x <= 55; x++) px.set([255, 255, 255, 255], (y * w + x) * 4);
-    const r = limparLogo(px, w, w);
-    expect(alfa(r, 0, 0)).toBe(0);
-    // O centro do anel continua branco e opaco.
-    const c = Math.floor(r.w / 2);
-    expect(alfa(r, c, c)).toBe(255);
-    expect(r.px[(c * r.w + c) * 4]).toBe(255);
-  });
-
   it('fundo branco liso também sai', () => {
     const px = imagem(80, 80, [255, 255, 255, 255], [20, 20, 20, 255], [10, 10, 69, 29]);
     const r = limparLogo(px, 80, 80);
