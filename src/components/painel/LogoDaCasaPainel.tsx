@@ -73,9 +73,10 @@ export function LogoDaCasaPainel() {
       <div className="flex h-[120px] items-center justify-center rounded-[10px] p-3"
            style={{ background: fundo }}>
         {/* O MESMO componente das telas do cliente, com a data URL no lugar
-            do endereço: redonda ou banner aparece aqui como lá. */}
+            do endereço: o que aparece aqui é o que o cliente vê. */}
         {dados && (
           <LogoDaCasa tipo={dados.tipo} nome={dados.nome} altura={96}
+                      fundo={fundo} destaque={paleta(dados.paleta).tokens.acento}
                       logo={(() => {
                         const l = logoParaTela(dados.logoUrl);
                         return l && dados.logoUrl ? { ...l, src: dados.logoUrl } : null;
