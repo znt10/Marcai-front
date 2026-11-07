@@ -41,6 +41,12 @@ export const painelApi = {
 
   /// Só o dono (403 para o barbeiro). `logo: null` tira a logo e a casa volta
   /// ao desenho do tipo.
+  /// Só o dono, e só para o claro/escuro da mesma cor (`PAR_DA_PALETA`).
+  definirPaleta: (paleta: Paleta) =>
+    pedir<{ ok: true }>('/painel/paleta', {
+      metodo: 'PUT', corpo: { paleta }, loginEm: LOGIN_DO_PAINEL,
+    }),
+
   definirLogo: (logo: string | null) =>
     pedir<{ ok: true }>('/painel/logo', {
       metodo: 'PUT', corpo: { logo }, loginEm: LOGIN_DO_PAINEL,

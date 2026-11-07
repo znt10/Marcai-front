@@ -1,10 +1,11 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Cartao, BotaoVazado, Texto, Titulo } from '@/components/painel/pecas';
+import { useRouter } from 'next/navigation';
+import { Cartao, BotaoVazado, Texto, Titulo, Etiqueta, Pilula } from '@/components/painel/pecas';
 import { LogoDaCasa } from '@/components/LogoDaCasa';
 import { barbeariaApi, painelApi, mensagemDoErro, type DadosDaBarbearia } from '@/lib/api';
 import { prepararLogo, ErroDeLogo, logoParaTela } from '@/lib/logo';
-import { paleta } from '@/lib/paletas';
+import { paleta, PAR_DA_PALETA, PALETAS, type Paleta } from '@/lib/paletas';
 
 /// O bloco "Logo da casa" no alto da Equipe (spec 2026-11-05). Só o dono vê:
 /// a página só monta isto no ramo dele, e o `PUT` recusa os outros.
@@ -18,6 +19,7 @@ export function LogoDaCasaPainel() {
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
   const seletor = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -43,6 +45,28 @@ export function LogoDaCasaPainel() {
 
   const fundo = paleta(dados?.paleta).tokens.fundo;
 
+  // A tela do cliente clara ou escura (07/11/2026): gente mais velha lê
+  // melhor no claro. Só entre as duas da mesma cor; a cor é do admin.
+  const atual = (dados?.paleta && dados.paleta in PAR_DA_PALETA ? dados.paleta : 'PRETO_AMARELO') as Paleta;
+  const opcoes = [atual, PAR_DA_PALETA[atual]]
+    .sort((a, b) => (PALETAS[a].esquema === 'dark' ? -1 : 1) - (PALETAS[b].esquema === 'dark' ? -1 : 1));
+  async function trocarTela(nova: Paleta) {
+    if (!dados || nova === atual) return;
+    setErro('');
+    setEnviando(true);
+    try {
+      await painelApi.definirPaleta(nova);
+      setDados({ ...dados, paleta: nova });
+      // O destaque e o chão do painel também vêm da paleta, pelo `<html>`
+      // que o servidor monta: o refresh traz o painel na cor nova.
+      router.refresh();
+    } catch (e) {
+      setErro(mensagemDoErro(e));
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   return (
     <Cartao className="flex flex-col gap-3">
       <Titulo>Logo da casa</Titulo>
@@ -59,6 +83,27 @@ export function LogoDaCasaPainel() {
         )}
       </div>
       <Texto>Assim ela aparece para o cliente.</Texto>
+      <div className="flex flex-col gap-1.5">
+        <Etiqueta>tela do cliente</Etiqueta>
+        <div className="flex gap-2" role="group" aria-label="Tela do cliente">
+          {opcoes.map((p) => {
+            const t = PALETAS[p].tokens;
+            return (
+              <Pilula key={p} ativo={p === atual} aria-pressed={p === atual}
+                      disabled={!dados || enviando} onClick={() => void trocarTela(p)}>
+                <span className="flex items-center gap-1.5">
+                  {/* A amostra: o fundo da tela com o destaque por cima. */}
+                  <span aria-hidden className="inline-grid size-4 place-items-center rounded-full border border-borda"
+                        style={{ background: t.fundo }}>
+                    <span className="size-1.5 rounded-full" style={{ background: t.acento }} />
+                  </span>
+                  {PALETAS[p].esquema === 'dark' ? 'escura' : 'clara'}
+                </span>
+              </Pilula>
+            );
+          })}
+        </div>
+      </div>
       <input ref={seletor} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only"
              onChange={(e) => {
                const arquivo = e.target.files?.[0];
