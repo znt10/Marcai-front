@@ -135,14 +135,14 @@ export function Confirmado(p: Props) {
           nada — nem a confirmação. Nova aba para esta tela continuar aqui
           quando a pessoa voltar. */}
       {/* A pergunta, e não só um botão (ideia do cunhado do José, 03/11):
-          "Quer receber o lembrete 1 hora antes?" é o que a pessoa responde
+          "Quer receber a confirmação e o lembrete no WhatsApp?" é o que a pessoa responde
           sem pensar. Cartão no mesmo papel do cupom, com o título na cor de
           destaque, para não passar batido logo abaixo do horário. */}
       {pedeOToque && !p.lembretePedido && (
         <div className="bg-superficie border border-borda rounded-wf shadow-[var(--shadow-sel)]
                         px-5 py-5 md:px-7 md:py-6 flex flex-col gap-3">
           <div className="font-bold text-[22px] md:text-[26px] leading-tight text-acento">
-            Quer receber o lembrete 1 hora antes?
+            Quer receber a confirmação e o lembrete no WhatsApp?
           </div>
           <a href={linkDoLembrete(p.whatsappCentral!, p.barbeariaNome, p.codigo)}
              target="_blank" rel="noopener noreferrer" onClick={() => setToques((n) => n + 1)}>
