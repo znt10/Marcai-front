@@ -97,8 +97,8 @@ describe('a ordem das tentativas ao reduzir a logo (iPhone não gera WebP)', asy
   });
 });
 
-describe('a logo da tela: medidas e endereço, sempre banner (José, 07/11)', async () => {
-  const { medidasDosBytes, logoParaTela } = await import('@/lib/logo');
+describe('logo quadrada vira redonda; banner fica banner (José, 06/11)', async () => {
+  const { medidasDosBytes, formatoDaLogo, logoParaTela } = await import('@/lib/logo');
 
   // Cabeçalhos mínimos, do jeito que o canvas os escreve.
   const png = (w: number, h: number) => {
@@ -141,81 +141,29 @@ describe('a logo da tela: medidas e endereço, sempre banner (José, 07/11)', as
     expect(medidasDosBytes('image/jpeg', Uint8Array.from([0xff, 0xd8, 0x00]))).toBeNull();
   });
 
-  it('a logo da tela leva o endereço e as medidas, e quadrada não vira círculo', () => {
-    const quadrada = dataUrl('image/webp', webpVp8x(512, 512));
-    expect(logoParaTela(quadrada)).toEqual({
-      src: `/logo?v=${versaoDaLogo(quadrada)}`, largura: 512, altura: 512,
-    });
+  it('até 25% de diferença entre os lados é redonda; mais que isso é banner', () => {
+    expect(formatoDaLogo(400, 400)).toBe('redonda');
+    expect(formatoDaLogo(500, 400)).toBe('redonda');
+    expect(formatoDaLogo(400, 500)).toBe('redonda');
+    expect(formatoDaLogo(512, 400)).toBe('banner');
+    expect(formatoDaLogo(512, 128)).toBe('banner');
   });
 
-  it('sem medidas continua mostrando a logo', () => {
-    expect(logoParaTela(dataUrl('image/png', new Uint8Array(20)))).toMatchObject({ largura: null, altura: null });
+  it('a logo da tela leva o endereço, o formato e as medidas', () => {
+    const quadrada = dataUrl('image/webp', webpVp8x(512, 512));
+    expect(logoParaTela(quadrada)).toEqual({
+      src: `/logo?v=${versaoDaLogo(quadrada)}`, redonda: true, largura: 512, altura: 512,
+    });
+    expect(logoParaTela(dataUrl('image/png', png(512, 128)))?.redonda).toBe(false);
+  });
+
+  it('sem medidas fica banner: nunca recorta o que não sabe o formato', () => {
+    expect(logoParaTela(dataUrl('image/png', new Uint8Array(20)))).toMatchObject({ redonda: false, largura: null });
   });
 
   it('logo estragada não vira imagem quebrada: a tela mostra o desenho do tipo', () => {
     expect(logoParaTela(null)).toBeNull();
     expect(logoParaTela('data:image/svg+xml;base64,PHN2Zy8+')).toBeNull();
     expect(logoParaTela('data:image/png;base64,@@@')).toBeNull();
-  });
-});
-
-
-describe('limparLogo: fundo liso fora e corte rente (José, 07/11)', async () => {
-  const { limparLogo } = await import('@/lib/logo');
-
-  /// Uma imagem w x h de `fundo`, com um retângulo `cor` de (x0,y0) a (x1,y1).
-  const imagem = (w: number, h: number, fundo: number[], cor: number[], [x0, y0, x1, y1]: number[]) => {
-    const px = new Uint8ClampedArray(w * h * 4);
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const dentro = x >= x0 && x <= x1 && y >= y0 && y <= y1;
-      px.set(dentro ? cor : fundo, (y * w + x) * 4);
-    }
-    return px;
-  };
-  const alfa = (r: { px: Uint8ClampedArray; w: number }, x: number, y: number) => r.px[(y * r.w + x) * 4 + 3];
-
-  it('fundo preto liso vira transparente e a logo é cortada rente', () => {
-    const px = imagem(100, 100, [0, 0, 0, 255], [220, 180, 120, 255], [30, 40, 69, 59]);
-    const r = limparLogo(px, 100, 100);
-    // 40 x 20 de desenho + 4% do lado maior (2px) de margem de cada lado.
-    expect([r.w, r.h]).toEqual([44, 24]);
-    expect(alfa(r, 0, 0)).toBe(0);
-    expect(alfa(r, 22, 12)).toBe(255);
-  });
-
-  it('fundo branco liso também sai', () => {
-    const px = imagem(80, 80, [255, 255, 255, 255], [20, 20, 20, 255], [10, 10, 69, 29]);
-    const r = limparLogo(px, 80, 80);
-    expect(r.w).toBeLessThan(80);
-    expect(alfa(r, 0, 0)).toBe(0);
-  });
-
-  it('borda já transparente: só corta', () => {
-    const px = imagem(60, 60, [0, 0, 0, 0], [200, 30, 30, 255], [20, 20, 39, 39]);
-    const r = limparLogo(px, 60, 60);
-    expect(r.w).toBeLessThan(60);
-    expect(alfa(r, Math.floor(r.w / 2), Math.floor(r.h / 2))).toBe(255);
-  });
-
-  it('borda variada (foto) não é mexida', () => {
-    const px = new Uint8ClampedArray(50 * 50 * 4);
-    for (let i = 0; i < 50 * 50; i++) px.set([(i * 37) % 256, (i * 91) % 256, (i * 13) % 256, 255], i * 4);
-    const r = limparLogo(px, 50, 50);
-    expect([r.w, r.h]).toEqual([50, 50]);
-    expect(r.px).toBe(px);
-  });
-});
-
-describe('logoSomeNoFundo (José, 07/11)', async () => {
-  const { logoSomeNoFundo } = await import('@/lib/logo');
-
-  it('dourado claro sem fundo some no nude e aparece no preto', () => {
-    const elys = { media: [205, 172, 128] as [number, number, number], transparente: 0.7 };
-    expect(logoSomeNoFundo(elys, '#f6e6e0')).toBe(true);
-    expect(logoSomeNoFundo(elys, '#0d0a0b')).toBe(false);
-  });
-
-  it('logo com placa própria nunca é repintada', () => {
-    expect(logoSomeNoFundo({ media: [250, 250, 250], transparente: 0 }, '#f6f0e3')).toBe(false);
   });
 });
