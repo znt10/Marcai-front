@@ -12,7 +12,7 @@ const { blocosDeCardapio } = await import('@/lib/vitrine');
 
 const barbeiro = (id: string, nome: string) => ({ id, nome, fotoUrl: null });
 const servico = (nome: string, precoCentavos: number | null) => ({
-  id: nome, nome, duracaoMin: 30, precoCentavos,
+  id: nome, nome, duracaoMin: 30, precoCentavos, grupoId: null,
 });
 
 describe('os blocos de preco por barbeiro da vitrine', () => {

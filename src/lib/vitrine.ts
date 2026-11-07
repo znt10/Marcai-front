@@ -1,6 +1,7 @@
 import { cache } from 'react';
 import { buscarNoDjango } from './tenant';
 import type { Barbeiro, Servico } from './api';
+import type { GrupoDeServico } from './grupos';
 
 /// A equipe e o cardápio da barbearia, lidos NO SERVIDOR para a tela `/`.
 ///
@@ -32,7 +33,11 @@ export const equipeDaBarbearia = cache(async (): Promise<Barbeiro[]> => {
 // listar barbeiro por barbeiro, é por ele, e não por uma conta nova aqui.
 
 /// Um barbeiro e o cardápio DELE — o par que a `/` mostra num bloco.
-export type CardapioDoBarbeiro = { barbeiro: Barbeiro; servicos: Servico[] };
+export type CardapioDoBarbeiro = {
+  barbeiro: Barbeiro; servicos: Servico[];
+  /// Os grupos que têm serviço DESTE barbeiro; vazio = lista solta.
+  grupos: GrupoDeServico[];
+};
 
 /// Pareia a equipe com o cardápio de cada um, na ordem da equipe.
 ///
@@ -46,9 +51,11 @@ export type CardapioDoBarbeiro = { barbeiro: Barbeiro; servicos: Servico[] };
 /// a grade de rostos sempre mostrou a equipe inteira, tenha preço ou não.
 /// O que dizer sobre a lista vazia é decisão da tela, não desta função.
 export function blocosDeCardapio(
-  equipe: Barbeiro[], porBarbeiro: Servico[][],
+  equipe: Barbeiro[], porBarbeiro: Servico[][], gruposPorBarbeiro: GrupoDeServico[][] = [],
 ): CardapioDoBarbeiro[] {
-  return equipe.map((barbeiro, i) => ({ barbeiro, servicos: porBarbeiro[i] ?? [] }));
+  return equipe.map((barbeiro, i) => ({
+    barbeiro, servicos: porBarbeiro[i] ?? [], grupos: gruposPorBarbeiro[i] ?? [],
+  }));
 }
 
 /// O cardápio de CADA barbeiro, para a vitrine mostrar quanto custa com quem.
@@ -73,11 +80,12 @@ export const cardapioPorBarbeiro = cache(async (): Promise<CardapioDoBarbeiro[]>
   const equipe = await equipeDaBarbearia();
   const cardapios = await Promise.all(
     equipe.map(async (b) => {
-      const d = await ler<{ servicos: Servico[] }>(
+      return ler<{ servicos: Servico[]; grupos?: GrupoDeServico[] }>(
         `/api/servicos?barbeiroId=${encodeURIComponent(b.id)}`,
       );
-      return d.servicos;
     }),
   );
-  return blocosDeCardapio(equipe, cardapios);
+  return blocosDeCardapio(
+    equipe, cardapios.map((d) => d.servicos), cardapios.map((d) => d.grupos ?? []),
+  );
 });

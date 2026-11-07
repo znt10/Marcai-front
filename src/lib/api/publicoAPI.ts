@@ -1,4 +1,5 @@
 import { pedir } from './client';
+import type { GrupoDeServico } from '@/lib/grupos';
 
 /// As rotas do fluxo do cliente. Elas devolvem **envelope** — `{ servicos }`,
 /// `{ barbeiros }`, `{ dias }` — e é aqui que o envelope é aberto, num lugar
@@ -12,7 +13,11 @@ export type Servico = {
   /// `barbeiroId="qualquer"`, é o MENOR preço entre quem faz — mesma
   /// decisão de produto que já vale pra `duracaoMin`.
   precoCentavos: number | null;
+  /// Nulo quando a casa não usa grupos.
+  grupoId: string | null;
 };
+/// Os serviços e os grupos que têm algo para escolher (vazio = lista solta).
+export type CardapioPublico = { servicos: Servico[]; grupos: GrupoDeServico[] };
 export type Slot = {
   hora: string; inicio: string; fim: string;
   barbeiroId: string; barbeiroNome: string;
@@ -29,8 +34,8 @@ export const publicoApi = {
     pedir<{ barbeiros: Barbeiro[] }>('/barbeiros', { signal }).then((d) => d.barbeiros),
 
   servicos: (barbeiroId: string, signal?: AbortSignal) =>
-    pedir<{ servicos: Servico[] }>('/servicos', { busca: { barbeiroId }, signal })
-      .then((d) => d.servicos),
+    pedir<{ servicos: Servico[]; grupos?: GrupoDeServico[] }>('/servicos', { busca: { barbeiroId }, signal })
+      .then((d): CardapioPublico => ({ servicos: d.servicos, grupos: d.grupos ?? [] })),
 
   horarios: (
     p: { barbeiroId: string; servicoId: string; de?: string; dias?: number },

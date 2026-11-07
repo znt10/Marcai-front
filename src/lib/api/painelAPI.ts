@@ -3,6 +3,7 @@ import type { NovoAgendamento } from './publicoAPI';
 import type { Mensalidade } from '@/lib/mensalidade';
 import type { Paleta } from '@/lib/paletas';
 import type { Tipo } from '@/lib/tipos';
+import type { GrupoDeServico } from '@/lib/grupos';
 
 /// As rotas do painel do barbeiro. Todas as de leitura passam `loginEm`:
 /// sessão morta manda para a tela de entrada em vez de deixar a tela vazia
@@ -169,6 +170,8 @@ export type ServicoDoCatalogo = {
   /// Quantos barbeiros ativos oferecem. Zero é o aviso de que o serviço
   /// existe e ninguém faz.
   barbeiros: number;
+  /// Nulo só quando a casa não tem grupo nenhum.
+  grupoId: string | null;
 };
 
 export type VinculoDeServico = {
@@ -185,20 +188,21 @@ export type VinculoDeServico = {
 /// (dono em todos, barbeiro no seu).
 export const servicosApi = {
   catalogo: (signal?: AbortSignal) =>
-    pedir<{ servicos: ServicoDoCatalogo[] }>('/painel/servicos', {
+    pedir<{ servicos: ServicoDoCatalogo[]; grupos?: GrupoDeServico[] }>('/painel/servicos', {
       signal, loginEm: LOGIN_DO_PAINEL,
-    }).then((d) => d.servicos),
+    }).then((d) => ({ servicos: d.servicos, grupos: d.grupos ?? [] })),
 
   /// Só o nome: o tempo é de cada barbeiro, no vínculo. O back dá ao serviço
   /// novo o tempo padrão com que começa quem toca em "faço".
-  criar: (dados: { nome: string }) =>
+  /// `grupoId` é obrigatório quando a casa tem grupos (o back recusa sem).
+  criar: (dados: { nome: string; grupoId?: string }) =>
     pedir<{ id: string }>('/painel/servicos', {
       metodo: 'POST', corpo: dados, loginEm: LOGIN_DO_PAINEL,
     }),
 
   editar: (id: string, dados: Partial<{
     nome: string; duracaoMinimaMin: number; duracaoSugeridaMin: number;
-    ordem: number; ativo: boolean;
+    ordem: number; ativo: boolean; grupoId: string;
   }>) =>
     pedir<{ ok: true }>(`/painel/servicos/${id}`, {
       metodo: 'PATCH', corpo: dados, loginEm: LOGIN_DO_PAINEL,
@@ -215,6 +219,24 @@ export const servicosApi = {
   }) =>
     pedir<{ ok: true }>('/painel/barbeiro-servicos', {
       metodo: 'PUT', corpo: p, loginEm: LOGIN_DO_PAINEL,
+    }),
+
+  /// O PRIMEIRO grupo puxa o catálogo inteiro para dentro dele.
+  criarGrupo: (dados: { nome: string; icone: string | null }) =>
+    pedir<{ id: string }>('/painel/grupos', {
+      metodo: 'POST', corpo: dados, loginEm: LOGIN_DO_PAINEL,
+    }),
+
+  editarGrupo: (id: string, dados: Partial<{ nome: string; icone: string | null; ordem: number }>) =>
+    pedir<{ ok: true }>(`/painel/grupos/${id}`, {
+      metodo: 'PATCH', corpo: dados, loginEm: LOGIN_DO_PAINEL,
+    }),
+
+  /// `moverPara` é exigido quando o grupo tem serviços e não é o último;
+  /// o último solta a lista inteira.
+  apagarGrupo: (id: string, moverPara?: string) =>
+    pedir<{ ok: true }>(`/painel/grupos/${id}`, {
+      metodo: 'DELETE', busca: { moverPara }, loginEm: LOGIN_DO_PAINEL,
     }),
 
   frase: (horarioResumo: string) =>

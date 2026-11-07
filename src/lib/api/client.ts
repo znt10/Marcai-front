@@ -44,6 +44,7 @@ export const MIGRADAS: readonly string[] = [
   // prefixo distingue as duas, mas vale registrar que sao rotas irmas, nao
   // a mesma.
   '/painel/servicos',
+  '/painel/grupos',
   '/painel/barbeiro-servicos',
   '/painel/expediente',
   // A foto do barbeiro (data URL na coluna `foto_url`). Esquecer esta linha
