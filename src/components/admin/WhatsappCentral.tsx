@@ -47,7 +47,7 @@ export function WhatsappCentral() {
 
   return (
     <>
-      <Lbl>chip da equipe (whatsapp dos barbeiros)</Lbl>
+      <Lbl>chip do marcaí (equipe e lembretes)</Lbl>
       {erro && <Sub className="text-acento">{erro}</Sub>}
       {!dados ? <Sub>carregando…</Sub>
         : !dados.configurado ? <Box variante="mut">sem Evolution configurada neste ambiente</Box>
@@ -55,7 +55,7 @@ export function WhatsappCentral() {
           <Box variante="sel">conectado{dados.numero ? ` · ${formatar(dados.numero)}` : ''}</Box>
         ) : dados.qrBase64 ? (
           <>
-            <Box variante="alerta">desconectado — os barbeiros não recebem a lista nem os avisos. Os clientes continuam recebendo pela Meta.</Box>
+            <Box variante="alerta">desconectado — os barbeiros não recebem a lista, e os lembretes de quem escreveu no chip saem pela Meta (pagos) até reconectar.</Box>
             {/* `data:image/png;base64,...` vem pronto da Evolution. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -63,7 +63,7 @@ export function WhatsappCentral() {
               alt="QR code para conectar o chip da equipe"
               className="w-full max-w-[280px] self-center rounded-wf border border-borda bg-white p-2"
             />
-            <Sub>No celular do chip da equipe: WhatsApp → Aparelhos conectados → Conectar um aparelho.</Sub>
+            <Sub>No celular do chip: WhatsApp → Aparelhos conectados → Conectar um aparelho.</Sub>
           </>
         ) : (
           <Box variante="alerta">desconectado, e a Evolution não mandou QR — tenta de novo em instantes</Box>
