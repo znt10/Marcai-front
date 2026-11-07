@@ -272,8 +272,9 @@ function limparNoCanvas(img: HTMLImageElement): HTMLCanvasElement | null {
 /// logo vira um bannerzinho"). Pura, sobre os pixels RGBA, para o teste.
 ///
 /// - Borda já transparente: só corta.
-/// - Borda de uma cor só (preto, branco, qualquer): essa cor vira
-///   transparente, com a transição suave nas bordas do desenho, e corta.
+/// - Borda de uma cor só (preto, branco, qualquer): o fundo dessa cor que
+///   está LIGADO à borda vira transparente, com a transição suave nas bordas
+///   do desenho, e corta. A mesma cor cercada pelo desenho fica.
 /// - Borda variada (foto, logo com moldura colorida): não mexe em nada.
 export function limparLogo(
   px: Uint8ClampedArray, w: number, h: number,
@@ -297,8 +298,26 @@ export function limparLogo(
     const lisos = opacos.filter((i) => dist(i) <= 30).length;
     if (lisos / borda.length < 0.85) return { px, w, h };
 
+    // Só o fundo LIGADO À BORDA (balde de tinta a partir dela): o branco
+    // cercado pelo desenho — miolo das letras, rosto, faixa — é parte da
+    // logo e fica. Apagar a cor inteira furava a logo (Brutu's, 07/11).
+    // Entra no fundo o que está perto da cor dele (até 80); a mistura da
+    // borda do desenho (12 a 80) fica meio transparente.
+    const fundoLigado = new Uint8Array(w * h);
+    const fila: number[] = [];
+    for (const i of borda) if (px[i * 4 + 3] >= 20 && dist(i) <= 80 && !fundoLigado[i]) { fundoLigado[i] = 1; fila.push(i); }
+    while (fila.length) {
+      const i = fila.pop()!;
+      if (dist(i) > 12) continue; // a borda do desenho: não atravessa
+      const x = i % w, y = (i - x) / w;
+      for (const v of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) {
+        if (v >= 0 && !fundoLigado[v] && dist(v) <= 80) { fundoLigado[v] = 1; fila.push(v); }
+      }
+    }
+
     saida = new Uint8ClampedArray(px);
     for (let i = 0; i < w * h; i++) {
+      if (!fundoLigado[i]) continue;
       const a = Math.min(1, Math.max(0, (dist(i) - 12) / (80 - 12)));
       const o = i * 4;
       saida[o + 3] = Math.round(px[o + 3] * a);
