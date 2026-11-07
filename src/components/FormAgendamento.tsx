@@ -17,6 +17,8 @@ import {
 } from '@/lib/guia';
 import { Balao, DicaDoCalendario } from '@/components/GuiaDoAgendar';
 import { useVocabulario } from '@/components/Vocabulario';
+import { EscolhaPorGrupo } from '@/components/EscolhaPorGrupo';
+import type { GrupoDeServico } from '@/lib/grupos';
 
 /// 'YYYY-MM-DD' de um instante ISO, no fuso do navegador. Não usa
 /// `@/lib/datas` de propósito: aquele módulo é o ponto único de conversão do
@@ -33,6 +35,7 @@ export function FormAgendamento({ inicial = {}, whatsappAoCliente = true, lembre
   const v = useVocabulario();
   const [barbeiros, setBarbeiros] = useState<Barbeiro[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
+  const [grupos, setGrupos] = useState<GrupoDeServico[]>([]);
   const [dias, setDias] = useState<Dia[]>([]);
 
   // Sem barbeiro escolhido a tela não tem o que mostrar adiante: a duração —
@@ -126,11 +129,12 @@ export function FormAgendamento({ inicial = {}, whatsappAoCliente = true, lembre
   // Trocar barbeiro pode invalidar o serviço (Rael não faz pezinho).
   useEffect(() => {
     setSlot(null);
-    if (!barbeiroId) { setServicos([]); setServicoId(''); return; }
+    if (!barbeiroId) { setServicos([]); setGrupos([]); setServicoId(''); return; }
     const ctrl = new AbortController();
     publicoApi.servicos(barbeiroId, ctrl.signal)
-      .then(lista => {
+      .then(({ servicos: lista, grupos }) => {
         setServicos(lista);
+        setGrupos(grupos);
         setServicoId(atual => (atual && !lista.some(s => s.id === atual) ? '' : atual));
       })
       .catch(ignorarAborto);
@@ -254,25 +258,32 @@ export function FormAgendamento({ inicial = {}, whatsappAoCliente = true, lembre
         {!barbeiroId ? <Nota>Escolhe {v.oProf} pra ver os serviços.</Nota> : (
           // Quebra linha, e não rola de lado: um serviço escondido à direita
           // da tela é um serviço que o cliente não sabe que existe.
-          <div className={`flex flex-wrap gap-2${alvo('servico')}`}>
-            {servicos.map(s => {
-              const ativo = servicoId === s.id;
-              return (
-                <button key={s.id} type="button" aria-pressed={ativo}
-                        onClick={() => setServicoId(s.id)}
-                        className={`max-w-full rounded-[12px] border-[1.5px] px-3.5 py-2.5 text-left
-                                    transition-colors
-                                    ${ativo ? 'border-acento bg-superficie2'
-                                            : 'border-borda bg-superficie hover:border-latao'}`}>
-                  <span className="block text-[12.5px] md:text-[13.5px] font-bold text-tinta">{s.nome}</span>
-                  <span className={`mt-0.5 block whitespace-nowrap text-[10.5px] md:text-[11.5px]
-                                    ${ativo ? 'font-semibold text-acento' : 'text-sub'}`}>
-                    {s.duracaoMin}min
-                    {s.precoCentavos !== null && ` · ${formatarPreco(s.precoCentavos)}`}
-                  </span>
-                </button>
-              );
-            })}
+          // Com grupos, cada grupo vira uma faixa que abre (06/11/2026): 20
+          // botões soltos viravam um paredão.
+          <div className={alvo('servico')}>
+            <EscolhaPorGrupo itens={servicos} grupos={grupos} escolhido={servicoId}
+                             aoEscolher={setServicoId} lista={(itens, escolher) => (
+            <div className="flex flex-wrap gap-2">
+              {itens.map(s => {
+                const ativo = servicoId === s.id;
+                return (
+                  <button key={s.id} type="button" aria-pressed={ativo}
+                          onClick={() => escolher(s.id)}
+                          className={`max-w-full rounded-[12px] border-[1.5px] px-3.5 py-2.5 text-left
+                                      transition-colors
+                                      ${ativo ? 'border-acento bg-superficie2'
+                                              : 'border-borda bg-superficie hover:border-latao'}`}>
+                    <span className="block text-[12.5px] md:text-[13.5px] font-bold text-tinta">{s.nome}</span>
+                    <span className={`mt-0.5 block whitespace-nowrap text-[10.5px] md:text-[11.5px]
+                                      ${ativo ? 'font-semibold text-acento' : 'text-sub'}`}>
+                      {s.duracaoMin}min
+                      {s.precoCentavos !== null && ` · ${formatarPreco(s.precoCentavos)}`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            )} />
           </div>
         )}
       </Etapa>

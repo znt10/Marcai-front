@@ -7,6 +7,9 @@ import type { LogoNaTela } from '@/lib/logo';
 import type { Tipo } from '@/lib/tipos';
 import { formatarPreco } from '@/lib/dinheiro';
 import type { CardapioDoBarbeiro } from '@/lib/vitrine';
+import type { Servico } from '@/lib/api';
+import { agrupar, type GrupoDeServico } from '@/lib/grupos';
+import { IconeDeGrupo } from '@/components/IconeDeGrupo';
 
 /// O cartaz da barbearia e a tabela de preços, e a ponte entre os dois: o
 /// barbeiro escolhido.
@@ -126,31 +129,57 @@ export function Vitrine({
             // Aqui não há o que tocar: é uma tabela para ler, então ela se
             // veste como a tabela de preços na parede da barbearia — linhas
             // finas entre os itens e um pontilhado levando o olho ao preço.
-            <ul className="flex flex-col border-y border-borda-suave">
-              {atual.servicos.map((s) => (
-                <li key={s.id}
-                    className="flex items-baseline gap-2 py-2.5 md:py-3 text-[13px] md:text-sm
-                               border-b border-borda-suave last:border-b-0">
-                  <span className="min-w-0">
-                    {s.nome}{' '}
-                    <span className="font-dado text-[11px] text-lbl">{s.duracaoMin}min</span>
-                  </span>
-                  <span aria-hidden className="flex-1 min-w-4 border-b border-dotted border-lbl/50 translate-y-[-3px]" />
-                  {/* Nulo enquanto ESTE barbeiro não definiu preço para o
-                      serviço. Some o preço, não a linha: "faço barba, preço a
-                      combinar" é informação; sumir com a barba esconde que ele
-                      faz. */}
-                  {s.precoCentavos !== null && (
-                    <span className="font-dado text-acento shrink-0">
-                      {formatarPreco(s.precoCentavos)}
+            <TabelaPorGrupo servicos={atual.servicos} grupos={atual.grupos} tabela={(itens) => (
+              <ul className="flex flex-col border-y border-borda-suave">
+                {itens.map((s) => (
+                  <li key={s.id}
+                      className="flex items-baseline gap-2 py-2.5 md:py-3 text-[13px] md:text-sm
+                                 border-b border-borda-suave last:border-b-0">
+                    <span className="min-w-0">
+                      {s.nome}{' '}
+                      <span className="font-dado text-[11px] text-lbl">{s.duracaoMin}min</span>
                     </span>
-                  )}
-                </li>
-              ))}
-            </ul>
+                    <span aria-hidden className="flex-1 min-w-4 border-b border-dotted border-lbl/50 translate-y-[-3px]" />
+                    {/* Nulo enquanto ESTE barbeiro não definiu preço para o
+                        serviço. Some o preço, não a linha: "faço barba, preço a
+                        combinar" é informação; sumir com a barba esconde que ele
+                        faz. */}
+                    {s.precoCentavos !== null && (
+                      <span className="font-dado text-acento shrink-0">
+                        {formatarPreco(s.precoCentavos)}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )} />
           )}
         </div>
       )}
     </>
+  );
+}
+
+/// Na vitrine os grupos viram só um título por cima de cada tabela, sem abrir
+/// e fechar: aqui não há o que escolher, é uma tabela de preços para ler.
+function TabelaPorGrupo({ servicos, grupos, tabela }: {
+  servicos: Servico[]; grupos: GrupoDeServico[];
+  tabela: (itens: Servico[]) => React.ReactNode;
+}) {
+  const separado = agrupar(servicos, grupos);
+  if (!separado) return <>{tabela(servicos)}</>;
+  return (
+    <div className="flex flex-col gap-4">
+      {separado.gavetas.map(({ grupo, itens }) => (
+        <div key={grupo.id} className="flex flex-col gap-1">
+          <span className="flex items-center gap-1.5 text-[12px] font-bold text-tinta">
+            <IconeDeGrupo nome={grupo.icone} tamanho={15} className="text-acento" />
+            {grupo.nome}
+          </span>
+          {tabela(itens)}
+        </div>
+      ))}
+      {separado.soltos.length > 0 && tabela(separado.soltos)}
+    </div>
   );
 }

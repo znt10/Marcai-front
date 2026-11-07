@@ -8,6 +8,8 @@ import {
   type Barbeiro, type Servico, type Slot,
 } from '@/lib/api';
 import { useVocabulario } from '@/components/Vocabulario';
+import { EscolhaPorGrupo } from '@/components/EscolhaPorGrupo';
+import type { GrupoDeServico } from '@/lib/grupos';
 
 /// O caso do balcão: o cliente está ali e quer o próximo horário. O padrão
 /// economiza toque; não é regra — os dois campos continuam trocáveis.
@@ -26,6 +28,7 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
   const [barbeiros, setBarbeiros] = useState<Barbeiro[]>([]);
   const [barbeiroId, setBarbeiroId] = useState(eu.id);
   const [servicos, setServicos] = useState<Servico[]>([]);
+  const [grupos, setGrupos] = useState<GrupoDeServico[]>([]);
   const [servicoId, setServicoId] = useState('');
   const [dia, setDia] = useState(padraoDeHorario().toLocaleDateString('sv-SE'));
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -54,8 +57,9 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
   useEffect(() => {
     const ctrl = new AbortController();
     publicoApi.servicos(barbeiroId, ctrl.signal)
-      .then((s) => {
+      .then(({ servicos: s, grupos: g }) => {
         setServicos(s);
+        setGrupos(g);
         setServicoId((atual) => (s.some((x) => x.id === atual) ? atual : s[0]?.id ?? ''));
       })
       .catch(ignorarAborto);
@@ -109,14 +113,17 @@ export function FormMarcar({ eu }: { eu: { id: string; papel: 'DONO' | 'BARBEIRO
       )}
 
       <Lbl>serviço</Lbl>
-      <div className="flex flex-wrap gap-2">
-        {servicos.map((s) => (
-          <Box key={s.id} variante={s.id === servicoId ? 'fill' : 'normal'}
-               className="cursor-pointer" onClick={() => setServicoId(s.id)}>
-            {s.nome}
-          </Box>
-        ))}
-      </div>
+      <EscolhaPorGrupo itens={servicos} grupos={grupos} escolhido={servicoId}
+                       aoEscolher={setServicoId} lista={(itens, escolher) => (
+        <div className="flex flex-wrap gap-2">
+          {itens.map((s) => (
+            <Box key={s.id} variante={s.id === servicoId ? 'fill' : 'normal'}
+                 className="cursor-pointer" onClick={() => escolher(s.id)}>
+              {s.nome}
+            </Box>
+          ))}
+        </div>
+      )} />
 
       <Lbl>dia</Lbl>
       <Box>

@@ -10,10 +10,20 @@ import {
 import { formatarPreco } from '@/lib/dinheiro';
 import { DURACAO_MAXIMA_MIN, DURACAO_MINIMA_MIN } from '@/lib/config';
 import { useVocabulario } from '@/components/Vocabulario';
+import { EscolhaPorGrupo } from '@/components/EscolhaPorGrupo';
+import { Gaveta } from '@/components/Gaveta';
+import {
+  FormDoGrupo, ApagarGrupo, SeletorDeGrupo,
+} from '@/components/painel/GruposDoCatalogo';
+import { agrupar, type GrupoDeServico } from '@/lib/grupos';
 
 export function Servicos({ eu }: { eu: Eu }) {
   const v = useVocabulario();
   const [catalogo, setCatalogo] = useState<ServicoDoCatalogo[] | null>(null);
+  const [grupos, setGrupos] = useState<GrupoDeServico[]>([]);
+  // O último grupo aberto no catálogo: é o que já vem marcado no "Adicionar
+  // serviço", porque quem abre Combos e desce para criar quer criar ali.
+  const [grupoAberto, setGrupoAberto] = useState('');
   const [vinculos, setVinculos] = useState<VinculoDeServico[]>([]);
   const [barbeiros, setBarbeiros] = useState<Barbeiro[]>([]);
   const [barbeiroId, setBarbeiroId] = useState(eu.id);
@@ -35,7 +45,8 @@ export function Servicos({ eu }: { eu: Eu }) {
         servicosApi.catalogo(signal),
         servicosApi.vinculos(alvo, signal),
       ]);
-      setCatalogo(cat);
+      setCatalogo(cat.servicos);
+      setGrupos(cat.grupos);
       setVinculos(vin);
       setErro('');
     } catch (e) {
@@ -57,6 +68,12 @@ export function Servicos({ eu }: { eu: Eu }) {
     publicoApi.barbeiros(ctrl.signal).then(setBarbeiros).catch(() => {});
     return () => ctrl.abort();
   }, [eu.papel]);
+
+  // O vínculo não traz o grupo; ele vem do catálogo, pelo id do serviço.
+  const grupoDe = new Map(catalogo?.map((s) => [s.id, s.grupoId]) ?? []);
+  const vinculosComGrupo = vinculos.map((x) => ({
+    ...x, id: x.servicoId, grupoId: grupoDe.get(x.servicoId) ?? null,
+  }));
 
   async function agir(acao: () => Promise<unknown>) {
     setErro('');
@@ -99,7 +116,8 @@ export function Servicos({ eu }: { eu: Eu }) {
       </Texto>
       {catalogo === null && <Texto>carregando…</Texto>}
 
-      {vinculos.map((v) => (
+      <EscolhaPorGrupo itens={vinculosComGrupo} grupos={grupos} escolhido=""
+                       aoEscolher={() => {}} lista={(itens) => itens.map((v) => (
         <Cartao key={v.servicoId} variante={v.faz ? 'normal' : 'mut'}
                 className="flex flex-col gap-2.5">
           {/* Nome e botão numa linha fixa, os campos numa segunda: antes tudo
@@ -184,7 +202,7 @@ export function Servicos({ eu }: { eu: Eu }) {
             </div>
           )}
         </Cartao>
-      ))}
+      ))} />
 
       {eu.papel === 'DONO' && (
         <>
@@ -197,11 +215,26 @@ export function Servicos({ eu }: { eu: Eu }) {
             Tudo que {v.oLugar} oferece. Cada {v.prof} escolhe, acima, o que
             faz. Só você mexe aqui.
           </Texto>
-          {ativos.map((s) => (
-            <CartaoDoCatalogo key={s.id} servico={s} agir={agir} />
-          ))}
+          {grupos.length === 0
+            ? ativos.map((s) => (
+                <CartaoDoCatalogo key={s.id} servico={s} grupos={grupos} agir={agir} />
+              ))
+            : <CatalogoEmGavetas servicos={ativos} grupos={grupos} agir={agir}
+                                 aoAbrir={setGrupoAberto} />}
 
-          <NovoServico aoCriar={(d) => agir(() => servicosApi.criar(d))} />
+          <NovoServico grupos={grupos} grupoAberto={grupoAberto}
+                       aoCriar={(d) => agir(() => servicosApi.criar(d))} />
+
+          {/* Grupos são do dono que tem serviço demais para uma lista só
+              (pedido de 06/11/2026). Quem tem cinco nunca precisa tocar aqui. */}
+          <Titulo>{grupos.length === 0 ? 'Separar em grupos' : 'Novo grupo'}</Titulo>
+          <Texto>
+            {grupos.length === 0
+              ? 'Tem muito serviço? Separe em grupos (Cabelo, Barba, Combos…). O cliente vê cada grupo numa faixa que abre e fecha. Ao criar o primeiro, todos os serviços entram nele e você move cada um para o grupo certo.'
+              : 'Todo serviço fica dentro de um grupo.'}
+          </Texto>
+          <FormDoGrupo rotulo="+ criar grupo"
+                       aoSalvar={(d) => agir(() => servicosApi.criarGrupo(d))} />
 
           {/* Os desativados saem da lista principal e ficam AQUI, fechados.
               Antes eles seguiam no meio dos outros, apagados, para sempre — e
@@ -233,7 +266,7 @@ export function Servicos({ eu }: { eu: Eu }) {
                     marcá-los. Ficam guardados aqui caso você queira de volta.
                   </Texto>
                   {desativados.map((s) => (
-                    <CartaoDoCatalogo key={s.id} servico={s} agir={agir} />
+                    <CartaoDoCatalogo key={s.id} servico={s} grupos={grupos} agir={agir} />
                   ))}
                 </>
               )}
@@ -250,8 +283,9 @@ export function Servicos({ eu }: { eu: Eu }) {
 /// Um cartao do catalogo da barbearia. Extraido porque a lista principal e a
 /// gaveta dos desativados desenham o MESMO cartao — duas copias divergiriam na
 /// primeira vez que alguem mexesse so numa delas.
-function CartaoDoCatalogo({ servico: s, agir }: {
+function CartaoDoCatalogo({ servico: s, grupos, agir }: {
   servico: ServicoDoCatalogo;
+  grupos: GrupoDeServico[];
   agir: (acao: () => Promise<unknown>) => Promise<void>;
 }) {
   const v = useVocabulario();
@@ -273,6 +307,10 @@ function CartaoDoCatalogo({ servico: s, agir }: {
           {v.nenhumProf} faz este — o cliente não vê ele
         </span>
       )}
+      {grupos.length > 0 && (
+        <SeletorDeGrupo grupos={grupos} valor={s.grupoId ?? ''}
+                        aoMudar={(grupoId) => agir(() => servicosApi.editar(s.id, { grupoId }))} />
+      )}
     </Cartao>
   );
 }
@@ -280,9 +318,18 @@ function CartaoDoCatalogo({ servico: s, agir }: {
 /// Só o nome. O "nunca leva menos que" e o "normalmente leva" saíram em
 /// 06/10/2026: o tempo é de cada barbeiro, no campo duração de "Seus
 /// serviços", e dois números do dono por cima disso só confundiam.
-function NovoServico({ aoCriar }: { aoCriar: (d: { nome: string }) => void }) {
+function NovoServico({ grupos, grupoAberto, aoCriar }: {
+  grupos: GrupoDeServico[]; grupoAberto: string;
+  aoCriar: (d: { nome: string; grupoId?: string }) => void;
+}) {
   const v = useVocabulario();
   const [nome, setNome] = useState('');
+  // Casa com grupos: o serviço novo nasce num grupo, sempre (o back recusa
+  // sem). Vem marcado o último grupo aberto, ou o primeiro.
+  const [escolhido, setEscolhido] = useState('');
+  const grupoId = grupos.some((g) => g.id === escolhido)
+    ? escolhido
+    : grupos.some((g) => g.id === grupoAberto) ? grupoAberto : grupos[0]?.id ?? '';
 
   return (
     <>
@@ -295,17 +342,110 @@ function NovoServico({ aoCriar }: { aoCriar: (d: { nome: string }) => void }) {
                placeholder={`nome do serviço — ex.: ${v.exemploServico}`}
                value={nome} onChange={(e) => setNome(e.target.value)} />
       </Cartao>
+      {grupos.length > 0 && (
+        <SeletorDeGrupo grupos={grupos} valor={grupoId} aoMudar={setEscolhido} />
+      )}
       <Texto>
         O tempo, cada {v.prof} coloca o {v.dele} em Seus serviços, acima.
       </Texto>
       <BotaoCheio largura="cheia" disabled={nome.trim().length < 2}
                   onClick={() => {
                     if (nome.trim().length < 2) return;
-                    aoCriar({ nome });
+                    aoCriar(grupos.length > 0 ? { nome, grupoId } : { nome });
                     setNome('');
                   }}>
         + acrescentar à lista
       </BotaoCheio>
     </>
+  );
+}
+
+/// O catálogo do dono separado em gavetas, uma por grupo, com o que se faz
+/// com o grupo dentro dela: subir, descer, editar e apagar. Começam fechadas
+/// pelo mesmo motivo do agendar — a lista de 20 é o problema que os grupos
+/// vieram resolver. Grupo vazio TAMBÉM aparece aqui (acabou de ser criado,
+/// e é aqui que o dono o enche), ao contrário da tela do cliente.
+function CatalogoEmGavetas({ servicos, grupos, agir, aoAbrir }: {
+  servicos: ServicoDoCatalogo[]; grupos: GrupoDeServico[];
+  agir: (acao: () => Promise<unknown>) => Promise<void>;
+  aoAbrir: (id: string) => void;
+}) {
+  const [abertos, setAbertos] = useState<Set<string>>(new Set());
+  const [editando, setEditando] = useState('');
+  const [apagando, setApagando] = useState('');
+  const ordenados = [...grupos].sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome));
+  const soltos = agrupar(servicos, grupos)?.soltos ?? [];
+
+  // Trocar de lugar com o vizinho: as duas ordens viram as posições na lista
+  // ordenada, o que também desfaz empates antigos de `ordem`.
+  const mover = (i: number, passo: -1 | 1) => {
+    const j = i + passo;
+    if (j < 0 || j >= ordenados.length) return;
+    const nova = [...ordenados];
+    [nova[i], nova[j]] = [nova[j], nova[i]];
+    void agir(() => Promise.all(nova.map((g, k) =>
+      g.ordem === k ? null : servicosApi.editarGrupo(g.id, { ordem: k }))));
+  };
+
+  const setinha = (rotulo: string, d: string, onClick: () => void, desligado: boolean) => (
+    <button type="button" aria-label={rotulo} disabled={desligado} onClick={onClick}
+            className="grid size-8 place-items-center rounded-[8px] text-lbl hover:text-acento
+                       disabled:opacity-30">
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden fill="none" stroke="currentColor"
+           strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
+    </button>
+  );
+
+  return (
+    <div className="flex flex-col gap-2">
+      {ordenados.map((g, i) => {
+        const doGrupo = servicos.filter((s) => s.grupoId === g.id);
+        const aberta = abertos.has(g.id);
+        return (
+          <Gaveta key={g.id} grupo={g} quantidade={doGrupo.length} aberta={aberta}
+                  alternar={() => {
+                    setAbertos((a) => {
+                      const n = new Set(a);
+                      if (n.has(g.id)) n.delete(g.id); else n.add(g.id);
+                      return n;
+                    });
+                    if (!aberta) aoAbrir(g.id);
+                  }}
+                  acoes={<>
+                    {setinha(`subir ${g.nome}`, 'M4 10l4-4 4 4', () => mover(i, -1), i === 0)}
+                    {setinha(`descer ${g.nome}`, 'M4 6l4 4 4-4', () => mover(i, 1), i === ordenados.length - 1)}
+                  </>}>
+            {doGrupo.length === 0 && (
+              <Texto>Nenhum serviço aqui ainda. Mova um pelo campo grupo de cada serviço ou crie um novo abaixo.</Texto>
+            )}
+            {doGrupo.map((s) => (
+              <CartaoDoCatalogo key={s.id} servico={s} grupos={grupos} agir={agir} />
+            ))}
+
+            {editando === g.id ? (
+              <FormDoGrupo inicial={{ nome: g.nome, icone: g.icone }} rotulo="salvar"
+                           aoCancelar={() => setEditando('')}
+                           aoSalvar={(d) => { setEditando(''); void agir(() => servicosApi.editarGrupo(g.id, d)); }} />
+            ) : apagando === g.id ? (
+              <ApagarGrupo grupo={g} outros={ordenados.filter((o) => o.id !== g.id)}
+                           quantidade={servicos.filter((s) => s.grupoId === g.id).length}
+                           aoCancelar={() => setApagando('')}
+                           aoApagar={(moverPara) => {
+                             setApagando('');
+                             void agir(() => servicosApi.apagarGrupo(g.id, moverPara));
+                           }} />
+            ) : (
+              <div className="flex gap-2">
+                <BotaoVazado className="text-sub" onClick={() => setEditando(g.id)}>editar grupo</BotaoVazado>
+                <BotaoVazado className="text-sub" onClick={() => setApagando(g.id)}>apagar grupo</BotaoVazado>
+              </div>
+            )}
+          </Gaveta>
+        );
+      })}
+      {soltos.map((s) => (
+        <CartaoDoCatalogo key={s.id} servico={s} grupos={grupos} agir={agir} />
+      ))}
+    </div>
   );
 }
