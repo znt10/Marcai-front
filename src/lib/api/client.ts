@@ -52,6 +52,7 @@ export const MIGRADAS: readonly string[] = [
   // exatamente o que aconteceu na primeira tentativa.
   '/painel/foto',
   '/painel/logo',
+  '/painel/paleta',
   '/painel/bloqueios',
   '/painel/equipe',
   '/painel/agenda',

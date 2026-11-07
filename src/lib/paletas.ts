@@ -25,6 +25,14 @@ export type Paleta = 'PRETO_AMARELO' | 'BRANCO_ROSE' | 'PRETO_ROSE' | 'BRANCO_DO
 
 export const PALETAS_EM_ORDEM: Paleta[] = ['PRETO_AMARELO', 'BRANCO_ROSE', 'PRETO_ROSE', 'BRANCO_DOURADO'];
 
+/// O claro e o escuro de cada cor (07/11/2026): o dono troca a tela do
+/// cliente para a outra do par na Equipe. A mesma tabela do back
+/// (`tenant.models.PAR_DA_PALETA`), que recusa qualquer outra troca.
+export const PAR_DA_PALETA: Record<Paleta, Paleta> = {
+  PRETO_ROSE: 'BRANCO_ROSE', BRANCO_ROSE: 'PRETO_ROSE',
+  PRETO_AMARELO: 'BRANCO_DOURADO', BRANCO_DOURADO: 'PRETO_AMARELO',
+};
+
 /// Os tokens do `@theme` que as telas do cliente usam.
 export type Tokens = {
   fundo: string; superficie: string; borda: string; tinta: string; sub: string; lbl: string;
