@@ -36,6 +36,14 @@ describe('a Preto e amarelo é a de hoje', () => {
     expect(CSS).toContain(`var(--painel-acento-forte-claro, ${claro.acentoForte})`);
     expect(CSS).toContain(`var(--fluxo-superficie2, ${PALETAS.PRETO_AMARELO.superficieDoFluxo})`);
   });
+
+  it('o chão do painel fora de um estabelecimento é o da Preto e amarelo', () => {
+    for (const modo of ['escuro', 'claro'] as const) {
+      for (const [nome, cor] of Object.entries(PALETAS.PRETO_AMARELO.painel[modo].chao)) {
+        expect(CSS).toContain(`var(--painel-${nome}-${modo}, ${cor})`);
+      }
+    }
+  });
 });
 
 describe('contraste (WCAG AA, 4.5:1)', () => {
@@ -70,7 +78,9 @@ describe('estiloDaPaleta', () => {
   it('põe os tokens do cliente, o fluxo e o destaque do painel', () => {
     const e = estiloDaPaleta('BRANCO_ROSE') as Record<string, string>;
     expect(e['--color-acento']).toBe('#9c5452');
-    expect(e['--color-fundo']).toBe('#f9ede8');
+    expect(e['--color-fundo']).toBe('#f6e6e0');
+    expect(e['--painel-fundo-escuro']).toBe(PALETAS.BRANCO_ROSE.painel.escuro.chao.fundo);
+    expect(e['--painel-superficie-claro']).toBe(PALETAS.BRANCO_ROSE.painel.claro.chao.superficie);
     expect(e['--fluxo-superficie2']).toBe(PALETAS.BRANCO_ROSE.superficieDoFluxo);
     expect(e['--painel-acento-escuro']).toBe(PALETAS.BRANCO_ROSE.painel.escuro.acento);
     expect(e['--painel-acento-claro']).toBe(PALETAS.BRANCO_ROSE.painel.claro.acento);

@@ -8,16 +8,16 @@
    barbearia com a luz morna acesa — e é o que faz o âmbar parecer luz, e não
    destaque de marca-texto. */
 @theme {
-  --color-fundo:      #14100e;   /* o chão */
-  --color-superficie: #1e1815;   /* cartão, um degrau acima do chão */
-  --color-borda:      #34291f;   /* fio quente de 1px, discreto de propósito */
+  --color-fundo:      #0d0c0b;   /* o chão */
+  --color-superficie: #181615;   /* cartão, um degrau acima do chão */
+  --color-borda:      #2c2927;   /* fio quente de 1px, discreto de propósito */
 
-  /* Branco morno. Branco puro sobre #14100e é lâmina: cansa em lista longa,
+  /* Branco morno. Branco puro sobre o fundo é lâmina: cansa em lista longa,
      que é o que estas telas são. */
-  --color-tinta:      #f2ebe1;
-  --color-sub:        #a3948a;
-  --color-lbl:        #8d7f75;
-  --color-apagado:    #6c5e54;
+  --color-tinta:      #f4efe4;
+  --color-sub:        #a8a199;
+  --color-lbl:        #8f8880;
+  --color-apagado:    #6b655e;
 
   /* Âmbar: o que CONCLUI — confirmar, escolhido, erro. Veio direto da
      logomarca, e é o mesmo tom nas duas versões dela (marca escura sobre
@@ -39,16 +39,16 @@
      opacidade, que é a diferença que some no sol da calçada. */
   --color-livre:      #5c8a6d;
 
-  --color-mut:        #191411;   /* superfície desligada */
-  --color-mut-borda:  #29211b;
-  --color-linha:      #241d18;
+  --color-mut:        #121110;   /* superfície desligada */
+  --color-mut-borda:  #23201e;
+  --color-linha:      #1c1a18;
 
   /* Os quatro tokens que só o redesign do painel usa (Figma "Marcaí —
      Painel do Dono (redesign)"). Nascem aqui, e não soltos nos componentes,
      pela mesma razão dos de cima: cor literal em componente é como a próxima
      tela diverge desta. */
-  --color-superficie2:  #413326;   /* o cartão dentro do cartão */
-  --color-borda-suave:  #3a2c1e;   /* o fio que separa linhas de uma lista */
+  --color-superficie2:  #2a2725;   /* o cartão dentro do cartão */
+  --color-borda-suave:  #282523;   /* o fio que separa linhas de uma lista */
   --color-acento-forte: #e8b360;   /* o âmbar do DADO: hora, aba acesa */
   --color-no-acento:    #241a10;   /* a tinta que vai POR CIMA do âmbar */
 
@@ -134,28 +134,29 @@
    reescrever classe nenhuma — variável CSS herda, utilitária do Tailwind só
    a lê. */
 .painel {
-  --color-fundo:      #1c1814;
-  --color-superficie: #362a1f;
-  --color-borda:      #4a3a2a;
-  --color-tinta:      #f6f0e2;
-  --color-sub:        #c2b29b;
-  --color-lbl:        #8f7e68;
-  --color-apagado:    #8f7e68;
-  --color-mut:        #2b2118;
-  --color-mut-borda:  #3a2c1e;
-  --color-linha:      #3a2c1e;
-  /* Estes quatro o painel herdava do `@theme`. Fixados aqui porque a paleta
-     do estabelecimento (`src/lib/paletas.ts`) troca o `@theme` no `<html>`:
-     sem eles, o painel escuro de um estúdio branco e rosé herdaria um
-     `superficie2` quase branco. */
-  --color-superficie2:  #413326;
-  --color-borda-suave:  #3a2c1e;
+  --color-fundo:      var(--painel-fundo-escuro, #0d0c0b);
+  --color-superficie: var(--painel-superficie-escuro, #181615);
+  --color-borda:      var(--painel-borda-escuro, #2c2927);
+  --color-tinta:      var(--painel-tinta-escuro, #f4efe4);
+  --color-sub:        var(--painel-sub-escuro, #a8a199);
+  --color-lbl:        var(--painel-lbl-escuro, #8f8880);
+  --color-apagado:    var(--painel-apagado-escuro, #8f8880);
+  --color-mut:        var(--painel-mut-escuro, #121110);
+  --color-mut-borda:  var(--painel-mut-borda-escuro, #23201e);
+  --color-linha:      var(--painel-linha-escuro, #1c1a18);
+  /* O CHÃO do painel vem da paleta do estabelecimento (`--painel-*`, ver
+     `src/lib/paletas.ts`) desde 07/11/2026: era a nogueira marrom para toda
+     casa, e o painel destoava da tela de agendar. O valor depois da vírgula
+     é o chão da Preto e amarelo, para o painel fora de um estabelecimento.
+     Fixado aqui, e não herdado do `@theme`, porque a paleta troca o `@theme`
+     no `<html>`: o painel escuro de um estúdio Rosé herdaria o nude claro. */
+  --color-superficie2:  var(--painel-superficie2-escuro, #2a2725);
+  --color-borda-suave:  var(--painel-borda-suave-escuro, #282523);
   --color-latao:        #c98a45;
   --color-livre:        #5c8a6d;
 
-  /* O DESTAQUE é a única cor que o painel pega da paleta do
-     estabelecimento (rosé, dourado). O valor depois da vírgula é o âmbar de
-     sempre, para o painel fora de um estabelecimento. */
+  /* O DESTAQUE também vem da paleta (rosé, dourado), com o âmbar de
+     sempre como fallback. */
   --color-acento:       var(--painel-acento-escuro, #d9a34a);
   --color-acento-forte: var(--painel-acento-forte-escuro, #e8b360);
   --color-no-acento:    var(--painel-no-acento-escuro, #241a10);
@@ -219,21 +220,21 @@
    garante na primeira. */
 html[data-tema="claro"] .painel {
   color-scheme: light;
-  --color-fundo:      #faf6f0;
-  --color-superficie: #f3ebdf;
-  --color-superficie2: #ebdfce;
-  --color-borda:      #e0d0b8;
-  --color-borda-suave: #e7dac3;
-  --color-tinta:      #2b2118;
-  --color-sub:        #7a6952;
-  --color-lbl:        #a0917a;
-  --color-apagado:    #a0917a;
+  --color-fundo:      var(--painel-fundo-claro, #f6f0e3);
+  --color-superficie: var(--painel-superficie-claro, #fbf7ee);
+  --color-superficie2: var(--painel-superficie2-claro, #efe5d0);
+  --color-borda:      var(--painel-borda-claro, #e5d9c0);
+  --color-borda-suave: var(--painel-borda-suave-claro, #ebe1cc);
+  --color-tinta:      var(--painel-tinta-claro, #2a2316);
+  --color-sub:        var(--painel-sub-claro, #685d48);
+  --color-lbl:        var(--painel-lbl-claro, #776a52);
+  --color-apagado:    var(--painel-apagado-claro, #776a52);
   --color-acento:     var(--painel-acento-claro, #a66b22);
   --color-acento-forte: var(--painel-acento-forte-claro, #d9a34a);
   --color-no-acento:  var(--painel-no-acento-claro, #241a10);
-  --color-mut:        #f3ebdf;
-  --color-mut-borda:  #e7dac3;
-  --color-linha:      #e7dac3;
+  --color-mut:        var(--painel-mut-claro, #f1eadb);
+  --color-mut-borda:  var(--painel-mut-borda-claro, #e3d8c2);
+  --color-linha:      var(--painel-linha-claro, #ebe1cc);
 }
 
 /* A preferência do sistema, para quem nunca escolheu na barra de topo. Só
@@ -241,21 +242,21 @@ html[data-tema="claro"] .painel {
 @media (prefers-color-scheme: light) {
   html:not([data-tema]) .painel {
     color-scheme: light;
-    --color-fundo:      #faf6f0;
-    --color-superficie: #f3ebdf;
-    --color-superficie2: #ebdfce;
-    --color-borda:      #e0d0b8;
-    --color-borda-suave: #e7dac3;
-    --color-tinta:      #2b2118;
-    --color-sub:        #7a6952;
-    --color-lbl:        #a0917a;
-    --color-apagado:    #a0917a;
+    --color-fundo:      var(--painel-fundo-claro, #f6f0e3);
+    --color-superficie: var(--painel-superficie-claro, #fbf7ee);
+    --color-superficie2: var(--painel-superficie2-claro, #efe5d0);
+    --color-borda:      var(--painel-borda-claro, #e5d9c0);
+    --color-borda-suave: var(--painel-borda-suave-claro, #ebe1cc);
+    --color-tinta:      var(--painel-tinta-claro, #2a2316);
+    --color-sub:        var(--painel-sub-claro, #685d48);
+    --color-lbl:        var(--painel-lbl-claro, #776a52);
+    --color-apagado:    var(--painel-apagado-claro, #776a52);
     --color-acento:     var(--painel-acento-claro, #a66b22);
     --color-acento-forte: var(--painel-acento-forte-claro, #d9a34a);
     --color-no-acento:  var(--painel-no-acento-claro, #241a10);
-    --color-mut:        #f3ebdf;
-    --color-mut-borda:  #e7dac3;
-    --color-linha:      #e7dac3;
+    --color-mut:        var(--painel-mut-claro, #f1eadb);
+    --color-mut-borda:  var(--painel-mut-borda-claro, #e3d8c2);
+    --color-linha:      var(--painel-linha-claro, #ebe1cc);
   }
 }
 
@@ -268,7 +269,7 @@ html[data-tema="claro"] .painel {
    superfície para o que está aceso (o serviço escolhido, o resumo antes do
    botão). O `superficie2` de fora é o do painel, claro demais para isto. */
 .fluxo {
-  --color-superficie2: var(--fluxo-superficie2, #241b15);
+  --color-superficie2: var(--fluxo-superficie2, #1b1917);
 
   font-family: var(--font-letreiro);
 }

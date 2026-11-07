@@ -51,22 +51,25 @@ export default async function Barbearia() {
           acima dos dois. Os cardápios de todos vêm daqui prontos, então a
           troca não custa rede — e o HTML do servidor já sai com o primeiro
           barbeiro e os preços dele. */}
+      {/* O botão logo abaixo do cartaz, antes da tabela de preços (pedido
+          de 07/11/2026): no fim da página ele ficava a 20 serviços de
+          distância de quem só quer marcar. */}
       <Vitrine nome={b.nome} tipo={b.tipo} endereco={b.endereco} horarioResumo={b.horarioResumo}
-               logo={logoParaTela(b.logoUrl)} cardapios={cardapios} />
-
-      {/* Por último, como no desenho: a decisão vem depois de ler a casa. */}
-      <Link href="/agendar" aria-label={`Marcar horário ${v.noNome(b.nome)}`}>
-        <Box variante="fill" className="!py-4 !text-base md:!text-lg">
-          marcar horário
-        </Box>
-      </Link>
-
-      {/* Sem o link do painel: esta tela e' a vitrine do CLIENTE, e a porta de
-          servico nao pertence a fachada. Quem trabalha aqui chega por
-          /painel direto, ou pelo link do convite. */}
-      <div className="text-[10px] md:text-xs text-lbl text-center mt-1">
-        ou chama no zap: {formatar(b.whatsappContato)}
-      </div>
+               logo={logoParaTela(b.logoUrl)} cardapios={cardapios} acao={
+        <div className="flex flex-col gap-1">
+          <Link href="/agendar" aria-label={`Marcar horário ${v.noNome(b.nome)}`}>
+            <Box variante="fill" className="!py-4 !text-base md:!text-lg">
+              marcar horário
+            </Box>
+          </Link>
+          {/* Sem o link do painel: esta tela e' a vitrine do CLIENTE, e a porta de
+              servico nao pertence a fachada. Quem trabalha aqui chega por
+              /painel direto, ou pelo link do convite. */}
+          <div className="text-[10px] md:text-xs text-lbl text-center mt-1">
+            ou chama no zap: {formatar(b.whatsappContato)}
+          </div>
+        </div>
+      } />
     </Frame>
   );
 }

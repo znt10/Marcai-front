@@ -13,9 +13,10 @@
 /// nova sem mexer em componente nenhum. Sem estabelecimento (admin, 404),
 /// nada é posto e vale o `@theme`, que É a Preto e amarelo.
 ///
-/// O painel é outra história: ele tem claro/escuro e o desenho do Figma, e
-/// fixa a própria paleta no bloco `.painel` do `globals.css`. Da paleta do
-/// estabelecimento ele só pega o DESTAQUE, por variáveis `--painel-*`.
+/// O painel é outra história: ele tem claro/escuro e o desenho do Figma. Da
+/// paleta do estabelecimento ele pega o DESTAQUE e, desde 07/11/2026, o CHÃO
+/// de cada modo, por variáveis `--painel-*` que o bloco `.painel` do
+/// `globals.css` lê (com o chão da Preto e amarelo como valor de fallback).
 
 import type { CSSProperties } from 'react';
 import type { Tipo } from './tipos';
@@ -32,8 +33,17 @@ export type Tokens = {
   'no-acento': string;
 };
 
-/// O destaque do painel num dos modos dele.
-type Destaque = { acento: string; acentoForte: string; noAcento: string };
+/// O chão do painel num dos modos dele: fundo, cartões, fios e letras.
+/// Até 07/11/2026 era a nogueira (marrom) fixa no `globals.css` para toda
+/// casa; agora cada paleta traz o seu, no mesmo tom das telas do cliente.
+export type ChaoDoPainel = {
+  fundo: string; superficie: string; superficie2: string; borda: string; 'borda-suave': string;
+  tinta: string; sub: string; lbl: string; apagado: string; mut: string; 'mut-borda': string;
+  linha: string;
+};
+
+/// O painel num dos modos dele: o chão e o destaque.
+type Destaque = { acento: string; acentoForte: string; noAcento: string; chao: ChaoDoPainel };
 
 export type DefinicaoDaPaleta = {
   nome: string;
@@ -46,30 +56,61 @@ export type DefinicaoDaPaleta = {
   barra: { escuro: string; claro: string };
 };
 
-/// Os valores de hoje — os mesmos do `@theme` e do `.painel` do
-/// `globals.css` (um teste prende os dois juntos).
+/// Os chãos (07/11/2026, depois de o José aprovar o Preto e rosé): fundo e
+/// cartão no mesmo tom, um degrau só entre eles, sem o marrom de antes. Os
+/// escuros puxam para a cor do destaque (âmbar, vinho); os claros são o
+/// creme e o nude, com o cartão um tom acima do fundo em vez de branco puro.
+const CHAO_AMBAR_ESCURO: ChaoDoPainel = {
+  fundo: '#0d0c0b', superficie: '#181615', superficie2: '#2a2725', borda: '#2c2927',
+  'borda-suave': '#282523', tinta: '#f4efe4', sub: '#a8a199', lbl: '#8f8880', apagado: '#8f8880',
+  mut: '#121110', 'mut-borda': '#23201e', linha: '#1c1a18',
+};
+const CHAO_VINHO_ESCURO: ChaoDoPainel = {
+  fundo: '#0d0a0b', superficie: '#161113', superficie2: '#2c2226', borda: '#2e2327',
+  'borda-suave': '#2a2024', tinta: '#f4eced', sub: '#a8979b', lbl: '#8f7e83', apagado: '#8f7e83',
+  mut: '#120e10', 'mut-borda': '#241b1f', linha: '#1d1619',
+};
+const CHAO_CREME_CLARO: ChaoDoPainel = {
+  fundo: '#f6f0e3', superficie: '#fbf7ee', superficie2: '#efe5d0', borda: '#e5d9c0',
+  'borda-suave': '#ebe1cc', tinta: '#2a2316', sub: '#685d48', lbl: '#776a52', apagado: '#776a52',
+  mut: '#f1eadb', 'mut-borda': '#e3d8c2', linha: '#ebe1cc',
+};
+const CHAO_NUDE_CLARO: ChaoDoPainel = {
+  fundo: '#f6e6e0', superficie: '#fbf1ed', superficie2: '#f1ddd6', borda: '#ebd2ca',
+  'borda-suave': '#efdbd4', tinta: '#3b2220', sub: '#7a5a55', lbl: '#7d625d', apagado: '#7d625d',
+  mut: '#f3e2dc', 'mut-borda': '#e8cfc8', linha: '#efdbd4',
+};
+
+/// O painel das casas de âmbar e dourado: âmbar sobre o preto, e o âmbar
+/// escuro do Figma sobre o creme.
+const AMBAR_NO_PAINEL: DefinicaoDaPaleta['painel'] = {
+  escuro: { acento: '#d9a34a', acentoForte: '#e8b360', noAcento: '#241a10', chao: CHAO_AMBAR_ESCURO },
+  claro: { acento: '#a66b22', acentoForte: '#d9a34a', noAcento: '#241a10', chao: CHAO_CREME_CLARO },
+};
+
+/// A Preto e amarelo é o `@theme` do `globals.css` e o chão de fallback do
+/// `.painel` (um teste prende os dois juntos).
 const PRETO_AMARELO: DefinicaoDaPaleta = {
   nome: 'Preto e amarelo',
   esquema: 'dark',
+  // Preto grafite com um calor leve (07/11/2026); era a nogueira marrom, e
+  // um primeiro preto com âmbar demais saiu esverdeado.
   tokens: {
-    fundo: '#14100e', superficie: '#1e1815', borda: '#34291f', tinta: '#f2ebe1', sub: '#a3948a',
-    lbl: '#8d7f75', apagado: '#6c5e54', acento: '#febc1a', latao: '#c98a45', livre: '#5c8a6d',
-    mut: '#191411', 'mut-borda': '#29211b', linha: '#241d18', superficie2: '#413326',
-    'borda-suave': '#3a2c1e', 'acento-forte': '#e8b360', 'no-acento': '#241a10',
+    fundo: '#0d0c0b', superficie: '#181615', borda: '#2c2927', tinta: '#f4efe4', sub: '#a8a199',
+    lbl: '#8f8880', apagado: '#6b655e', acento: '#febc1a', latao: '#c98a45', livre: '#5c8a6d',
+    mut: '#121110', 'mut-borda': '#23201e', linha: '#1c1a18', superficie2: '#2a2725',
+    'borda-suave': '#282523', 'acento-forte': '#e8b360', 'no-acento': '#241a10',
   },
-  superficieDoFluxo: '#241b15',
-  painel: {
-    escuro: { acento: '#d9a34a', acentoForte: '#e8b360', noAcento: '#241a10' },
-    claro: { acento: '#a66b22', acentoForte: '#d9a34a', noAcento: '#241a10' },
-  },
-  barra: { escuro: '#1c1814', claro: '#faf6f0' },
+  superficieDoFluxo: '#1b1917',
+  painel: AMBAR_NO_PAINEL,
+  barra: { escuro: '#0d0c0b', claro: '#f6f0e3' },
 };
 
 /// O rosé dos dois lados: escuro para quem lê sobre claro, claro para quem
 /// lê sobre escuro.
 const ROSE_NO_PAINEL: DefinicaoDaPaleta['painel'] = {
-  escuro: { acento: '#e59aa8', acentoForte: '#f0b4bf', noAcento: '#2a1418' },
-  claro: { acento: '#a4505e', acentoForte: '#c77985', noAcento: '#ffffff' },
+  escuro: { acento: '#e59aa8', acentoForte: '#f0b4bf', noAcento: '#2a1418', chao: CHAO_VINHO_ESCURO },
+  claro: { acento: '#a4505e', acentoForte: '#c77985', noAcento: '#ffffff', chao: CHAO_NUDE_CLARO },
 };
 
 export const PALETAS: Record<Paleta, DefinicaoDaPaleta> = {
@@ -82,43 +123,52 @@ export const PALETAS: Record<Paleta, DefinicaoDaPaleta> = {
   BRANCO_ROSE: {
     nome: 'Rosé',
     esquema: 'light',
+    // 07/11/2026: o cartão deixou de ser quase branco e virou um nude um
+    // degrau acima do fundo.
     tokens: {
-      fundo: '#f9ede8', superficie: '#fff9f7', borda: '#eed5ce', tinta: '#3b2220', sub: '#7d5d58',
-      lbl: '#806560', apagado: '#b39a95', acento: '#9c5452', latao: '#d4a49c', livre: '#3f7a57',
-      mut: '#f4e3dd', 'mut-borda': '#e8cfc8', linha: '#f2e1db', superficie2: '#f3dfd8',
-      'borda-suave': '#f0ddd6', 'acento-forte': '#8a4a47', 'no-acento': '#ffffff',
+      fundo: '#f6e6e0', superficie: '#fbf1ed', borda: '#ebd2ca', tinta: '#3b2220', sub: '#7a5a55',
+      lbl: '#7d625d', apagado: '#b39a95', acento: '#9c5452', latao: '#d4a49c', livre: '#3f7a57',
+      mut: '#f3e2dc', 'mut-borda': '#e8cfc8', linha: '#efdbd4', superficie2: '#f1ddd6',
+      'borda-suave': '#efdbd4', 'acento-forte': '#8a4a47', 'no-acento': '#ffffff',
     },
-    superficieDoFluxo: '#f5e4de',
+    superficieDoFluxo: '#f3e0d9',
     painel: ROSE_NO_PAINEL,
-    barra: { escuro: '#f9ede8', claro: '#f9ede8' },
+    barra: { escuro: '#f6e6e0', claro: '#f6e6e0' },
   },
 
-  /// O chão da barbearia com o destaque rosé.
+  /// Preto com o destaque rosé. Até 07/11/2026 herdava o chão da barbearia
+  /// (Preto e amarelo), e o cartaz da logo saía marrom; agora os pretos são
+  /// mais fundos e puxam para o vinho, o tom que casa com o rosé.
   PRETO_ROSE: {
     ...PRETO_AMARELO,
     nome: 'Preto e rosé',
     tokens: {
-      ...PRETO_AMARELO.tokens,
-      acento: '#f0a6b4', latao: '#b77a86', 'acento-forte': '#e9b3bd', 'no-acento': '#2a1418',
+      fundo: '#0d0a0b', superficie: '#161113', borda: '#2e2327', tinta: '#f4eced', sub: '#a8979b',
+      lbl: '#8f7e83', apagado: '#6b5b60', acento: '#f0a6b4', latao: '#b77a86', livre: '#5c8a6d',
+      mut: '#120e10', 'mut-borda': '#241b1f', linha: '#1d1619', superficie2: '#2c2226',
+      'borda-suave': '#2a2024', 'acento-forte': '#e9b3bd', 'no-acento': '#2a1418',
     },
+    superficieDoFluxo: '#1a1417',
     painel: ROSE_NO_PAINEL,
+    barra: { escuro: '#0d0a0b', claro: '#f6e6e0' },
   },
 
   BRANCO_DOURADO: {
     nome: 'Branco e dourado',
     esquema: 'light',
+    // 07/11/2026: cartão em creme do mesmo tom do fundo, em vez de branco.
     tokens: {
-      fundo: '#faf7f0', superficie: '#ffffff', borda: '#e6dcc8', tinta: '#2a2316', sub: '#6b604c',
-      lbl: '#7a6d55', apagado: '#a89d88', acento: '#8a6516', latao: '#d8b56a', livre: '#3f7a57',
-      mut: '#f3eee2', 'mut-borda': '#e4dac6', linha: '#efe8da', superficie2: '#f4ead2',
-      'borda-suave': '#ece3d0', 'acento-forte': '#75550f', 'no-acento': '#ffffff',
+      fundo: '#f6f0e3', superficie: '#fbf7ee', borda: '#e5d9c0', tinta: '#2a2316', sub: '#685d48',
+      lbl: '#776a52', apagado: '#a3977f', acento: '#8a6516', latao: '#d8b56a', livre: '#3f7a57',
+      mut: '#f1eadb', 'mut-borda': '#e3d8c2', linha: '#ebe1cc', superficie2: '#efe5d0',
+      'borda-suave': '#ebe1cc', 'acento-forte': '#75550f', 'no-acento': '#ffffff',
     },
-    superficieDoFluxo: '#f6eedb',
+    superficieDoFluxo: '#f2ead8',
     painel: {
-      escuro: { acento: '#d9b45a', acentoForte: '#e8c97a', noAcento: '#241a10' },
-      claro: { acento: '#8a6516', acentoForte: '#b8902e', noAcento: '#ffffff' },
+      escuro: { acento: '#d9b45a', acentoForte: '#e8c97a', noAcento: '#241a10', chao: CHAO_AMBAR_ESCURO },
+      claro: { acento: '#8a6516', acentoForte: '#b8902e', noAcento: '#ffffff', chao: CHAO_CREME_CLARO },
     },
-    barra: { escuro: '#faf7f0', claro: '#faf7f0' },
+    barra: { escuro: '#f6f0e3', claro: '#f6f0e3' },
   },
 };
 
@@ -150,6 +200,7 @@ export function estiloDaPaleta(p?: string | null): CSSProperties {
     vars[`--painel-acento-${modo}`] = destaque.acento;
     vars[`--painel-acento-forte-${modo}`] = destaque.acentoForte;
     vars[`--painel-no-acento-${modo}`] = destaque.noAcento;
+    for (const [nome, cor] of Object.entries(destaque.chao)) vars[`--painel-${nome}-${modo}`] = cor;
   }
   return vars as CSSProperties;
 }
