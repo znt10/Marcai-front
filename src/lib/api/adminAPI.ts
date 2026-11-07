@@ -41,6 +41,27 @@ export type WhatsappCentral = {
   conectado: boolean;
   numero: string | null;
   qrBase64: string | null;
+  /// Os dois caminhos lado a lado (back#76). Opcionais: o back antigo
+  /// só manda o card único de cima.
+  meta?: WhatsappMeta;
+  evolution?: WhatsappEvolution;
+};
+
+/// A API oficial: não tem QR, o número se verifica no WhatsApp Manager.
+export type WhatsappMeta = {
+  ligada: boolean;
+  configurado: boolean;
+  conectado: boolean;
+  numero: string | null;
+};
+
+/// O chip. `emUso` = leva a equipe ou os lembretes de quem escreveu nele.
+export type WhatsappEvolution = {
+  emUso: boolean;
+  configurado: boolean;
+  conectado: boolean;
+  numero: string | null;
+  qrBase64: string | null;
 };
 
 /// Uma linha da tela de mensalidades: a barbearia e como ela está com a

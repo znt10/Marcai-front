@@ -1,17 +1,20 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { Box, Lbl, Sub } from '@/components/wf';
-import { adminApi, mensagemDoErro, type WhatsappCentral as Central } from '@/lib/api';
+import {
+  adminApi, mensagemDoErro, type WhatsappCentral as Central, type WhatsappEvolution, type WhatsappMeta,
+} from '@/lib/api';
 import { formatar } from '@/lib/telefone';
 import { proximaConferencia } from '@/lib/whatsapp-central';
 
-/// O chip da equipe (Evolution) no topo do admin.
+/// Os dois caminhos do WhatsApp no topo do admin, lado a lado: a Meta (API
+/// oficial) na esquerda e o chip da Evolution na direita.
 ///
-/// Desde a API oficial (Meta), o cliente recebe pelo número da Meta e este
-/// chip leva só o que vai para os barbeiros: a lista do dia e os avisos. Se
-/// ele cai, cai para a equipe de todas as barbearias de uma vez; por isso o
-/// estado fica à vista, e o QR para reconectar fica aqui, sem precisar expor
-/// o manager da Evolution.
+/// Cada um cai sozinho e derruba coisas diferentes: sem a Meta, o painel
+/// não confirma ao cliente e a reserva dos lembretes some; sem o chip, a
+/// equipe fica sem a lista e os lembretes de quem escreveu nele saem pagos
+/// pela Meta. Por isso os dois ficam à vista, e o QR para reconectar o chip
+/// fica aqui, sem precisar expor o manager da Evolution.
 export function WhatsappCentral() {
   const [dados, setDados] = useState<Central | null>(null);
   const [erro, setErro] = useState('');
@@ -45,29 +48,76 @@ export function WhatsappCentral() {
     };
   }, [carregar]);
 
+  // Back antigo (antes do #76): só o card único, que é o do chip.
+  const chip: WhatsappEvolution | undefined = dados?.evolution
+    ?? (dados ? { emUso: true, ...dados } : undefined);
+
   return (
     <>
-      <Lbl>chip do marcaí (equipe e lembretes)</Lbl>
+      <Lbl>whatsapp do marcaí</Lbl>
       {erro && <Sub className="text-acento">{erro}</Sub>}
-      {!dados ? <Sub>carregando…</Sub>
-        : !dados.configurado ? <Box variante="mut">sem Evolution configurada neste ambiente</Box>
-        : dados.conectado ? (
-          <Box variante="sel">conectado{dados.numero ? ` · ${formatar(dados.numero)}` : ''}</Box>
-        ) : dados.qrBase64 ? (
-          <>
-            <Box variante="alerta">desconectado — os barbeiros não recebem a lista, e os lembretes de quem escreveu no chip saem pela Meta (pagos) até reconectar.</Box>
-            {/* `data:image/png;base64,...` vem pronto da Evolution. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={dados.qrBase64}
-              alt="QR code para conectar o chip da equipe"
-              className="w-full max-w-[280px] self-center rounded-wf border border-borda bg-white p-2"
-            />
-            <Sub>No celular do chip: WhatsApp → Aparelhos conectados → Conectar um aparelho.</Sub>
-          </>
-        ) : (
-          <Box variante="alerta">desconectado, e a Evolution não mandou QR — tenta de novo em instantes</Box>
-        )}
+      {!dados || !chip ? <Sub>carregando…</Sub> : (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex min-w-0 flex-col gap-2">
+            <Sub>API oficial (Meta)</Sub>
+            <LadoDaMeta meta={dados.meta} />
+          </div>
+          <div className="flex min-w-0 flex-col gap-2">
+            <Sub>chip (Evolution)</Sub>
+            <LadoDoChip chip={chip} />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function LadoDaMeta({ meta }: { meta?: WhatsappMeta }) {
+  if (!meta) return <Box variante="mut">o back ainda não informa a Meta</Box>;
+  if (!meta.ligada) return <Box variante="mut">desligada (WHATSAPP_PROVEDOR não é meta)</Box>;
+  if (!meta.configurado) return <Box variante="alerta">ligada, mas sem token ou número configurado</Box>;
+  if (meta.conectado) {
+    return <Box variante="sel">conectada{meta.numero ? ` · ${formatar(meta.numero)}` : ''}</Box>;
+  }
+  return (
+    <Box variante="alerta">
+      desconectada — o painel não confirma ao cliente, e os lembretes não têm reserva se o chip cair.
+      Ver no WhatsApp Manager.
+    </Box>
+  );
+}
+
+function LadoDoChip({ chip }: { chip: WhatsappEvolution }) {
+  if (!chip.configurado) return <Box variante="mut">sem Evolution configurada neste ambiente</Box>;
+  const uso = chip.emUso ? 'equipe e lembretes' : 'fora de uso (variáveis desligadas)';
+  if (chip.conectado) {
+    return (
+      <>
+        <Box variante="sel">conectado{chip.numero ? ` · ${formatar(chip.numero)}` : ''}</Box>
+        <Sub>{uso}</Sub>
+      </>
+    );
+  }
+  return (
+    <>
+      <Box variante="alerta">
+        desconectado — os barbeiros não recebem a lista, e os lembretes de quem escreveu no chip saem
+        pela Meta (pagos) até reconectar.
+      </Box>
+      {chip.qrBase64 ? (
+        <>
+          {/* `data:image/png;base64,...` vem pronto da Evolution. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={chip.qrBase64}
+            alt="QR code para conectar o chip"
+            className="w-full max-w-[280px] self-center rounded-wf border border-borda bg-white p-2"
+          />
+          <Sub>No celular do chip: WhatsApp → Aparelhos conectados → Conectar um aparelho.</Sub>
+        </>
+      ) : (
+        <Sub>a Evolution não mandou QR — tenta de novo em instantes</Sub>
+      )}
     </>
   );
 }

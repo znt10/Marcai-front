@@ -24,7 +24,7 @@ export type {
 
 export { adminApi, LOGIN_DO_ADMIN } from './adminAPI';
 export type {
-  BarbeariaDaLista, NovaBarbearia, Plano, WhatsappCentral,
+  BarbeariaDaLista, NovaBarbearia, Plano, WhatsappCentral, WhatsappMeta, WhatsappEvolution,
   LinhaDaMensalidade, MensalidadesDoAdmin, CamposDaMensalidade,
   PagamentoDoHistorico, HistoricoDaMensalidade,
 } from './adminAPI';

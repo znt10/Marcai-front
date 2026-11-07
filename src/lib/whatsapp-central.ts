@@ -12,7 +12,12 @@ export const CONFERIR_CENTRAL_MS = 3_000;
 /// Evolution), e um intervalo fixo empilharia pedidos até ocupar os
 /// workers que também servem o site de agendamento. Para quando conectou
 /// (não há o que esperar) e quando não há Evolution configurada.
+///
+/// Segue o CHIP (`evolution`) quando o back manda os dois lados: a Meta não
+/// tem QR, e com ela na frente o card de cima diz "conectado" mesmo com o
+/// chip caído esperando a leitura.
 export function proximaConferencia(dados: WhatsappCentral | null): number | null {
-  if (dados && (!dados.configurado || dados.conectado)) return null;
+  const chip = dados?.evolution ?? dados;
+  if (chip && (!chip.configurado || chip.conectado)) return null;
   return CONFERIR_CENTRAL_MS;
 }
