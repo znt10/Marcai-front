@@ -93,15 +93,21 @@ export const PALETAS: Record<Paleta, DefinicaoDaPaleta> = {
     barra: { escuro: '#f9ede8', claro: '#f9ede8' },
   },
 
-  /// O chão da barbearia com o destaque rosé.
+  /// Preto com o destaque rosé. Até 07/11/2026 herdava o chão da barbearia
+  /// (Preto e amarelo), e o cartaz da logo saía marrom; agora os pretos são
+  /// mais fundos e puxam para o vinho, o tom que casa com o rosé.
   PRETO_ROSE: {
     ...PRETO_AMARELO,
     nome: 'Preto e rosé',
     tokens: {
-      ...PRETO_AMARELO.tokens,
-      acento: '#f0a6b4', latao: '#b77a86', 'acento-forte': '#e9b3bd', 'no-acento': '#2a1418',
+      fundo: '#0d0a0b', superficie: '#161113', borda: '#2e2327', tinta: '#f4eced', sub: '#a8979b',
+      lbl: '#8f7e83', apagado: '#6b5b60', acento: '#f0a6b4', latao: '#b77a86', livre: '#5c8a6d',
+      mut: '#120e10', 'mut-borda': '#241b1f', linha: '#1d1619', superficie2: '#2c2226',
+      'borda-suave': '#2a2024', 'acento-forte': '#e9b3bd', 'no-acento': '#2a1418',
     },
+    superficieDoFluxo: '#1a1417',
     painel: ROSE_NO_PAINEL,
+    barra: { ...PRETO_AMARELO.barra, escuro: '#0d0a0b' },
   },
 
   BRANCO_DOURADO: {

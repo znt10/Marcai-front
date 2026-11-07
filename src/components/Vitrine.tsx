@@ -36,7 +36,7 @@ import { IconeDeGrupo } from '@/components/IconeDeGrupo';
 /// que devia responder "quanto custa um corte aqui". Escolhendo o rosto, a
 /// resposta é sempre três linhas — e comparar dois barbeiros é um toque.
 export function Vitrine({
-  nome, tipo, endereco, horarioResumo, logo, cardapios,
+  nome, tipo, endereco, horarioResumo, logo, cardapios, acao,
 }: {
   nome: string;
   tipo?: Tipo;
@@ -45,6 +45,9 @@ export function Vitrine({
   endereco: string;
   horarioResumo: string | null;
   cardapios: CardapioDoBarbeiro[];
+  /// O "marcar horário", logo abaixo do cartaz (07/11/2026): com a tabela
+  /// de preços crescendo (20 serviços), no fim ele ficava fora da tela.
+  acao?: React.ReactNode;
 }) {
   // O primeiro da equipe, e não "nenhum": a seção de preços existir vazia
   // esperando um clique é uma tela que não respondeu à pergunta. A ordem da
@@ -106,6 +109,8 @@ export function Vitrine({
           </div>
         )}
       </Box>
+
+      {acao}
 
       {atual && (
         <div className="flex flex-col gap-2">

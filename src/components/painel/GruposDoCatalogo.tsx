@@ -111,10 +111,13 @@ export function SeletorDeGrupo({ grupos, valor, aoMudar }: {
   grupos: GrupoDeServico[]; valor: string; aoMudar: (id: string) => void;
 }) {
   return (
-    <label className="flex items-center gap-2">
+    // Do tamanho do campo de nome (pedido de 07/11/2026): é aqui que se
+    // decide onde o serviço entra, e o seletor miúdo passava despercebido.
+    <label className="flex flex-col gap-1">
       <Etiqueta>grupo</Etiqueta>
-      <select className="min-w-0 rounded-[10px] border border-borda-suave bg-superficie px-2.5 py-1.5
-                         text-[12.5px] text-tinta"
+      <select className="w-full rounded-[14px] border border-borda-suave bg-superficie px-4 py-3.5
+                         text-[14px] font-medium text-tinta outline-none focus:border-acento
+                         md:rounded-[18px] md:py-4"
               value={valor} onChange={(e) => aoMudar(e.target.value)}>
         {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
       </select>

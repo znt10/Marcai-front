@@ -341,7 +341,8 @@ function NovoServico({ grupos, grupoAberto, aoCriar }: {
 }
 
 /// O catálogo do dono separado em gavetas, uma por grupo, com o que se faz
-/// com o grupo dentro dela: subir, descer, editar e apagar. Começam fechadas
+/// com o grupo dentro dela: editar e apagar. A faixa só abre e fecha — as
+/// setas de subir e descer saíram em 07/11/2026, confundiam-se com a de abrir. Começam fechadas
 /// pelo mesmo motivo do agendar — a lista de 20 é o problema que os grupos
 /// vieram resolver. Grupo vazio TAMBÉM aparece aqui (acabou de ser criado,
 /// e é aqui que o dono o enche), ao contrário da tela do cliente.
@@ -356,29 +357,9 @@ function CatalogoEmGavetas({ servicos, grupos, agir, aoAbrir }: {
   const ordenados = [...grupos].sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome));
   const soltos = agrupar(servicos, grupos)?.soltos ?? [];
 
-  // Trocar de lugar com o vizinho: as duas ordens viram as posições na lista
-  // ordenada, o que também desfaz empates antigos de `ordem`.
-  const mover = (i: number, passo: -1 | 1) => {
-    const j = i + passo;
-    if (j < 0 || j >= ordenados.length) return;
-    const nova = [...ordenados];
-    [nova[i], nova[j]] = [nova[j], nova[i]];
-    void agir(() => Promise.all(nova.map((g, k) =>
-      g.ordem === k ? null : servicosApi.editarGrupo(g.id, { ordem: k }))));
-  };
-
-  const setinha = (rotulo: string, d: string, onClick: () => void, desligado: boolean) => (
-    <button type="button" aria-label={rotulo} disabled={desligado} onClick={onClick}
-            className="grid size-8 place-items-center rounded-[8px] text-lbl hover:text-acento
-                       disabled:opacity-30">
-      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden fill="none" stroke="currentColor"
-           strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
-    </button>
-  );
-
   return (
     <div className="flex flex-col gap-2">
-      {ordenados.map((g, i) => {
+      {ordenados.map((g) => {
         const doGrupo = servicos.filter((s) => s.grupoId === g.id);
         const aberta = abertos.has(g.id);
         return (
@@ -390,11 +371,7 @@ function CatalogoEmGavetas({ servicos, grupos, agir, aoAbrir }: {
                       return n;
                     });
                     if (!aberta) aoAbrir(g.id);
-                  }}
-                  acoes={<>
-                    {setinha(`subir ${g.nome}`, 'M4 10l4-4 4 4', () => mover(i, -1), i === 0)}
-                    {setinha(`descer ${g.nome}`, 'M4 6l4 4 4-4', () => mover(i, 1), i === ordenados.length - 1)}
-                  </>}>
+                  }}>
             {doGrupo.length === 0 && (
               <Texto>Nenhum serviço aqui ainda. Mova um pelo campo grupo de cada serviço ou crie um novo abaixo.</Texto>
             )}
