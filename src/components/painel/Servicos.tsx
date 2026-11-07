@@ -107,13 +107,6 @@ export function Servicos({ eu }: { eu: Eu }) {
           ? `Serviços de ${barbeiros.find((b) => b.id === barbeiroId)?.nome ?? ''}`
           : 'Seus serviços'}
       </Titulo>
-      {/* A frase que faltava. Sem ela, "Corte" aparece nesta lista E na lista
-          da barbearia mais abaixo, e nada na tela explica por que o mesmo
-          servico esta escrito duas vezes. */}
-      <Texto>
-        Marque o que você faz, duração e preço — cada {v.prof} pode
-        personalizar.
-      </Texto>
       {catalogo === null && <Texto>carregando…</Texto>}
 
       <EscolhaPorGrupo itens={vinculosComGrupo} grupos={grupos} escolhido=""
@@ -207,14 +200,9 @@ export function Servicos({ eu }: { eu: Eu }) {
       {eu.papel === 'DONO' && (
         <>
           <Fio className="my-1" />
-          {/* "Catálogo" e' palavra de sistema. E a secao precisa dizer, com
-              todas as letras, qual e' a diferenca dela para a lista de cima —
-              e' de la' que vem o "por que Corte esta escrito duas vezes". */}
+          {/* Sem frase de explicação embaixo dos títulos (pedido de
+              07/11/2026): a tela tinha texto demais. */}
           <Titulo>A lista {v.doLugar}</Titulo>
-          <Texto>
-            Tudo que {v.oLugar} oferece. Cada {v.prof} escolhe, acima, o que
-            faz. Só você mexe aqui.
-          </Texto>
           {grupos.length === 0
             ? ativos.map((s) => (
                 <CartaoDoCatalogo key={s.id} servico={s} grupos={grupos} agir={agir} />
@@ -228,11 +216,6 @@ export function Servicos({ eu }: { eu: Eu }) {
           {/* Grupos são do dono que tem serviço demais para uma lista só
               (pedido de 06/11/2026). Quem tem cinco nunca precisa tocar aqui. */}
           <Titulo>{grupos.length === 0 ? 'Separar em grupos' : 'Novo grupo'}</Titulo>
-          <Texto>
-            {grupos.length === 0
-              ? 'Tem muito serviço? Separe em grupos (Cabelo, Barba, Combos…). O cliente vê cada grupo numa faixa que abre e fecha. Ao criar o primeiro, todos os serviços entram nele e você move cada um para o grupo certo.'
-              : 'Todo serviço fica dentro de um grupo.'}
-          </Texto>
           <FormDoGrupo rotulo="+ criar grupo"
                        aoSalvar={(d) => agir(() => servicosApi.criarGrupo(d))} />
 
@@ -345,9 +328,6 @@ function NovoServico({ grupos, grupoAberto, aoCriar }: {
       {grupos.length > 0 && (
         <SeletorDeGrupo grupos={grupos} valor={grupoId} aoMudar={setEscolhido} />
       )}
-      <Texto>
-        O tempo, cada {v.prof} coloca o {v.dele} em Seus serviços, acima.
-      </Texto>
       <BotaoCheio largura="cheia" disabled={nome.trim().length < 2}
                   onClick={() => {
                     if (nome.trim().length < 2) return;
